@@ -1,0 +1,15 @@
+
+; Include forcefield parameters
+#include "OBT.ff/forcefield.itp"
+
+; Include geometry parameters
+#include "AB.itp"
+
+[ system ]
+; Name
+Alkylated Monomer Simulation For Testing in water
+
+[ molecules ]
+; Compound        #mols
+AB 		1
+SOL              3234

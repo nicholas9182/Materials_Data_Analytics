@@ -1,0 +1,18 @@
+#!/bin/sh
+#PBS -l walltime=168:00:00
+#PBS -l select=1:ncpus=40:mem=50gb:avx=true
+
+source /rds/general/user/ns5018/home/.bash_profile
+
+root="EM"
+
+cp $PBS_O_WORKDIR/${root}.tpr $TMPDIR
+
+gmx mdrun -s ${root}.tpr -deffnm ${root} -nt 40 -maxh 140
+
+cp $TMPDIR/${root}.log $PBS_O_WORKDIR
+cp $TMPDIR/${root}.edr $PBS_O_WORKDIR
+cp $TMPDIR/${root}.trr $PBS_O_WORKDIR
+cp $TMPDIR/${root}.gro $PBS_O_WORKDIR
+cp $TMPDIR/${root}.cpt $PBS_O_WORKDIR
+cp $TMPDIR/${root}_prev.cpt $PBS_O_WORKDIR
