@@ -7,7 +7,7 @@ setup(
     description='Analysis Package for Molecular Dynamics on Conjugated Polymers',
     author='Nicholas Siemons',
     author_email='nicholas9182@gmail.com',
-    py_modules=[
+    packages=[
         'MDAnalysis',
         'pandas',
         'numpy'
