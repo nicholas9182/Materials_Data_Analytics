@@ -7,9 +7,7 @@ setup(
     description='Analysis Package for Molecular Dynamics on Conjugated Polymers',
     author='Nicholas Siemons',
     author_email='nicholas9182@gmail.com',
-    packages=[
-        'MDAnalysis',
-        'pandas',
-        'numpy'
-    ]
+    package_dir={
+        'MDAnalysis': '/Users/nicholassiemons/opt/miniconda3/envs/md_analysis/lib/python3.10/site-packages/'
+    }
 )
