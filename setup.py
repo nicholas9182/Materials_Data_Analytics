@@ -1,5 +1,5 @@
 from distutils.core import setup
-from analysis._version import __version__  # noqa
+from _version import __version__  # noqa
 
 setup(
     name='ConjPolAnalysis',
