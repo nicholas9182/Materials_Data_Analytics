@@ -2,7 +2,7 @@ from distutils.core import setup
 from _version import __version__  # noqa
 
 setup(
-    name='ConjPolAnalysis',
+    name='Analytics',
     version=__version__,
     description='Analysis Package for Molecular Dynamics on Conjugated Polymers',
     author='Nicholas Siemons',

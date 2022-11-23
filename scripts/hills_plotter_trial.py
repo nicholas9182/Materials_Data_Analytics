@@ -1,6 +1,6 @@
 import plumed as pl
 import matplotlib.pyplot as plt
-from analysis.metadynamics.free_energy import FreeEnergyLandscape
+from analytics.metadynamics.free_energy import FreeEnergyLandscape
 
 """
 First part tries out the plotting routine
