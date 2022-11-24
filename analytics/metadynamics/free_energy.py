@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import plotly.io as pio
 pio.templates.default = "plotly_dark"
+pd.set_option('mode.chained_assignment', None)
 
 
 class FreeEnergyLandscape:
@@ -12,19 +13,17 @@ class FreeEnergyLandscape:
         if {'time', 'height'}.issubset(hills.columns) is False:
             raise ValueError("Make sure time and height is present")
 
-        self.hills = (pd.DataFrame(hills)
-                      .loc[:, ~hills.columns.str.startswith('sigma')]
-                      .drop(columns=['biasf'])
-                      .assign(time=lambda x: x['time']/1000)
-                      .groupby('time', group_keys=False)
-                      .apply(lambda x: x.assign(walker=lambda y: range(0, y.shape[0])))
-                      )
+        hills = (pd.DataFrame(hills)
+                 .loc[:, ~hills.columns.str.startswith('sigma')]
+                 .drop(columns=['biasf'])
+                 .assign(time=lambda x: x['time']/1000)
+                 )
 
-        self.cvs = (self.hills
-                    .drop(columns=['time', 'height', 'walker'])
-                    .columns
-                    .to_list()
-                    )
+        self.hills = hills[hills['time'] < max(hills['time'])]
+        self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
+        self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
+        self.hills['walker'] = [i for i in range(0, self.n_walker)] * self.n_timesteps
+        self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
 
     def get_hills_figures(self, time_resolution: int = None) -> dict[str, go.Figure]:
         """

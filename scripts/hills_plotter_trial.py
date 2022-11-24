@@ -23,7 +23,7 @@ Second part tries out the code in the package
 """
 hills2 = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0085/004/HILLS_test")
 landscape = FreeEnergyLandscape(hills2)
-figures = landscape.get_hills_figures(round_time=2)
+figures = landscape.get_hills_figures(time_resolution=2)
 
 for key, value in figures.items():
     save_dir = "/Users/nicholassiemons/Dropbox/OBT/0085/Summary/Figures/Walkers_004/Walker_" + str(key) + ".pdf"
