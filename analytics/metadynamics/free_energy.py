@@ -29,7 +29,7 @@ class FreeEnergyLandscape:
     def get_hills_figures(self, round_time: int = None) -> dict[str, go.Figure]:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
-        :param round_time: bik the data into time bins with this number of decimal places. Useful for producing smaller figures
+        :param round_time: bin the data into time bins with this number of decimal places. Useful for producing smaller figures
         :return:
         """
         if round_time:
@@ -52,7 +52,7 @@ class FreeEnergyLandscape:
             figure = px.line(df, x='time', y='value', facet_row='variable', height=800, width=1200, facet_row_spacing=0.04)
             figure.update_yaxes(matches=None, showgrid=False, title_text='')
             figure.update_xaxes(showgrid=False)
-            figure.update_traces(line_color='#2596be', line_width=2)
+            figure.update_traces(line_color='#f2f2f2', line_width=1)
             figs[name] = figure
 
         return figs
