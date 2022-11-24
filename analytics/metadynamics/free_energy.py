@@ -37,9 +37,7 @@ class FreeEnergyLandscape:
             long_hills = (self.hills
                           .melt(value_vars=self.cvs+['height'], id_vars=['time', 'walker'])
                           .assign(time=lambda x: x['time'].round(time_resolution))
-                          .groupby(['time', 'walker', 'variable'], group_keys=False)
-                          .apply(lambda x: x.assign(value=lambda y: y['value'].mean()))
-                          .drop_duplicates()
+                          .drop_duplicates(subset=['time', 'walker', 'variable'])
                           .groupby('walker')
                           )
         else:
