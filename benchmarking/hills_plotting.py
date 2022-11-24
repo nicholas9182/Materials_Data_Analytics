@@ -16,7 +16,7 @@ def benchmark_plotting_hills_v1() -> pd.DataFrame:
     cvs = landscape.cvs
     long_hills = (hills
                   .melt(value_vars=cvs+['height'], id_vars=['time', 'walker'])
-                  .assign(time=lambda x: x['time'].round(1))
+                  .assign(time=lambda x: x['time'].round(2))
                   .groupby(['time', 'walker', 'variable'], group_keys=False)
                   .apply(lambda x: x.assign(value=lambda y: y['value'].mean()))
                   .drop_duplicates()
@@ -36,10 +36,8 @@ def benchmark_plotting_hills_v2() -> pd.DataFrame:
     cvs = landscape.cvs
     long_hills = (hills
                   .melt(value_vars=cvs+['height'], id_vars=['time', 'walker'])
-                  .assign(time=lambda x: x['time'].round(1))
-                  .groupby(['time', 'walker', 'variable'], group_keys=False)
-                  .apply(lambda x: x.assign(value=lambda y: y['value'].mean()))
-                  .drop_duplicates()
+                  .assign(time=lambda x: x['time'].round(2))
+                  .drop_duplicates(subset=['time', 'walker', 'variable'])
                   )
 
     return long_hills
