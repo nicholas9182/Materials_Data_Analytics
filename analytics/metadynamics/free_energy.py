@@ -22,6 +22,8 @@ class FreeEnergyLandscape:
         self.hills = hills[hills['time'] < max(hills['time'])]
         self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
         self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
+        self.max_time = self.hills['time'].max()
+        self.dt = self.max_time/self.n_timesteps
         self.hills['walker'] = [i for i in range(0, self.n_walker)] * self.n_timesteps
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
 
