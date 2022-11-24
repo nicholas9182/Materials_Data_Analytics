@@ -1,0 +1,20 @@
+
+; Include forcefield parameters
+#include "../OBT.ff/forcefield.itp"
+
+
+; Include geometry parameters
+#include "../I6.itp"
+#include "../PC.itp"
+#include "../AN.itp"
+
+[ system ]
+; Name
+glycolated polymer
+
+[ molecules ]
+; Compound        #mols
+I6 		1
+NA 		1
+PC 		1
+AN 		7000
