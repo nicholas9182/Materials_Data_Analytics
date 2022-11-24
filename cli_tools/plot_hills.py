@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import click
 import plumed as pl
+from datetime import datetime
 from analytics.metadynamics.free_energy import FreeEnergyLandscape
 
 
@@ -15,8 +16,11 @@ def main(file: str, output: str, time_resolution: int):
     figures = landscape.get_hills_figures(time_resolution=time_resolution)
 
     for key, value in figures.items():
-        save_dir = output + "/Walker_" + str(key) + ".pdf"
+        key = str(key)
+        save_dir = output + "/Walker_" + key + ".pdf"
         value.write_image(save_dir)
+        current_time = datetime.now().strftime("%H:%M:%S")
+        click.echo(f"{current_time}: Made Walker_{key}.pdf in {output}", err=True)
 
 
 if __name__ == "__main__":
