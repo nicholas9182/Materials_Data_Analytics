@@ -48,7 +48,9 @@ class FreeEnergyLandscape:
 
         figs = {}
         for name, df in long_hills:
-            figure = px.line(df, x='time', y='value', facet_row='variable', height=600, width=1000, facet_row_spacing=0.02)
+            figure = px.line(
+                df, x='time', y='value', facet_row='variable', height=600, width=1000, facet_row_spacing=0.02, labels={'time': 'Time [ns]'}
+            )
             figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
             figure.update_xaxes(showgrid=False)
             figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
@@ -58,3 +60,56 @@ class FreeEnergyLandscape:
 
         return figs
 
+    def get_hills_average_across_walkers(self, time_resolution: int = 5):
+        """
+        function to get the average hill height, averaged across the walkers.
+        :return:
+        """
+        av_hills = (self.hills
+                    .assign(time=lambda x: x['time'].round(time_resolution))
+                    .groupby(['time'])
+                    .mean()
+                    .reset_index()
+                    )
+
+        return av_hills[['time', 'height']]
+
+    def get_average_hills_figure(self, **kwargs):
+        """
+        function to get figure of average hills across walkers
+        :return:
+        """
+        av_hills = self.get_hills_average_across_walkers(**kwargs)
+        figure = px.line(av_hills, x='time', y='height', log_y=True, labels={'time': 'Time [ns]'})
+        figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
+        figure.update_xaxes(showgrid=False)
+        figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
+        figure.update_traces(line_color='#f2f2f2', line_width=1)
+        return figure
+
+    def get_hills_max_across_walkers(self, time_resolution: int = 5):
+        """
+        function to get the average hill height, averaged across the walkers.
+        :return:
+        """
+        max_hills = (self.hills
+                     .assign(time=lambda x: x['time'].round(time_resolution))
+                     .groupby(['time'])
+                     .max()
+                     .reset_index()
+                     )
+
+        return max_hills[['time', 'height']]
+
+    def get_max_hills_figure(self, **kwargs):
+        """
+        function to get figure of average hills across walkers
+        :return:
+        """
+        max_hills = self.get_hills_max_across_walkers(**kwargs)
+        figure = px.line(max_hills, x='time', y='height', log_y=True, labels={'time': 'Time [ns]'})
+        figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
+        figure.update_xaxes(showgrid=False)
+        figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
+        figure.update_traces(line_color='#f2f2f2', line_width=1)
+        return figure
