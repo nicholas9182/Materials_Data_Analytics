@@ -1,8 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-import plotly.io as pio
-pio.templates.default = "plotly_dark"
+from visualisation.themes import custom_dark_template
 pd.set_option('mode.chained_assignment', None)
 
 
@@ -48,13 +47,8 @@ class FreeEnergyLandscape:
 
         figs = {}
         for name, df in long_hills:
-            figure = px.line(
-                df, x='time', y='value', facet_row='variable', height=600, width=1000, facet_row_spacing=0.02, labels={'time': 'Time [ns]'}
-            )
-            figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
-            figure.update_xaxes(showgrid=False)
-            figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
-            figure.update_traces(line_color='#f2f2f2', line_width=1)
+            figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'}, template=custom_dark_template)
+            figure.update_traces(line=dict(width=1))
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
 
