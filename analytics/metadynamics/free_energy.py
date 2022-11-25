@@ -49,6 +49,7 @@ class FreeEnergyLandscape:
         for name, df in long_hills:
             figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'}, template=custom_dark_template)
             figure.update_traces(line=dict(width=1))
+            figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
 
