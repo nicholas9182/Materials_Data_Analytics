@@ -40,7 +40,9 @@ class FreeEnergyLandscape:
         long_hills = (long_hills
                       .melt(value_vars=self.cvs+[height_label], id_vars=['time', 'walker'])
                       .assign(time=lambda x: x['time'].round(time_resolution))
-                      .drop_duplicates(subset=['time', 'walker', 'variable'])
+                      .groupby(['time', 'walker', 'variable'], group_keys=False)
+                      .mean()
+                      .reset_index()
                       .groupby('walker')
                       )
 
@@ -55,3 +57,4 @@ class FreeEnergyLandscape:
             figs[name] = figure
 
         return figs
+
