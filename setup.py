@@ -3,7 +3,7 @@ from setuptools import find_packages
 from _version import __version__  # noqa
 
 setup(
-    name='Analytics',
+    name='analytics',
     version=__version__,
     description='Analysis Package for Molecular Dynamics on Conjugated Polymers',
     author='Nicholas Siemons',
