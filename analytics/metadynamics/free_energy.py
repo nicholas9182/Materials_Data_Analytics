@@ -27,31 +27,31 @@ class FreeEnergyLandscape:
         self.hills['walker'] = [i for i in range(0, self.n_walker)] * self.n_timesteps
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
 
-    def get_hills_figures(self, time_resolution: int = None) -> dict[str, go.Figure]:
+    def get_hills_figures(self, time_resolution: int = 5, height_power: float = 1) -> dict[str, go.Figure]:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
         :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing smaller figures
+        :param height_power: raise the height to the power of this so to see hills easier
         :return:
         """
-        if time_resolution:
-            long_hills = (self.hills
-                          .melt(value_vars=self.cvs+['height'], id_vars=['time', 'walker'])
-                          .assign(time=lambda x: x['time'].round(time_resolution))
-                          .drop_duplicates(subset=['time', 'walker', 'variable'])
-                          .groupby('walker')
-                          )
-        else:
-            long_hills = (self.hills
-                          .melt(value_vars=self.cvs+['height'], id_vars=['time', 'walker'])
-                          .groupby('walker')
-                          )
+        height_label = 'height^' + str(height_power) if height_power != 1 else 'height'
+        long_hills = self.hills.rename(columns={'height': height_label})
+        long_hills[height_label] = long_hills[height_label].pow(height_power)
+        long_hills = (long_hills
+                      .melt(value_vars=self.cvs+[height_label], id_vars=['time', 'walker'])
+                      .assign(time=lambda x: x['time'].round(time_resolution))
+                      .drop_duplicates(subset=['time', 'walker', 'variable'])
+                      .groupby('walker')
+                      )
 
         figs = {}
         for name, df in long_hills:
-            figure = px.line(df, x='time', y='value', facet_row='variable', height=800, width=1200, facet_row_spacing=0.04)
-            figure.update_yaxes(matches=None, showgrid=False, title_text='')
+            figure = px.line(df, x='time', y='value', facet_row='variable', height=600, width=1000, facet_row_spacing=0.02)
+            figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
             figure.update_xaxes(showgrid=False)
+            figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
             figure.update_traces(line_color='#f2f2f2', line_width=1)
+            figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
 
         return figs
