@@ -18,12 +18,12 @@ class FreeEnergyLandscape:
                  .assign(time=lambda x: x['time']/1000)
                  )
 
-        self.hills = hills[hills['time'] < max(hills['time'])]
+        self.hills = hills[hills['time'] < hills['time'].iloc[-1]]
         self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
         self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
         self.max_time = self.hills['time'].max()
         self.dt = self.max_time/self.n_timesteps
-        self.hills['walker'] = [i for i in range(0, self.n_walker)] * self.n_timesteps
+        self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
 
     def get_hills_figures(self, time_resolution: int = 5, height_power: float = 1) -> dict[str, go.Figure]:
