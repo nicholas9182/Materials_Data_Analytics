@@ -7,7 +7,7 @@ from analytics.metadynamics.free_energy import FreeEnergyLandscape
 
 @click.command()
 @click.option("--file", "-f", default="HILLS", help="Hills file to plot", type=str)
-@click.option("--output", "-o", default=".", help="Output directory for figures", type=str)
+@click.option("--output", "-o", default="Figures/", help="Output directory for figures", type=str)
 @click.option("--time_resolution", "-tr", default=None, help="Number of decimal places for time values", type=int)
 @click.option("--height_power", "-hp", default=1, help="Power to raise height of hills for easier visualisation", type=float)
 def main(file: str, output: str, time_resolution: int, height_power: float):
