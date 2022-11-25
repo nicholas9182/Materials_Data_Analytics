@@ -75,11 +75,10 @@ class FreeEnergyLandscape:
         :return:
         """
         av_hills = self.get_hills_average_across_walkers(**kwargs)
-        figure = px.line(av_hills, x='time', y='height', log_y=True, labels={'time': 'Time [ns]'})
-        figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
-        figure.update_xaxes(showgrid=False)
-        figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
-        figure.update_traces(line_color='#f2f2f2', line_width=1)
+        figure = px.line(av_hills, x='time', y='height', log_y=True, template=custom_dark_template,
+                         labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
+                         )
+        figure.update_traces(line=dict(width=1))
         return figure
 
     def get_hills_max_across_walkers(self, time_resolution: int = 5):
@@ -102,9 +101,8 @@ class FreeEnergyLandscape:
         :return:
         """
         max_hills = self.get_hills_max_across_walkers(**kwargs)
-        figure = px.line(max_hills, x='time', y='height', log_y=True, labels={'time': 'Time [ns]'})
-        figure.update_yaxes(matches=None, showgrid=False, title_text='', zerolinecolor='black ')
-        figure.update_xaxes(showgrid=False)
-        figure.update_layout(paper_bgcolor='black', plot_bgcolor="black")
-        figure.update_traces(line_color='#f2f2f2', line_width=1)
+        figure = px.line(max_hills, x='time', y='height', log_y=True, template=custom_dark_template,
+                         labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
+                         )
+        figure.update_traces(line=dict(width=1))
         return figure
