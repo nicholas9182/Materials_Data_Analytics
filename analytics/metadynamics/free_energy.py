@@ -5,6 +5,18 @@ from visualisation.themes import custom_dark_template
 pd.set_option('mode.chained_assignment', None)
 
 
+class FreeEnergyLine:
+
+    def __int__(self, fes: pd.DataFrame, timestamp: int = None):
+
+        if {'projection'}.issubset(fes.columns) is False:
+            raise ValueError("Make sure the fes file has a projection column")
+
+        self.fes = pd.DataFrame(fes)
+        self.cv = fes.columns.values[0]
+        self.timestamp = timestamp
+
+
 class FreeEnergyLandscape:
 
     def __init__(self, hills: pd.DataFrame = None):
@@ -26,9 +38,12 @@ class FreeEnergyLandscape:
         self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
 
-    def get_hills_figures(self, time_resolution: int = 5, height_power: float = 1) -> dict[str, go.Figure]:
+    def add_fes(self):
+
+
+    def get_long_hills(self, time_resolution: int = 5, height_power: float = 1):
         """
-        Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
+        Function to turn the hills into long format, and allow for time binning and height power conversion
         :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing smaller figures
         :param height_power: raise the height to the power of this so to see hills easier
         :return:
@@ -37,14 +52,21 @@ class FreeEnergyLandscape:
         long_hills = self.hills.rename(columns={'height': height_label})
         long_hills[height_label] = long_hills[height_label].pow(height_power)
         long_hills = (long_hills
-                      .melt(value_vars=self.cvs+[height_label], id_vars=['time', 'walker'])
+                      .melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
                       .assign(time=lambda x: x['time'].round(time_resolution))
                       .groupby(['time', 'walker', 'variable'], group_keys=False)
                       .mean()
                       .reset_index()
                       .groupby('walker')
                       )
+        return long_hills
 
+    def get_hills_figures(self, **kwargs) -> dict[str, go.Figure]:
+        """
+        Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
+        :return:
+        """
+        long_hills = self.get_long_hills(**kwargs)
         figs = {}
         for name, df in long_hills:
             figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'}, template=custom_dark_template)
@@ -52,7 +74,6 @@ class FreeEnergyLandscape:
             figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
-
         return figs
 
     def get_hills_average_across_walkers(self, time_resolution: int = 5):
