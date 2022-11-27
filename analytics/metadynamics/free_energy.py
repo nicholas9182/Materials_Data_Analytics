@@ -5,14 +5,26 @@ from visualisation.themes import custom_dark_template
 pd.set_option('mode.chained_assignment', None)
 
 
+class metad_trajectory:
+
+    def __init__(self, colvar: pd.DataFrame, walker_num):
+
+        if {'time', 'metad.bias', 'metad.rct'}.issubset(colvar.columns) is False:
+            raise ValueError("Make sure you have time, metad.bias and metad.rct in the colvar file")
+
+        self.trajectory = pd.DataFrame(colvar)
+        self.cvs = self.trajectory.drop(columns=['time', 'metad.bias', 'metad.rct', 'metad.rbias']).columns.to_list
+        self.walker = walker_num
+
+
 class FreeEnergyLine:
 
-    def __int__(self, fes: pd.DataFrame, timestamp: int = None):
+    def __init__(self, fes: pd.DataFrame, timestamp: int = None):
 
         if {'projection'}.issubset(fes.columns) is False:
             raise ValueError("Make sure the fes file has a projection column")
 
-        self.fes = pd.DataFrame(fes)
+        self.data = pd.DataFrame(fes)
         self.cv = fes.columns.values[0]
         self.timestamp = timestamp
 
@@ -37,9 +49,30 @@ class FreeEnergyLandscape:
         self.dt = self.max_time/self.n_timesteps
         self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+        self.fes = []
+        self.trajectories = []
 
-    def add_fes(self):
+    def add_metad_trajectory(self, colvar_data: pd.DataFrame, **kwargs):
+        """
+        function to add a metad trajectory to the landscape
+        :param colvar_data: dataframe with the colvar data, read in using pl.read_as_pandas
+        :param kwargs: other kwargs, mostly for the walker number
+        :return:
+        """
+        trajectory = metad_trajectory(colvar_data, **kwargs)
+        self.trajectories.append(trajectory)
+        return self.trajectories
 
+    def add_fes_line(self, fes_df: pd.DataFrame, **kwargs):
+        """
+        function to add a free energy line to the landscape
+        :param fes_df: dataframe with the fes data, read in using pl.read_as_pandas
+        :param kwargs: other kwargs, mostly for the time stamp
+        :return: the fes for the landscape
+        """
+        fes = FreeEnergyLine(fes_df, **kwargs)
+        self.fes.append(fes)
+        return self.fes
 
     def get_long_hills(self, time_resolution: int = 5, height_power: float = 1):
         """
