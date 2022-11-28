@@ -54,8 +54,10 @@ class TestFreeEnergyLandscape(unittest.TestCase):
 
     def test_make_landscape(self):
 
-        data = pl.read_as_pandas("../test_trajectories/ndi_na_binding/HILLS")
-        landscape = FreeEnergyLandscape(data)
+        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
         self.assertTrue('height' in landscape.hills.columns.to_list())
         self.assertTrue('time' in landscape.hills.columns.to_list())
         self.assertEqual(type(landscape), FreeEnergyLandscape)
+        self.assertEqual(landscape.cvs, ['D1', 'CM1'])
+        self.assertEqual(landscape.n_walker, 8)
+        self.assertEqual(landscape.n_timesteps, 2978)

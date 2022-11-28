@@ -38,7 +38,11 @@ class FreeEnergyLine:
 
     @classmethod
     def with_strides(cls, fes_directories: list[str]):
-
+        """
+        function to build a fes line with time data, where the fes directories are given in a list
+        :param fes_directories: list of fes files to read
+        :return: fes object
+        """
         files = [f.split("/")[-1] for f in fes_directories]
         time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
         fes_directories_dict = {time_stamps[i]: fes_directories[i] for i in range(0, len(time_stamps))}
@@ -48,18 +52,20 @@ class FreeEnergyLine:
             time_data[ts] = pd.DataFrame(pl.read_as_pandas(fes_dir))
 
         newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
-
         return cls(fes_file=newest_data_dir, time_data=time_data)
 
 
 class FreeEnergyLandscape:
 
-    def __init__(self, hills: pd.DataFrame = None):
+    def __init__(self, hills_file: str):
+
+        self.hills_file = hills_file
+        hills = pd.DataFrame(pl.read_as_pandas(hills_file))
 
         if {'time', 'height'}.issubset(hills.columns) is False:
             raise ValueError("Make sure time and height is present")
 
-        hills = (pd.DataFrame(hills)
+        hills = (hills
                  .loc[:, ~hills.columns.str.startswith('sigma')]
                  .drop(columns=['biasf'])
                  .assign(time=lambda x: x['time']/1000)
