@@ -100,7 +100,7 @@ class FreeEnergyLandscape:
         self.lines.append(fes_line)
         return self.lines
 
-    def get_long_hills(self, time_resolution: int = 5, height_power: float = 1):
+    def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
         Function to turn the hills into long format, and allow for time binning and height power conversion
         :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing smaller figures
@@ -116,16 +116,15 @@ class FreeEnergyLandscape:
                       .groupby(['time', 'walker', 'variable'], group_keys=False)
                       .mean()
                       .reset_index()
-                      .groupby('walker')
                       )
         return long_hills
 
-    def get_hills_figures(self, **kwargs) -> dict[str, go.Figure]:
+    def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
         :return:
         """
-        long_hills = self.get_long_hills(**kwargs)
+        long_hills = self.get_long_hills(**kwargs).groupby('walker')
         figs = {}
         for name, df in long_hills:
             figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'}, template=custom_dark_template)

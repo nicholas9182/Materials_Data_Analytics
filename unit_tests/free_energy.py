@@ -51,7 +51,10 @@ class TestFreeEnergyLine(unittest.TestCase):
 class TestFreeEnergyLandscape(unittest.TestCase):
 
     def test_make_landscape(self):
-
+        """
+        check that landscape constructor works
+        :return:
+        """
         landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
         self.assertTrue('height' in landscape.hills.columns.to_list())
         self.assertTrue('time' in landscape.hills.columns.to_list())
@@ -59,3 +62,13 @@ class TestFreeEnergyLandscape(unittest.TestCase):
         self.assertEqual(landscape.cvs, ['D1', 'CM1'])
         self.assertEqual(landscape.n_walker, 8)
         self.assertEqual(landscape.n_timesteps, 2978)
+
+    def test_hills_plotter_default_values(self):
+
+        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        figures = landscape.get_hills_figures()
+        self.assertEqual(len(figures), 8)
+        self.assertTrue(figures[0]._validate)
+        self.assertTrue(figures[1]._validate)
+        self.assertTrue(figures[2]._validate)
+        self.assertTrue(figures[3]._validate)
