@@ -15,8 +15,7 @@ class TestMetaTrajectory(unittest.TestCase):
         checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct plumed read in
         """
         file = "../test_trajectories/ndi_na_binding/COLVAR.0"
-        walker = int(file.split(".")[-1])
-        cv_traj = MetaTrajectory(file, walker_num=walker)
+        cv_traj = MetaTrajectory(file)
         compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/COLVAR.0"))
 
         pd.testing.assert_frame_equal(cv_traj.data, compare)

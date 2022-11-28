@@ -10,17 +10,16 @@ class MetaTrajectory:
     """
     Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
     """
-    def __init__(self, colvar_file: str, walker_num: int = None):
+    def __init__(self, colvar_file: str):
 
         self.colvar_file = colvar_file
-        self.walker = int(''.join(x for x in colvar_file.split("/")[-1] if x.isdigit()))
+        self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.data = pd.DataFrame(pl.read_as_pandas(colvar_file))
 
         if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
             raise ValueError("Make sure you have time, metad.bias and metad.rct in the colvar file")
 
         self.cvs = self.data.drop(columns=['time', 'metad.bias', 'metad.rct', 'metad.rbias']).columns.to_list()
-        self.walker = walker_num
 
 
 class FreeEnergyLine:
