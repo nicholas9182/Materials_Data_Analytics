@@ -5,7 +5,6 @@ from glob import glob
 import pandas as pd
 import plumed as pl
 from analytics.metadynamics.free_energy import FreeEnergyLandscape, MetaTrajectory, FreeEnergyLine
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 tracemalloc.start()
 
 

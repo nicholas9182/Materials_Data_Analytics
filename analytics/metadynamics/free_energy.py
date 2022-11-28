@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import plumed as pl
 from visualisation.themes import custom_dark_template
+pd.set_option('mode.chained_assignment', None)
 
 
 class MetaTrajectory:
