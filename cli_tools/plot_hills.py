@@ -19,8 +19,7 @@ def main(file: str, output: str, time_resolution: int, height_power: float):
     :param height_power: power to raise hills too for easier visualisation
     :return: saved figures
     """
-    hills = pl.read_as_pandas(file)
-    landscape = FreeEnergyLandscape(hills)
+    landscape = FreeEnergyLandscape(file)
     figures = landscape.get_hills_figures(time_resolution=time_resolution, height_power=height_power)
 
     for key, value in figures.items():
