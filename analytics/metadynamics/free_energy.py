@@ -103,8 +103,9 @@ class FreeEnergyLandscape:
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
         Function to turn the hills into long format, and allow for time binning and height power conversion
-        :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing smaller figures
-        :param height_power: raise the height to the power of this so to see hills easier
+        :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing a smaller long format hills
+        dataframe.
+        :param height_power: raise the height to the power of this so to see hills easier. Useful when plotting and you want to see the small hills.
         :return:
         """
         height_label = 'height^' + str(height_power) if height_power != 1 else 'height'
