@@ -1,32 +1,55 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import plumed as pl
 from visualisation.themes import custom_dark_template
-pd.set_option('mode.chained_assignment', None)
 
 
-class metad_trajectory:
+class MetaTrajectory:
+    """
+    Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
+    """
+    def __init__(self, colvar_file: str, walker_num: int = None):
 
-    def __init__(self, colvar: pd.DataFrame, walker_num):
+        self.colvar_file = colvar_file
+        self.data = pd.DataFrame(pl.read_as_pandas(colvar_file))
 
-        if {'time', 'metad.bias', 'metad.rct'}.issubset(colvar.columns) is False:
+        if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
             raise ValueError("Make sure you have time, metad.bias and metad.rct in the colvar file")
 
-        self.trajectory = pd.DataFrame(colvar)
-        self.cvs = self.trajectory.drop(columns=['time', 'metad.bias', 'metad.rct', 'metad.rbias']).columns.to_list
+        self.cvs = self.data.drop(columns=['time', 'metad.bias', 'metad.rct', 'metad.rbias']).columns.to_list()
         self.walker = walker_num
 
 
 class FreeEnergyLine:
+    """
+    Class to handle 1D fes files
+    """
+    def __init__(self, fes_file: str, time_data: dict[int, pd.DataFrame] = None):
 
-    def __init__(self, fes: pd.DataFrame, timestamp: int = None):
+        self.fes_file = fes_file
+        self.data = pd.DataFrame(pl.read_as_pandas(fes_file))
 
-        if {'projection'}.issubset(fes.columns) is False:
+        if {'projection'}.issubset(self.data.columns) is False:
             raise ValueError("Make sure the fes file has a projection column")
 
-        self.data = pd.DataFrame(fes)
-        self.cv = fes.columns.values[0]
-        self.timestamp = timestamp
+        self.cv = self.data.columns.values[0]
+        self.time_data = time_data
+
+    @classmethod
+    def with_strides(cls, fes_directories: list[str]):
+
+        files = [f.split("/")[-1] for f in fes_directories]
+        time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
+        fes_directories_dict = {time_stamps[i]: fes_directories[i] for i in range(0, len(time_stamps))}
+
+        time_data = {}
+        for ts, fes_dir in fes_directories_dict.items():
+            time_data[ts] = pd.DataFrame(pl.read_as_pandas(fes_dir))
+
+        newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
+
+        return cls(fes_file=newest_data_dir, time_data=time_data)
 
 
 class FreeEnergyLandscape:
