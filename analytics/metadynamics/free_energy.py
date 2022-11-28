@@ -38,15 +38,15 @@ class FreeEnergyLine:
         self.time_data = time_data
 
     @classmethod
-    def with_strides(cls, fes_directories: list[str]):
+    def with_strides(cls, fes_files: list[str]):
         """
         function to build a fes line with time data, where the fes directories are given in a list
-        :param fes_directories: list of fes files to read
+        :param fes_files: list of fes files to read
         :return: fes object
         """
-        files = [f.split("/")[-1] for f in fes_directories]
+        files = [f.split("/")[-1] for f in fes_files]
         time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
-        fes_directories_dict = {time_stamps[i]: fes_directories[i] for i in range(0, len(time_stamps))}
+        fes_directories_dict = {time_stamps[i]: fes_files[i] for i in range(0, len(time_stamps))}
 
         time_data = {}
         for ts, fes_dir in fes_directories_dict.items():
