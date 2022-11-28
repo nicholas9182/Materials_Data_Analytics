@@ -93,8 +93,8 @@ class FreeEnergyLandscape:
         self.dt = self.max_time/self.n_timesteps
         self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
-        self.lines = []
-        self.trajectories = []
+        self.lines = {}
+        self.trajectories = {}
 
     def add_metad_trajectory(self, meta_trajectory: MetaTrajectory, **kwargs):
         """
@@ -103,7 +103,7 @@ class FreeEnergyLandscape:
         :return: the appended trajectories
         """
         if meta_trajectory not in self.trajectories:
-            self.trajectories.append(meta_trajectory)
+            self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
             print(f"{meta_trajectory.colvar_file} is already in this landscape!")
         return self.trajectories
@@ -115,7 +115,7 @@ class FreeEnergyLandscape:
         :return: the fes for the landscape
         """
         if fes_line not in self.lines:
-            self.lines.append(fes_line)
+            self.lines[fes_line.cv] = fes_line
         else:
             print(f"{fes_line.fes_file} is already in this landscape!")
         return self.lines
