@@ -13,7 +13,7 @@ class MetaTrajectory:
     def __init__(self, colvar_file: str, walker_num: int = None):
 
         self.colvar_file = colvar_file
-        self.walker = int(''.join(x for x in colvar_file if x.isdigit()))
+        self.walker = int(''.join(x for x in colvar_file.split("/")[-1] if x.isdigit()))
         self.data = pd.DataFrame(pl.read_as_pandas(colvar_file))
 
         if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
