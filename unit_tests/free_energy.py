@@ -72,3 +72,19 @@ class TestFreeEnergyLandscape(unittest.TestCase):
         self.assertTrue(figures[1]._validate)
         self.assertTrue(figures[2]._validate)
         self.assertTrue(figures[3]._validate)
+
+    def test_fes_adder_checks_work(self):
+
+        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        fes = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
+        landscape.add_fes_line(fes)
+        landscape.add_fes_line(fes)
+        self.assertEqual(landscape.lines[0], fes)
+
+    def test_traj_adder_checks_work(self):
+
+        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        traj = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR.0")
+        landscape.add_metad_trajectory(traj)
+        landscape.add_metad_trajectory(traj)
+        self.assertEqual(landscape.trajectories[0], traj)
