@@ -88,7 +88,10 @@ class FreeEnergyLandscape:
         :param meta_trajectory: a metaD trajectory object to add to the landscape
         :return: the appended trajectories
         """
-        self.trajectories.append(meta_trajectory)
+        if meta_trajectory not in self.trajectories:
+            self.trajectories.append(meta_trajectory)
+        else:
+            print(f"{meta_trajectory.colvar_file} is already in this landscape!")
         return self.trajectories
 
     def add_fes_line(self, fes_line: FreeEnergyLine):
@@ -97,7 +100,10 @@ class FreeEnergyLandscape:
         :param fes_line: the fes to add
         :return: the fes for the landscape
         """
-        self.lines.append(fes_line)
+        if fes_line not in self.lines:
+            self.lines.append(fes_line)
+        else:
+            print(f"{fes_line.fes_file} is already in this landscape!")
         return self.lines
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
