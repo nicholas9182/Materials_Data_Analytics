@@ -79,30 +79,26 @@ class FreeEnergyLandscape:
         self.dt = self.max_time/self.n_timesteps
         self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
-        self.fes = []
+        self.lines = []
         self.trajectories = []
 
-    def add_metad_trajectory(self, colvar_data: pd.DataFrame, **kwargs):
+    def add_metad_trajectory(self, meta_trajectory: MetaTrajectory, **kwargs):
         """
         function to add a metad trajectory to the landscape
-        :param colvar_data: dataframe with the colvar data, read in using pl.read_as_pandas
-        :param kwargs: other kwargs, mostly for the walker number
-        :return:
+        :param meta_trajectory: a metaD trajectory object to add to the landscape
+        :return: the appended trajectories
         """
-        trajectory = metad_trajectory(colvar_data, **kwargs)
-        self.trajectories.append(trajectory)
+        self.trajectories.append(meta_trajectory)
         return self.trajectories
 
-    def add_fes_line(self, fes_df: pd.DataFrame, **kwargs):
+    def add_fes_line(self, fes_line: FreeEnergyLine):
         """
         function to add a free energy line to the landscape
-        :param fes_df: dataframe with the fes data, read in using pl.read_as_pandas
-        :param kwargs: other kwargs, mostly for the time stamp
-        :return: the fes for the landscape
+        :param fes_line: the fes to add
+        :return: the lines for the landscape
         """
-        fes = FreeEnergyLine(fes_df, **kwargs)
-        self.fes.append(fes)
-        return self.fes
+        self.lines.append(fes_line)
+        return self.lines
 
     def get_long_hills(self, time_resolution: int = 5, height_power: float = 1):
         """
