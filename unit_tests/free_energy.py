@@ -47,6 +47,15 @@ class TestFreeEnergyLine(unittest.TestCase):
         compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
         pd.testing.assert_frame_equal(line.time_data[23], compare)
 
+    def test_fes_plot_line_with_normalise(self):
+        """
+        checking that the plotter normalises properly
+        :return:
+        """
+        line = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
+        plot = line.plot_line(ymax=-40, normalise=0)
+        self.assertTrue(plot._validate)
+
 
 class TestFreeEnergyLandscape(unittest.TestCase):
 

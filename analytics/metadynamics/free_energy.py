@@ -55,6 +55,20 @@ class FreeEnergyLine:
         newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
         return cls(fes_file=newest_data_dir, time_data=time_data)
 
+    def plot_line(self, ymax: float = None, normalise: float = None):
+        """
+        function to plot the fes
+        :param ymax: the maximum y value to show
+        :param normalise: number for the x axis to set to 0
+        :return: plotly express figure
+        """
+        data = self.data[self.data['projection'] < ymax] if ymax else self.data
+        adjust_value = self.data.loc[(self.data[self.cv]-normalise).abs().argsort()[:1], 'projection'].values[0] if normalise is not None else 0
+        data['projection'] = data['projection'] - adjust_value
+        figure = px.line(data, x=self.cv, y='projection', template=custom_dark_template, labels={'projection': 'E [kJ/mol]'})
+        figure.update_traces(line=dict(width=2))
+        return figure
+
 
 class FreeEnergyLandscape:
 
