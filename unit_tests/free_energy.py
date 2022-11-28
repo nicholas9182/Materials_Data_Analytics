@@ -1,10 +1,12 @@
 import unittest
 import tracemalloc
 import os
+import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
 import plumed as pl
 from analytics.metadynamics.free_energy import FreeEnergyLandscape, MetaTrajectory, FreeEnergyLine
+from visualisation.themes import custom_dark_template
 tracemalloc.start()
 
 
@@ -53,8 +55,11 @@ class TestFreeEnergyLine(unittest.TestCase):
         :return:
         """
         line = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
-        plot = line.plot_line(ymax=-40, normalise=0)
-        self.assertTrue(plot._validate)
+        trace = line.trace_line(ymax=-40, normalise=0)
+        figure = go.Figure()
+        figure.add_trace(trace)
+        figure.update_layout(template=custom_dark_template, xaxis_title=line.cv, yaxis_title="E [kJ/mol]")
+        self.assertTrue(type(figure) == go.Figure)
 
 
 class TestFreeEnergyLandscape(unittest.TestCase):
