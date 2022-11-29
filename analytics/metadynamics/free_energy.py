@@ -81,8 +81,14 @@ class FreeEnergyLine:
         return self
 
     def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
-                            region_2: float | int | tuple[float | int, float | int]) -> pd.DataFrame:
-
+                            region_2: float | int | tuple[float | int, float | int] = None) -> pd.DataFrame:
+        """
+        Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
+        It can accept both numbers and tuples. If a tuple is given, it well take the mean of the CV over the interval given by the tupple.
+        :param region_1: a point or region of the FES that you want to track as the first point
+        :param region_2: a point or region of the FES that you want to track as the second point
+        :return: pandas dataframe with the data
+        """
         time_data = []
         for key, df in self.time_data.items():
 
@@ -93,10 +99,12 @@ class FreeEnergyLine:
             else:
                 raise ValueError("Use either a number or tuple of two numbers")
 
-            if type(region_2) == int or type(region_2) == float:
+            if (type(region_2) == int or type(region_2)) == float and region_2 is not None:
                 value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'projection'].values[0]
-            elif type(region_2) == tuple:
+            elif type(region_2) == tuple and region_2 is not None:
                 value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'projection'].values.mean()
+            elif region_2 is None:
+                value_2 = 0
             else:
                 raise ValueError("Use either a number or tuple of two numbers")
 
