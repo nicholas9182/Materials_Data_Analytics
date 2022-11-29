@@ -80,6 +80,23 @@ class FreeEnergyLine:
 
         return self
 
+    def get_time_difference(self, region_1: int | float, region_2: int | float) -> pd.DataFrame:
+
+        time_data = []
+        for key, df in self.time_data.items():
+
+            if type(region_1) == int or type(region_1) == float:
+                value_1 = df.loc[(df[self.cv] - region_1).abs().argsort()[:1], 'projection'].values[0]
+
+            if type(region_2) == int or type(region_2) == float:
+                value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'projection'].values[0]
+
+            difference = value_2 - value_1
+            time_data.append(pd.DataFrame({'time_stamp': [key], 'energy_difference': [difference]}))
+
+        time_data = pd.concat(time_data).sort_values('time_stamp')
+        return time_data
+
 
 class FreeEnergySpace:
 
