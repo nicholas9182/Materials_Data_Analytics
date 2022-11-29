@@ -61,7 +61,7 @@ class FreeEnergyLine:
         energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
         :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
         :param ymax: optional parameter to take off some high energy values from the line
-        :return: self.data
+        :return: self
         """
         if type(datum) == float or type(datum) == int:
             adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'projection'].values[0]
@@ -120,7 +120,7 @@ class FreeEnergySpace:
 
         return self
 
-    def add_fes_line(self, fes_line: FreeEnergyLine):
+    def add_line(self, fes_line: FreeEnergyLine):
         """
         function to add a free energy line to the landscape
         :param fes_line: the fes to add
@@ -151,6 +151,7 @@ class FreeEnergySpace:
                       .mean()
                       .reset_index()
                       )
+
         return long_hills
 
     def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
@@ -166,6 +167,7 @@ class FreeEnergySpace:
             figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
+
         return figs
 
     def get_hills_average_across_walkers(self, time_resolution: int = 5):

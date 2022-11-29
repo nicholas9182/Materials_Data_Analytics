@@ -120,8 +120,8 @@ class TestFreeEnergyLandscape(unittest.TestCase):
 
         landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         fes = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
-        landscape.add_fes_line(fes)
-        landscape.add_fes_line(fes)
+        landscape.add_line(fes)
+        landscape.add_line(fes)
         self.assertEqual(landscape.lines['CM1'], fes)
 
     def test_traj_adder_checks_work(self):
