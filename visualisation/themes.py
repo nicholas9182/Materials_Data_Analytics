@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+import plotly.express as px
 
 axis_dict = {
     'color': '#85929E',
@@ -20,7 +21,7 @@ custom_dark_template = dict(
         margin={'t': 60, 'b': 60, 'l': 60, 'r': 60},
         width=1000,
         height=600,
-        colorway=['#E1E1E1'],
+        colorway=px.colors.qualitative.Set1,
         font={'color': '#EAECEE'}
     )
 )

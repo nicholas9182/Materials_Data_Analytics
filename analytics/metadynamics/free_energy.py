@@ -99,7 +99,7 @@ class FreeEnergyLine:
             else:
                 raise ValueError("Use either a number or tuple of two numbers")
 
-            if (type(region_2) == int or type(region_2)) == float and region_2 is not None:
+            if (type(region_2) == int or type(region_2) == float) and region_2 is not None:
                 value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'projection'].values[0]
             elif type(region_2) == tuple and region_2 is not None:
                 value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'projection'].values.mean()
