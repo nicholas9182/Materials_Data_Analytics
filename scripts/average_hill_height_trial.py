@@ -1,8 +1,8 @@
 import plumed as pl
-from analytics.metadynamics.free_energy import FreeEnergyLandscape
+from analytics.metadynamics.free_energy import FreeEnergySpace
 
 hills2 = pl.read_as_pandas("../test_trajectories/ndi_na_binding/HILLS")
-landscape = FreeEnergyLandscape(hills2)
+landscape = FreeEnergySpace(hills2)
 
 av_hills = (landscape
             .hills

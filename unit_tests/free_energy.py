@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
 import plumed as pl
-from analytics.metadynamics.free_energy import FreeEnergyLandscape, MetaTrajectory, FreeEnergyLine
+from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine
 from visualisation.themes import custom_dark_template
 tracemalloc.start()
 
@@ -49,17 +49,46 @@ class TestFreeEnergyLine(unittest.TestCase):
         compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
         pd.testing.assert_frame_equal(line.time_data[23], compare)
 
-    def test_fes_plot_line_with_normalise(self):
+    def test_normalise_with_float(self):
         """
-        checking that the plotter normalises properly
+        testing that the normalise function works with a single value
         :return:
         """
-        line = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
-        trace = line.trace_line(ymax=-40, normalise=0)
+        file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
+        line = FreeEnergyLine(file)
+        line.set_datum(0)
         figure = go.Figure()
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
         figure.add_trace(trace)
-        figure.update_layout(template=custom_dark_template, xaxis_title=line.cv, yaxis_title="E [kJ/mol]")
-        self.assertTrue(type(figure) == go.Figure)
+        # figure.show()
+
+    def test_normalise_with_tuple(self):
+        """
+        testing that the normalise function works with a range
+        :return:
+        """
+        file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
+        line = FreeEnergyLine(file)
+        line.set_datum(datum=(6, 8))
+        figure = go.Figure()
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
+        figure.add_trace(trace)
+        # figure.show()
+
+    def test_normalise_with_tuple_on_time_data(self):
+        """
+        testing that the normalise function works with a range
+        :return:
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine.with_strides(all_fes_files)
+        line.set_datum(datum=(6, 8))
+        figure = go.Figure()
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
+        figure.add_trace(trace)
+        # figure.show()
 
 
 class TestFreeEnergyLandscape(unittest.TestCase):
@@ -69,17 +98,17 @@ class TestFreeEnergyLandscape(unittest.TestCase):
         check that landscape constructor works
         :return:
         """
-        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         self.assertTrue('height' in landscape.hills.columns.to_list())
         self.assertTrue('time' in landscape.hills.columns.to_list())
-        self.assertEqual(type(landscape), FreeEnergyLandscape)
+        self.assertEqual(type(landscape), FreeEnergySpace)
         self.assertEqual(landscape.cvs, ['D1', 'CM1'])
         self.assertEqual(landscape.n_walker, 8)
         self.assertEqual(landscape.n_timesteps, 2978)
 
     def test_hills_plotter_default_values(self):
 
-        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         figures = landscape.get_hills_figures()
         self.assertEqual(len(figures), 8)
         self.assertTrue(figures[0]._validate)
@@ -89,7 +118,7 @@ class TestFreeEnergyLandscape(unittest.TestCase):
 
     def test_fes_adder_checks_work(self):
 
-        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         fes = FreeEnergyLine("../test_trajectories/ndi_na_binding/FES_CM1.dat")
         landscape.add_fes_line(fes)
         landscape.add_fes_line(fes)
@@ -97,7 +126,7 @@ class TestFreeEnergyLandscape(unittest.TestCase):
 
     def test_traj_adder_checks_work(self):
 
-        landscape = FreeEnergyLandscape("../test_trajectories/ndi_na_binding/HILLS")
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         traj = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR.0")
         landscape.add_metad_trajectory(traj)
         landscape.add_metad_trajectory(traj)

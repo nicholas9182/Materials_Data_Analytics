@@ -1,7 +1,7 @@
 import plumed as pl
 import pandas as pd
 from timer import Timer
-from analytics.metadynamics.free_energy import FreeEnergyLandscape
+from analytics.metadynamics.free_energy import FreeEnergySpace
 
 
 def benchmark_plotting_hills_v1(time_res: int) -> pd.DataFrame:
@@ -10,7 +10,7 @@ def benchmark_plotting_hills_v1(time_res: int) -> pd.DataFrame:
     :return:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
-    landscape = FreeEnergyLandscape(data)
+    landscape = FreeEnergySpace(data)
     hills = landscape.hills
     cvs = landscape.cvs
     long_hills = (hills
@@ -30,7 +30,7 @@ def benchmark_plotting_hills_v2(time_res: int) -> pd.DataFrame:
     :return:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
-    landscape = FreeEnergyLandscape(data)
+    landscape = FreeEnergySpace(data)
     hills = landscape.hills
     cvs = landscape.cvs
     long_hills = (hills
@@ -48,7 +48,7 @@ def benchmark_plotting_hills_v3(time_res: int) -> pd.DataFrame:
     :return:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
-    landscape = FreeEnergyLandscape(data)
+    landscape = FreeEnergySpace(data)
     hills = landscape.hills
     cvs = landscape.cvs
     long_hills = (hills
