@@ -80,16 +80,25 @@ class FreeEnergyLine:
 
         return self
 
-    def get_time_difference(self, region_1: int | float, region_2: int | float) -> pd.DataFrame:
+    def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
+                            region_2: float | int | tuple[float | int, float | int]) -> pd.DataFrame:
 
         time_data = []
         for key, df in self.time_data.items():
 
             if type(region_1) == int or type(region_1) == float:
                 value_1 = df.loc[(df[self.cv] - region_1).abs().argsort()[:1], 'projection'].values[0]
+            elif type(region_1) == tuple:
+                value_1 = df.loc[df[self.cv].between(min(region_1), max(region_1)), 'projection'].values.mean()
+            else:
+                raise ValueError("Use either a number or tuple of two numbers")
 
             if type(region_2) == int or type(region_2) == float:
                 value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'projection'].values[0]
+            elif type(region_2) == tuple:
+                value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'projection'].values.mean()
+            else:
+                raise ValueError("Use either a number or tuple of two numbers")
 
             difference = value_2 - value_1
             time_data.append(pd.DataFrame({'time_stamp': [key], 'energy_difference': [difference]}))

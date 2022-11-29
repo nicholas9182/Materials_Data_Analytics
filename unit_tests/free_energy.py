@@ -105,6 +105,21 @@ class TestFreeEnergyLine(unittest.TestCase):
         figure.add_trace(trace)
         # figure.show()
 
+    def test_get_change_over_time_using_tuples(self):
+        """
+        testing that the normalise function works with a range
+        :return:
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine.with_strides(all_fes_files)
+        change_data = line.get_time_difference(region_1=(0.8, 1.2), region_2=(2.8, 3.2))
+        figure = go.Figure()
+        trace = go.Scatter(x=change_data['time_stamp'], y=change_data['energy_difference'])
+        figure.add_trace(trace)
+        # figure.show()
+
 
 class TestFreeEnergyLandscape(unittest.TestCase):
 
