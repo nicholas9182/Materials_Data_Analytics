@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import click
-import plumed as pl
 from datetime import datetime
-from analytics.metadynamics.free_energy import FreeEnergyLandscape
+from analytics.metadynamics.free_energy import FreeEnergySpace
 
 
 @click.command()
@@ -19,7 +18,7 @@ def main(file: str, output: str, time_resolution: int, height_power: float):
     :param height_power: power to raise hills too for easier visualisation
     :return: saved figures
     """
-    landscape = FreeEnergyLandscape(file)
+    landscape = FreeEnergySpace(file)
     figures = landscape.get_hills_figures(time_resolution=time_resolution, height_power=height_power)
 
     for key, value in figures.items():

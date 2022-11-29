@@ -1,6 +1,6 @@
 import plumed as pl
 from timer import Timer
-from analytics.metadynamics.free_energy import FreeEnergyLandscape
+from analytics.metadynamics.free_energy import FreeEnergySpace
 
 if __name__ == "__main__":
 
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     t.stop()
 
     t.start()
-    landscape = FreeEnergyLandscape(r1)
+    landscape = FreeEnergySpace(r1)
     t.stop()
 
     t.start()

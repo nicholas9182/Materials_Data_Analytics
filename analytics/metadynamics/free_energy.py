@@ -55,21 +55,33 @@ class FreeEnergyLine:
         newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
         return cls(fes_file=newest_data_dir, time_data=time_data)
 
-    def trace_line(self, ymax: float = None, normalise: float = None) -> go.Scatter:
+    def set_datum(self, datum: float | int | tuple[float | int, float | int]):
         """
-        function to plot the fes
-        :param ymax: the maximum y value to show
-        :param normalise: number for the x axis to set to 0
-        :return: plotly express figure
+        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x axis value an
+        energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
+        :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
+        :param ymax: optional parameter to take off some high energy values from the line
+        :return: self.data
         """
-        data = self.data[self.data['projection'] < ymax] if ymax else self.data
-        adjust_value = self.data.loc[(self.data[self.cv]-normalise).abs().argsort()[:1], 'projection'].values[0] if normalise is not None else 0
-        data['projection'] = data['projection'] - adjust_value
-        trace = go.Scatter(x=data[self.cv], y=data['projection'], mode='lines', line={'width': 2})
-        return trace
+        if type(datum) == float or type(datum) == int:
+            adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'projection'].values[0]
+            self.data['projection'] = self.data['projection'] - adjust_value
+            if self.time_data:
+                for key, item in self.time_data.items():
+                    item['projection'] = item['projection'] - adjust_value
+        elif type(datum) == tuple:
+            adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'projection'].values.mean()
+            self.data['projection'] = self.data['projection'] - adjust_value
+            if self.time_data:
+                for key, item in self.time_data.items():
+                    item['projection'] = item['projection'] - adjust_value
+        else:
+            raise ValueError("Enter either a float or a tuple!")
+
+        return self
 
 
-class FreeEnergyLandscape:
+class FreeEnergySpace:
 
     def __init__(self, hills_file: str):
 
@@ -105,7 +117,8 @@ class FreeEnergyLandscape:
             self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
             print(f"{meta_trajectory.colvar_file} is already in this landscape!")
-        return self.trajectories
+
+        return self
 
     def add_fes_line(self, fes_line: FreeEnergyLine):
         """
@@ -117,7 +130,8 @@ class FreeEnergyLandscape:
             self.lines[fes_line.cv] = fes_line
         else:
             print(f"{fes_line.fes_file} is already in this landscape!")
-        return self.lines
+
+        return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
@@ -204,4 +218,5 @@ class FreeEnergyLandscape:
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
                          )
         figure.update_traces(line=dict(width=1))
+
         return figure
