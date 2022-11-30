@@ -43,7 +43,7 @@ class FreeEnergyLine:
             files = [f.split("/")[-1] for f in fes_file]
             time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
             data_frames = [self._read_file(f) for f in fes_file]
-            self.time_data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
+            self.time_data = {time_stamps[i]: data_frames[i] for i in range(0, len(fes_file))}
             self.data = self.time_data[max(self.time_data)]
         else:
             raise ValueError("fes_file must be a str or a list[str]")
@@ -73,15 +73,11 @@ class FreeEnergyLine:
         if type(datum) == float or type(datum) == int:
             adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
             self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data:
-                for key, item in self.time_data.items():
-                    item['energy'] = item['energy'] - adjust_value
+            self.time_data = {k: v['energy'] - adjust_value for k, v in self.time_data.items()} if self.time_data else None
         elif type(datum) == tuple:
             adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
             self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data:
-                for key, item in self.time_data.items():
-                    item['energy'] = item['energy'] - adjust_value
+            self.time_data = {k: v['energy'] - adjust_value for k, v in self.time_data.items()} if self.time_data else None
         else:
             raise ValueError("Enter either a float or a tuple!")
 
