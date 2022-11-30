@@ -6,7 +6,6 @@ from glob import glob
 import pandas as pd
 import plumed as pl
 from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine
-from visualisation.themes import custom_dark_template
 tracemalloc.start()
 
 

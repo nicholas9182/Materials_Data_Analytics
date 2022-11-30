@@ -1,7 +1,7 @@
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import plumed as pl
 from visualisation.themes import custom_dark_template
 pd.set_option('mode.chained_assignment', None)
 
@@ -13,8 +13,9 @@ class MetaTrajectory:
     def __init__(self, colvar_file: str):
 
         self.colvar_file = colvar_file
+        col_names = open(colvar_file).readline().strip().split(" ")[2:]
+        self.data = pd.read_table(colvar_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.data = pd.DataFrame(pl.read_as_pandas(colvar_file))
 
         if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
             raise ValueError("Make sure you have time, metad.bias and metad.rct in the colvar file")
@@ -29,7 +30,8 @@ class FreeEnergyLine:
     def __init__(self, fes_file: str, time_data: dict[int, pd.DataFrame] = None):
 
         self.fes_file = fes_file
-        self.data = pd.DataFrame(pl.read_as_pandas(fes_file))
+        col_names = open(fes_file).readline().strip().split(" ")[2:]
+        self.data = pd.read_table(fes_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
 
         if {'projection'}.issubset(self.data.columns) is False:
             raise ValueError("Make sure the fes file has a projection column")
@@ -49,8 +51,9 @@ class FreeEnergyLine:
         fes_directories_dict = {time_stamps[i]: fes_files[i] for i in range(0, len(time_stamps))}
 
         time_data = {}
-        for ts, fes_dir in fes_directories_dict.items():
-            time_data[ts] = pd.DataFrame(pl.read_as_pandas(fes_dir))
+        for ts, fes_file in fes_directories_dict.items():
+            col_names = open(fes_file).readline().strip().split(" ")[2:]
+            time_data[ts] = pd.read_table(fes_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
 
         newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
         return cls(fes_file=newest_data_dir, time_data=time_data)
@@ -120,7 +123,8 @@ class FreeEnergySpace:
     def __init__(self, hills_file: str):
 
         self.hills_file = hills_file
-        hills = pd.DataFrame(pl.read_as_pandas(hills_file))
+        col_names = open(hills_file).readline().strip().split(" ")[2:]
+        hills = pd.read_table(hills_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
 
         if {'time', 'height'}.issubset(hills.columns) is False:
             raise ValueError("Make sure time and height is present")
