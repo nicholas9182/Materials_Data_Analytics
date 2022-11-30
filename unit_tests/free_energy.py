@@ -32,7 +32,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine(file)
-        compare = pd.DataFrame(pl.read_as_pandas(file))
+        compare = pd.DataFrame(pl.read_as_pandas(file)).rename(columns={'projection': 'energy'})
 
         pd.testing.assert_frame_equal(line.data, compare)
         self.assertEqual(line.cv, 'CM1')
@@ -44,9 +44,12 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine.with_strides(all_fes_files)
-        compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
-        pd.testing.assert_frame_equal(line.time_data[23], compare)
+        line = FreeEnergyLine(all_fes_files)
+        compare1 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat")).rename(columns={'projection': 'energy'})
+        compare2 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat")).rename(columns={'projection': 'energy'})
+        pd.testing.assert_frame_equal(line.time_data[20], compare1)
+        pd.testing.assert_frame_equal(line.time_data[23], compare2)
+        pd.testing.assert_frame_equal(line.data, compare2)
 
     def test_normalise_with_float(self):
         """
@@ -57,7 +60,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         line = FreeEnergyLine(file)
         line.set_datum(0)
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
         # figure.show()
 
@@ -70,7 +73,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         line = FreeEnergyLine(file)
         line.set_datum(datum=(6, 8))
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
         # figure.show()
 
@@ -82,10 +85,10 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine.with_strides(all_fes_files)
+        line = FreeEnergyLine(all_fes_files)
         line.set_datum(datum=(6, 8))
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['projection'])
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
         # figure.show()
 
@@ -97,7 +100,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine.with_strides(all_fes_files)
+        line = FreeEnergyLine(all_fes_files)
         change_data = line.get_time_difference(1, 3)
         figure = go.Figure()
         trace = go.Scatter(x=change_data['time_stamp'], y=change_data['energy_difference'])
@@ -112,7 +115,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine.with_strides(all_fes_files)
+        line = FreeEnergyLine(all_fes_files)
         change_data = line.get_time_difference(region_1=(0.8, 1.2), region_2=(2.8, 3.2))
         figure = go.Figure()
         trace = go.Scatter(x=change_data['time_stamp'], y=change_data['energy_difference'])
@@ -133,7 +136,7 @@ class TestFreeEnergyLandscape(unittest.TestCase):
         self.assertEqual(type(landscape), FreeEnergySpace)
         self.assertEqual(landscape.cvs, ['D1', 'CM1'])
         self.assertEqual(landscape.n_walker, 8)
-        self.assertEqual(landscape.n_timesteps, 2978)
+        self.assertEqual(landscape.n_timesteps, 2979)
 
     def test_hills_plotter_default_values(self):
 

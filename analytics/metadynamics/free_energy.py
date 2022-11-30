@@ -14,7 +14,7 @@ class MetaTrajectory:
 
         self.colvar_file = colvar_file
         col_names = open(colvar_file).readline().strip().split(" ")[2:]
-        self.data = pd.read_table(colvar_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
+        self.data = pd.read_table(colvar_file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
 
         if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
@@ -27,57 +27,54 @@ class FreeEnergyLine:
     """
     Class to handle 1D fes files
     """
-    def __init__(self, fes_file: str, time_data: dict[int, pd.DataFrame] = None):
+    def __init__(self, fes_file: str | list[str], temperature: float = 298):
 
-        self.fes_file = fes_file
-        col_names = open(fes_file).readline().strip().split(" ")[2:]
-        self.data = pd.read_table(fes_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
+        if type(fes_file) == str:
+            self.data = self._read_file(fes_file)
+            self.time_data = None
+        elif type(fes_file) == list:
+            files = [f.split("/")[-1] for f in fes_file]
+            time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
+            data_frames = [self._read_file(f) for f in fes_file]
+            self.time_data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
+            self.data = self.time_data[max(self.time_data)]
+        else:
+            raise ValueError("fes_file must be a str or a list[str]")
 
-        if {'projection'}.issubset(self.data.columns) is False:
-            raise ValueError("Make sure the fes file has a projection column")
-
+        self.temperature = temperature
         self.cv = self.data.columns.values[0]
-        self.time_data = time_data
 
-    @classmethod
-    def with_strides(cls, fes_files: list[str]):
+    @staticmethod
+    def _read_file(file: str):
         """
-        function to build a fes line with time data, where the fes directories are given in a list
-        :param fes_files: list of fes files to read
-        :return: fes object
+        Function to read in fes line data, replacement for pl.read_as_pandas
+        :param file: file to read in
+        :return: data in that file in pandas format
         """
-        files = [f.split("/")[-1] for f in fes_files]
-        time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
-        fes_directories_dict = {time_stamps[i]: fes_files[i] for i in range(0, len(time_stamps))}
-
-        time_data = {}
-        for ts, fes_file in fes_directories_dict.items():
-            col_names = open(fes_file).readline().strip().split(" ")[2:]
-            time_data[ts] = pd.read_table(fes_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
-
-        newest_data_dir = fes_directories_dict[max(fes_directories_dict)]
-        return cls(fes_file=newest_data_dir, time_data=time_data)
+        col_names = open(file).readline().strip().split(" ")[2:]
+        return (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+                .rename(columns={'projection': 'energy'})
+                )
 
     def set_datum(self, datum: float | int | tuple[float | int, float | int]):
         """
         Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x axis value an
         energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
         :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
-        :param ymax: optional parameter to take off some high energy values from the line
         :return: self
         """
         if type(datum) == float or type(datum) == int:
-            adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'projection'].values[0]
-            self.data['projection'] = self.data['projection'] - adjust_value
+            adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
+            self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data:
                 for key, item in self.time_data.items():
-                    item['projection'] = item['projection'] - adjust_value
+                    item['energy'] = item['energy'] - adjust_value
         elif type(datum) == tuple:
-            adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'projection'].values.mean()
-            self.data['projection'] = self.data['projection'] - adjust_value
+            adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
+            self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data:
                 for key, item in self.time_data.items():
-                    item['projection'] = item['projection'] - adjust_value
+                    item['energy'] = item['energy'] - adjust_value
         else:
             raise ValueError("Enter either a float or a tuple!")
 
@@ -96,16 +93,16 @@ class FreeEnergyLine:
         for key, df in self.time_data.items():
 
             if type(region_1) == int or type(region_1) == float:
-                value_1 = df.loc[(df[self.cv] - region_1).abs().argsort()[:1], 'projection'].values[0]
+                value_1 = df.loc[(df[self.cv] - region_1).abs().argsort()[:1], 'energy'].values[0]
             elif type(region_1) == tuple:
-                value_1 = df.loc[df[self.cv].between(min(region_1), max(region_1)), 'projection'].values.mean()
+                value_1 = df.loc[df[self.cv].between(min(region_1), max(region_1)), 'energy'].values.mean()
             else:
                 raise ValueError("Use either a number or tuple of two numbers")
 
             if (type(region_2) == int or type(region_2) == float) and region_2 is not None:
-                value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'projection'].values[0]
+                value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'energy'].values[0]
             elif type(region_2) == tuple and region_2 is not None:
-                value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'projection'].values.mean()
+                value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'energy'].values.mean()
             elif region_2 is None:
                 value_2 = 0
             else:
@@ -120,28 +117,25 @@ class FreeEnergyLine:
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str):
+    def __init__(self, hills_file: str, temperature: float = 298):
 
         self.hills_file = hills_file
         col_names = open(hills_file).readline().strip().split(" ")[2:]
-        hills = pd.read_table(hills_file, delim_whitespace=True, comment="#", header=None, names=col_names, dtype=np.float64)
+        hills = pd.read_table(hills_file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
 
-        if {'time', 'height'}.issubset(hills.columns) is False:
-            raise ValueError("Make sure time and height is present")
+        self.hills = (hills
+                      .loc[:, ~hills.columns.str.startswith('sigma')]
+                      .drop(columns=['biasf'])
+                      .assign(time=lambda x: x['time']/1000)
+                      )
 
-        hills = (hills
-                 .loc[:, ~hills.columns.str.startswith('sigma')]
-                 .drop(columns=['biasf'])
-                 .assign(time=lambda x: x['time']/1000)
-                 )
-
-        self.hills = hills[hills['time'] < hills['time'].iloc[-1]]
         self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
         self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
         self.max_time = self.hills['time'].max()
         self.dt = self.max_time/self.n_timesteps
         self.hills['walker'] = self.hills.groupby('time').cumcount()
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+        self.temperature = temperature
         self.lines = {}
         self.trajectories = {}
 
@@ -255,8 +249,7 @@ class FreeEnergySpace:
         """
         max_hills = self.get_hills_max_across_walkers(**kwargs)
         figure = px.line(max_hills, x='time', y='height', log_y=True, template=custom_dark_template,
-                         labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
-                         )
+                         labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'})
         figure.update_traces(line=dict(width=1))
 
         return figure
