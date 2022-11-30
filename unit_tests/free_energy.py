@@ -91,7 +91,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
-        figure.show()
+        # figure.show()
 
     def test_get_change_over_time(self):
         """
@@ -121,6 +121,24 @@ class TestFreeEnergyLine(unittest.TestCase):
         figure = go.Figure()
         trace = go.Scatter(x=change_data['time_stamp'], y=change_data['energy_difference'])
         figure.add_trace(trace)
+        # figure.show()
+
+    def test_set_datum_twice(self):
+        """
+        testing that the normalise function works with a single value
+        :return:
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine(all_fes_files)
+        data1 = line.set_datum(3).data
+        data2 = line.set_datum(3).data
+        pd.testing.assert_frame_equal(data2, data1)
+        figure = go.Figure()
+        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
+        figure.add_trace(trace)
+        self.assertTrue(0 in line.data['energy'])
         # figure.show()
 
 
