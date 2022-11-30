@@ -13,14 +13,21 @@ class MetaTrajectory:
     def __init__(self, colvar_file: str):
 
         self.colvar_file = colvar_file
-        col_names = open(colvar_file).readline().strip().split(" ")[2:]
-        self.data = pd.read_table(colvar_file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        self.data = self._read_file(colvar_file)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
+        self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias']).columns.to_list()
 
-        if {'time', 'metad.bias', 'metad.rct'}.issubset(self.data) is False:
-            raise ValueError("Make sure you have time, metad.bias and metad.rct in the colvar file")
-
-        self.cvs = self.data.drop(columns=['time', 'metad.bias', 'metad.rct', 'metad.rbias']).columns.to_list()
+    @staticmethod
+    def _read_file(file: str):
+        """
+        Function to read in colvar data, replacement for pl.read_as_pandas
+        :param file: file to read in
+        :return: data in that file in pandas format
+        """
+        col_names = open(file).readline().strip().split(" ")[2:]
+        return (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+                .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                )
 
 
 class FreeEnergyLine:
@@ -120,15 +127,7 @@ class FreeEnergySpace:
     def __init__(self, hills_file: str, temperature: float = 298):
 
         self.hills_file = hills_file
-        col_names = open(hills_file).readline().strip().split(" ")[2:]
-        hills = pd.read_table(hills_file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
-
-        self.hills = (hills
-                      .loc[:, ~hills.columns.str.startswith('sigma')]
-                      .drop(columns=['biasf'])
-                      .assign(time=lambda x: x['time']/1000)
-                      )
-
+        self.hills = self._read_file(hills_file)
         self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
         self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
         self.max_time = self.hills['time'].max()
@@ -139,7 +138,23 @@ class FreeEnergySpace:
         self.lines = {}
         self.trajectories = {}
 
-    def add_metad_trajectory(self, meta_trajectory: MetaTrajectory, **kwargs):
+    @staticmethod
+    def _read_file(file: str):
+        """
+        Function to read in hills data
+        :param file: file to read in
+        :return: data in that file in pandas format
+        """
+        col_names = open(file).readline().strip().split(" ")[2:]
+        data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+
+        return (data
+                .loc[:, ~data.columns.str.startswith('sigma')]
+                .drop(columns=['biasf'])
+                .assign(time=lambda x: x['time']/1000)
+                )
+
+    def add_metad_trajectory(self, meta_trajectory: MetaTrajectory):
         """
         function to add a metad trajectory to the landscape
         :param meta_trajectory: a metaD trajectory object to add to the landscape
@@ -161,7 +176,7 @@ class FreeEnergySpace:
         if fes_line not in self.lines:
             self.lines[fes_line.cv] = fes_line
         else:
-            print(f"{fes_line.fes_file} is already in this landscape!")
+            print(f"file is already in this landscape!")
 
         return self
 

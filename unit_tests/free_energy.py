@@ -17,9 +17,7 @@ class TestMetaTrajectory(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/COLVAR.0"
         cv_traj = MetaTrajectory(file)
-        compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/COLVAR.0"))
-
-        pd.testing.assert_frame_equal(cv_traj.data, compare)
+        self.assertEqual(cv_traj.data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
 
