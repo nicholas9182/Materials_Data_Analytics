@@ -44,7 +44,7 @@ class FreeEnergyLine:
             time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
             data_frames = [self._read_file(f) for f in fes_file]
             self.time_data = {time_stamps[i]: data_frames[i] for i in range(0, len(fes_file))}
-            self.data = self.time_data[max(self.time_data)]
+            self.data = self._read_file(fes_file[time_stamps.index(max(time_stamps))])
         else:
             raise ValueError("fes_file must be a str or a list[str]")
 
@@ -73,11 +73,15 @@ class FreeEnergyLine:
         if type(datum) == float or type(datum) == int:
             adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
             self.data['energy'] = self.data['energy'] - adjust_value
-            self.time_data = {k: v['energy'] - adjust_value for k, v in self.time_data.items()} if self.time_data else None
+            if self.time_data is not None:
+                for _, v in self.time_data.items():
+                    v['energy'] = v['energy'] - adjust_value
         elif type(datum) == tuple:
             adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
             self.data['energy'] = self.data['energy'] - adjust_value
-            self.time_data = {k: v['energy'] - adjust_value for k, v in self.time_data.items()} if self.time_data else None
+            if self.time_data is not None:
+                for _, v in self.time_data.items():
+                    v['energy'] = v['energy'] - adjust_value
         else:
             raise ValueError("Enter either a float or a tuple!")
 
@@ -93,6 +97,7 @@ class FreeEnergyLine:
         :return: pandas dataframe with the data
         """
         time_data = []
+
         for key, df in self.time_data.items():
 
             if type(region_1) == int or type(region_1) == float:
@@ -169,11 +174,7 @@ class FreeEnergySpace:
         :param fes_line: the fes to add
         :return: the fes for the landscape
         """
-        if fes_line not in self.lines:
-            self.lines[fes_line.cv] = fes_line
-        else:
-            print(f"file is already in this landscape!")
-
+        self.lines[fes_line.cv] = fes_line
         return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
