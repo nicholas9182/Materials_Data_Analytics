@@ -30,9 +30,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine(file)
-        compare = pd.DataFrame(pl.read_as_pandas(file)).rename(columns={'projection': 'energy'})
-
-        pd.testing.assert_frame_equal(line.data, compare)
+        compare = pd.DataFrame(pl.read_as_pandas(file))
+        self.assertEqual(line.data.loc[:, 'energy'].to_list(), compare.loc[:, 'projection'].to_list())
         self.assertEqual(line.cv, 'CM1')
 
     def test_fes_read_with_time_data(self):
@@ -43,11 +42,11 @@ class TestFreeEnergyLine(unittest.TestCase):
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine(all_fes_files)
-        compare1 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat")).rename(columns={'projection': 'energy'})
-        compare2 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat")).rename(columns={'projection': 'energy'})
-        pd.testing.assert_frame_equal(line.time_data[20], compare1)
-        pd.testing.assert_frame_equal(line.time_data[23], compare2)
-        pd.testing.assert_frame_equal(line.data, compare2)
+        compare1 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
+        compare2 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
+        self.assertEqual(line.time_data[20].loc[:, 'energy'].to_list(), compare1.loc[:, 'projection'].to_list())
+        self.assertEqual(line.time_data[23].loc[:, 'energy'].to_list(), compare2.loc[:, 'projection'].to_list())
+        self.assertEqual(line.data.loc[:, 'energy'].to_list(), compare2.loc[:, 'projection'].to_list())
 
     def test_normalise_with_float(self):
         """

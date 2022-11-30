@@ -3,6 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from visualisation.themes import custom_dark_template
+from analytics.laws_and_constants import boltzmann_invert_energy_to_population
 pd.set_option('mode.chained_assignment', None)
 
 
@@ -37,7 +38,7 @@ class FreeEnergyLine:
     def __init__(self, fes_file: str | list[str], temperature: float = 298):
 
         if type(fes_file) == str:
-            self.data = self._read_file(fes_file)
+            self.data = self._read_file(fes_file, temperature)
             self.time_data = None
         elif type(fes_file) == list:
             files = [f.split("/")[-1] for f in fes_file]
@@ -52,16 +53,21 @@ class FreeEnergyLine:
         self.cv = self.data.columns.values[0]
 
     @staticmethod
-    def _read_file(file: str):
+    def _read_file(file: str, temperature: float = 298):
         """
-        Function to read in fes line data, replacement for pl.read_as_pandas
+        Function to read in fes line data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
         :param file: file to read in
+        :param temperature: temperature of system
         :return: data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
-        return (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+
+        data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                 .rename(columns={'projection': 'energy'})
+                .pipe(boltzmann_invert_energy_to_population, temperature=temperature, x_col=col_names[0])
                 )
+
+        return data
 
     def set_datum(self, datum: float | int | tuple[float | int, float | int]):
         """
