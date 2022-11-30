@@ -60,6 +60,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
+        self.assertTrue(0 in line.data['energy'])
         # figure.show()
 
     def test_normalise_with_tuple(self):
@@ -70,6 +71,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine(file)
         line.set_datum(datum=(6, 8))
+        self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
@@ -85,10 +87,11 @@ class TestFreeEnergyLine(unittest.TestCase):
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine(all_fes_files)
         line.set_datum(datum=(6, 8))
+        self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
         figure.add_trace(trace)
-        # figure.show()
+        figure.show()
 
     def test_get_change_over_time(self):
         """
