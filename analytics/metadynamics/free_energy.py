@@ -71,7 +71,7 @@ class FreeEnergyLine:
 
     def set_datum(self, datum: float | int | tuple[float | int, float | int]):
         """
-        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x axis value an
+        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x-axis value an
         energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
         :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
         :return: self
