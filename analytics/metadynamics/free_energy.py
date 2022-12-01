@@ -13,7 +13,6 @@ class MetaTrajectory:
     """
     def __init__(self, colvar_file: str):
 
-        self.colvar_file = colvar_file
         self.data = self._read_file(colvar_file)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias']).columns.to_list()
@@ -26,7 +25,8 @@ class MetaTrajectory:
         :return: data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
-        return (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        colvar = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        return (colvar
                 .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
                 )
 
