@@ -4,8 +4,8 @@ import numpy as np
 Kb = 0.008314463  # in kJ/mol
 
 
-def boltzmann_invert_energy_to_population(data: pd.DataFrame,  temperature, x_col: str, y_col: str = 'energy', y_col_out: str = 'population') \
-        -> pd.DataFrame:
+def boltzmann_invert_energy_to_population(data: pd.DataFrame, x_col: str, temperature: float = 298, y_col: str = 'energy',
+                                          y_col_out: str = 'population') -> pd.DataFrame:
     """
     function to take a dataframe and perform a Boltzmann inversion on a column
     :param data: dataframe
