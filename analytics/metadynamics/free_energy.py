@@ -3,7 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from visualisation.themes import custom_dark_template
-from analytics.laws_and_constants import boltzmann_invert_energy_to_population
+from analytics.laws_and_constants import boltzmann_energy_to_population, Kb, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
 
 
@@ -11,11 +11,15 @@ class MetaTrajectory:
     """
     Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
     """
-    def __init__(self, colvar_file: str):
+    def __init__(self, colvar_file: str, temperature: float = 298):
 
-        self.data = self._read_file(colvar_file)
+        self.data = (self._read_file(colvar_file)
+                     .pipe(self._get_weights, temperature=temperature)
+                     )
+
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias']).columns.to_list()
+        self.temperature = temperature
 
     @staticmethod
     def _read_file(file: str):
@@ -25,10 +29,24 @@ class MetaTrajectory:
         :return: data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
-        colvar = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
-        return (colvar
-                .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+        colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+                  .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                  )
+
+        return colvar
+
+    @staticmethod
+    def _get_weights(data: pd.DataFrame, temperature: float = 298, y_col: str = 'reweight_bias',
+                     y_col_out: str = 'weight') -> pd.DataFrame:
+
+        new_col_args_1 = {y_col_out: lambda x: np.exp(x[y_col]/(Kb * temperature))}
+        new_col_args_2 = {y_col_out: lambda x: x[y_col_out]/max(x[y_col_out])}
+        data = (data
+                .assign(**new_col_args_1)
+                .assign(**new_col_args_2)
                 )
+
+        return data
 
 
 class FreeEnergyLine:
@@ -89,7 +107,7 @@ class FreeEnergyLine:
         col_names = open(file).readline().strip().split(" ")[2:]
         data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                 .rename(columns={'projection': 'energy'})
-                .pipe(boltzmann_invert_energy_to_population, temperature=temperature, x_col=col_names[0])
+                .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
                 )
 
         return data
@@ -192,10 +210,10 @@ class FreeEnergySpace:
         :param meta_trajectory: a metaD trajectory object to add to the landscape
         :return: the appended trajectories
         """
-        if meta_trajectory not in self.trajectories:
+        if meta_trajectory not in self.trajectories.values():
             self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
-            print(f"{meta_trajectory.colvar_file} is already in this landscape!")
+            print(f"trajectory is already in this landscape!")
 
         return self
 
@@ -296,3 +314,28 @@ class FreeEnergySpace:
         figure.update_traces(line=dict(width=1))
 
         return figure
+
+    def get_line(self, cv, bins: int = 200):
+        """
+        Function to get a free energy line from a free energy space with meta trajectories in it.
+        :param cv:
+        :param bins:
+        :return:
+        """
+        if cv not in self.trajectories[0].cvs:
+            raise ValueError("Enter a collective variable that is in the trajectories!")
+
+        data = [t.data for t in self.trajectories.values()]
+        data = pd.concat(data)
+
+        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'])
+
+        data = (pd.DataFrame(histogram, index=['population', cv])
+                .transpose()
+                .dropna()
+                .assign(population=lambda c: c['population']/(np.trapz(y=c['population'], x=c[cv])))
+                .pipe(boltzmann_population_to_energy, temperature=self.temperature)
+                )
+
+        line = FreeEnergyLine(data[[cv, 'energy', 'population']], temperature=self.temperature)
+        return line
