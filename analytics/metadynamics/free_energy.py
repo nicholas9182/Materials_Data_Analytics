@@ -35,22 +35,48 @@ class FreeEnergyLine:
     """
     Class to handle 1D fes files
     """
-    def __init__(self, fes_file: str | list[str], temperature: float = 298):
-
-        if type(fes_file) == str:
-            self.data = self._read_file(fes_file, temperature)
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+        """
+        current philosophy is to build a fes from data with an energy column and a column for the cv. Then use an alternate constructor to do it from
+        a fes file. This makes it more general and allows us to calculate the fes from the hills ourselves at a later date
+        :param data: data with the cv and the energy in two columns
+        :param temperature: temperature at which the fes is defined
+        """
+        if type(data) == pd.DataFrame:
+            if {'energy'}.issubset(data.columns) is False:
+                raise ValueError("make sure there is an energy column in your dataframe")
             self.time_data = None
-        elif type(fes_file) == list:
-            files = [f.split("/")[-1] for f in fes_file]
-            time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in files]
-            data_frames = [self._read_file(f) for f in fes_file]
-            self.time_data = {time_stamps[i]: data_frames[i] for i in range(0, len(fes_file))}
-            self.data = self._read_file(fes_file[time_stamps.index(max(time_stamps))])
+            self.data = data
+        elif type(data) == dict:
+            for _, value in data.items():
+                if {'energy'}.issubset(value.columns) is False:
+                    raise ValueError("make sure there is an energy column in each dataframe in your dict")
+            self.time_data = data
+            self.data = data[max(data)].copy()
         else:
-            raise ValueError("fes_file must be a str or a list[str]")
+            raise ValueError("fes_file must be a pd.Dataframe or a list[pd.Dataframe]")
 
         self.temperature = temperature
         self.cv = self.data.columns.values[0]
+
+    @classmethod
+    def from_plumed(cls, file: str | list[str], **kwargs):
+        """
+        alternate constructor to build the fes from a plumed file
+        :param file: the file or list of files to make the plumed fes from. if list then it will make the time data
+        :return: fes object
+        """
+        if type(file) == str:
+            data = FreeEnergyLine._read_file(file, **kwargs)
+        elif type(file) == list:
+            individual_files = [f.split("/")[-1] for f in file]
+            time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
+            data_frames = [FreeEnergyLine._read_file(f) for f in file]
+            data = {time_stamps[i]: data_frames[i] for i in range(0, len(file))}
+        else:
+            raise ValueError("")
+
+        return cls(data, **kwargs)
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
@@ -61,7 +87,6 @@ class FreeEnergyLine:
         :return: data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
-
         data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                 .rename(columns={'projection': 'energy'})
                 .pipe(boltzmann_invert_energy_to_population, temperature=temperature, x_col=col_names[0])
