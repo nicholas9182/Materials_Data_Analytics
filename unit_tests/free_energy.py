@@ -29,9 +29,18 @@ class TestFreeEnergyLine(unittest.TestCase):
         checking that the 1d fes file is being read in correctly and the cv extracted correctly. Comparing with a direct plumed read in
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
+        file = pl.read_as_pandas(file)
+        file = pd.DataFrame(file).rename(columns={'projection': 'energy'})
         line = FreeEnergyLine(file)
-        compare = pd.DataFrame(pl.read_as_pandas(file))
-        self.assertEqual(line.data.loc[:, 'energy'].to_list(), compare.loc[:, 'projection'].to_list())
+        self.assertEqual(line.data.loc[:, 'energy'].to_list(), file.loc[:, 'energy'].to_list())
+        self.assertEqual(line.cv, 'CM1')
+
+    def test_fes_read_from_plumed(self):
+        """
+        checking that the 1d fes file is being read in correctly and the cv extracted correctly. Comparing with a direct plumed read in
+        """
+        file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
+        line = FreeEnergyLine.from_plumed(file)
         self.assertEqual(line.cv, 'CM1')
 
     def test_fes_read_with_time_data(self):
@@ -41,7 +50,25 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine(all_fes_files)
+        individual_files = [f.split("/")[-1] for f in all_fes_files]
+        time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
+        data_frames = [FreeEnergyLine._read_file(f) for f in all_fes_files]
+        data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
+        line = FreeEnergyLine(data)
+        compare1 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
+        compare2 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
+        self.assertEqual(line.time_data[20].loc[:, 'energy'].to_list(), compare1.loc[:, 'projection'].to_list())
+        self.assertEqual(line.time_data[23].loc[:, 'energy'].to_list(), compare2.loc[:, 'projection'].to_list())
+        self.assertEqual(line.data.loc[:, 'energy'].to_list(), compare2.loc[:, 'projection'].to_list())
+
+    def test_fes_read_with_time_data_from_plumed(self):
+        """
+        checking that alternate constructor works for reading in fes data with strides to get time_data dictionary
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine.from_plumed(all_fes_files)
         compare1 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
         compare2 = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
         self.assertEqual(line.time_data[20].loc[:, 'energy'].to_list(), compare1.loc[:, 'projection'].to_list())
@@ -54,7 +81,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         :return:
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
-        line = FreeEnergyLine(file)
+        line = FreeEnergyLine.from_plumed(file)
         line.set_datum(0)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
@@ -68,7 +95,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         :return:
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
-        line = FreeEnergyLine(file)
+        line = FreeEnergyLine.from_plumed(file)
         line.set_datum(datum=(6, 8))
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
@@ -84,7 +111,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine(all_fes_files)
+        line = FreeEnergyLine.from_plumed(all_fes_files)
         line.set_datum(datum=(6, 8))
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
@@ -130,7 +157,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
-        line = FreeEnergyLine(all_fes_files)
+        line = FreeEnergyLine.from_plumed(all_fes_files)
         data1 = line.set_datum(3).data
         data2 = line.set_datum(3).data
         pd.testing.assert_frame_equal(data2, data1)
