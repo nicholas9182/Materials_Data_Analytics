@@ -76,6 +76,11 @@ class FreeEnergyLine:
 
         self.temperature = temperature
         self.cv = self.data.columns.values[0]
+        cv_min = self.data[self.cv].min()
+        cv_max = self.data[self.cv].max()
+        lower = cv_min + (cv_max - cv_min) / 6
+        upper = cv_min + (5*(cv_max - cv_min)) / 6
+        self.set_datum((lower, upper))
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
