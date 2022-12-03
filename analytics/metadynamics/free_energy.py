@@ -18,7 +18,7 @@ class MetaTrajectory:
                      )
 
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias']).columns.to_list()
+        self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
         self.temperature = temperature
 
     @staticmethod
