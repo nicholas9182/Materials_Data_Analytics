@@ -124,12 +124,14 @@ class FreeEnergyLine:
             self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data is not None:
                 for _, v in self.time_data.items():
+                    adjust_value = v.loc[(v[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
                     v['energy'] = v['energy'] - adjust_value
         elif type(datum) == tuple:
             adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
             self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data is not None:
                 for _, v in self.time_data.items():
+                    adjust_value = v.loc[v[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
                     v['energy'] = v['energy'] - adjust_value
         else:
             raise ValueError("Enter either a float or a tuple!")
