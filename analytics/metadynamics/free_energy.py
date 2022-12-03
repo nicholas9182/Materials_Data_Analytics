@@ -147,7 +147,7 @@ class FreeEnergyLine:
                             region_2: float | int | tuple[float | int, float | int] = None) -> pd.DataFrame:
         """
         Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
-        It can accept both numbers and tuples. If a tuple is given, it well take the mean of the CV over the interval given by the tupple.
+        It can accept both numbers and tuples. If a tuple is given, it well take the mean of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
         :return: pandas dataframe with the data
@@ -177,6 +177,39 @@ class FreeEnergyLine:
 
         time_data = pd.concat(time_data).sort_values('time_stamp')
         return time_data
+
+    def get_fes_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200) -> pd.DataFrame:
+        """
+        Function to get the FES with some error bars, where the error bars are obtained from considering the time dynamics of the fes.
+        :param n_timestamps: How many past FES time stamps to look at. Consider plotting the value of the minima as a function of time to see what
+        an appropriate value is for this
+        :param bins: Number of data points to have on your FES
+        :return: dataframe with the errors.
+        """
+        if self.time_data is None:
+            raise ValueError("You need time data to use this function")
+
+        data = []
+        min_timestamp = max(self.time_data) - n_timestamps
+
+        for key, value in self.time_data.items():
+            value['timestamp'] = key
+            data.append(value)
+
+        data = (pd.concat(data)
+                .query('timestamp < @min_timestamp')
+                .assign(bin=lambda x: pd.cut(x[self.cv], bins))
+                )
+
+        binned_data = pd.DataFrame({
+            self.cv: data.groupby('bin').mean()[self.cv],
+            'energy': data.groupby('bin').mean()['energy'],
+            'energy_err': data.groupby('bin').std()['energy'],
+            'population': data.groupby('bin').mean()['population'],
+            'population_err': data.groupby('bin').std()['population']
+        })
+
+        return binned_data
 
 
 class FreeEnergySpace:
