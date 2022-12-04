@@ -78,9 +78,13 @@ class FreeEnergyLine:
         self.cv = self.data.columns.values[0]
         cv_min = self.data[self.cv].min()
         cv_max = self.data[self.cv].max()
-        lower = cv_min + (cv_max - cv_min) / 6
-        upper = cv_min + (5*(cv_max - cv_min)) / 6
-        self.set_datum((lower, upper))
+
+        if self.data.shape[0] > 2:
+            lower = cv_min + (cv_max - cv_min) / 6
+            upper = cv_min + (5*(cv_max - cv_min)) / 6
+            self.set_datum((lower, upper))
+        else:
+            self.set_datum((cv_min, cv_max))
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
@@ -368,12 +372,11 @@ class FreeEnergySpace:
         data = [t.data for t in self.trajectories.values()]
         data = pd.concat(data)
 
-        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'])
+        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
 
         data = (pd.DataFrame(histogram, index=['population', cv])
                 .transpose()
                 .dropna()
-                .assign(population=lambda c: c['population']/(np.trapz(y=c['population'], x=c[cv])))
                 .pipe(boltzmann_population_to_energy, temperature=self.temperature)
                 )
 
