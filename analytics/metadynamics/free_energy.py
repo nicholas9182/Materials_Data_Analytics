@@ -359,7 +359,7 @@ class FreeEnergySpace:
 
         return figure
 
-    def get_reweighted_line(self, cv, bins: int = 200):
+    def get_reweighted_line(self, cv, bins: int | list[int | float] = 200):
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
         analysis
