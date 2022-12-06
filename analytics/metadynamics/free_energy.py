@@ -257,7 +257,7 @@ class FreeEnergySpace:
         if meta_trajectory not in self.trajectories.values():
             self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
-            print(f"trajectory is already in this landscape!")
+            print(f"trajectory is already in this space!")
 
         return self
 
@@ -359,7 +359,7 @@ class FreeEnergySpace:
 
         return figure
 
-    def get_reweighted_line(self, cv, bins: int = 200):
+    def get_reweighted_line(self, cv, bins: int | list[int | float] = 200):
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
         analysis
@@ -367,10 +367,15 @@ class FreeEnergySpace:
         :param bins: number of bins, or a list with the bin boundaries
         :return:
         """
-        if cv not in self.trajectories[0].cvs:
-            raise ValueError("Enter a collective variable that is in the trajectories!")
+        data = []
 
-        data = [t.data for t in self.trajectories.values()]
+        for w, t in self.trajectories.items():
+            if cv in t.cvs:
+                data.append(t.data)
+
+        if not data:
+            raise ValueError("no trajectories in this space have that CV")
+
         data = pd.concat(data)
 
         histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
