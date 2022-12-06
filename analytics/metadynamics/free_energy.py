@@ -359,11 +359,12 @@ class FreeEnergySpace:
 
         return figure
 
-    def get_line(self, cv, bins: int = 200):
+    def get_reweighted_line(self, cv, bins: int = 200):
         """
-        Function to get a free energy line from a free energy space with meta trajectories in it.
-        :param cv:
-        :param bins:
+        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
+        analysis
+        :param cv: the cv in which to get the reweight
+        :param bins: number of bins, or a list with the bin boundaries
         :return:
         """
         if cv not in self.trajectories[0].cvs:
