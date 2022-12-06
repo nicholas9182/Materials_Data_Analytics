@@ -208,9 +208,9 @@ class FreeEnergyLine:
         binned_data = pd.DataFrame({
             self.cv: data.groupby('bin').mean()[self.cv],
             'energy': data.groupby('bin').mean()['energy'],
-            'energy_err': data.groupby('bin').std()['energy'],
+            'energy_err': data.groupby('bin').std()['energy']/np.sqrt(n_timestamps),
             'population': data.groupby('bin').mean()['population'],
-            'population_err': data.groupby('bin').std()['population']
+            'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
         })
 
         return binned_data
@@ -220,8 +220,8 @@ class FreeEnergySpace:
 
     def __init__(self, hills_file: str, temperature: float = 298):
 
-        self.hills_file = hills_file
-        self.hills = self._read_file(hills_file)
+        self.hills_path = hills_file
+        self.hills, self.sigmas = self._read_file(hills_file)
         self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
         self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
         self.max_time = self.hills['time'].max()
@@ -240,13 +240,17 @@ class FreeEnergySpace:
         :return: data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
+        sigmas = [col for col in col_names if col.split("_")[0] == 'sigma']
         data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        sigmas = {s.split("_")[1]: data.loc[0, s] for s in sigmas}
 
-        return (data
+        data = (data
                 .loc[:, ~data.columns.str.startswith('sigma')]
                 .drop(columns=['biasf'])
-                .assign(time=lambda x: x['time']/1000)
+                .assign(time=lambda x: x['time'] / 1000)
                 )
+
+        return data, sigmas
 
     def add_metad_trajectory(self, meta_trajectory: MetaTrajectory):
         """
