@@ -272,6 +272,7 @@ class FreeEnergySpace:
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
         self.temperature = temperature
         self.lines = {}
+        self.surfaces = []
         self.trajectories = {}
 
     @staticmethod
@@ -307,13 +308,25 @@ class FreeEnergySpace:
 
         return self
 
-    def add_line(self, fes_line: FreeEnergyLine):
+    def add_line(self, line: FreeEnergyLine):
         """
         function to add a free energy line to the landscape
-        :param fes_line: the fes to add
+        :param line: the fes to add
         :return: the fes for the landscape
         """
-        self.lines[fes_line.cvs[0]] = fes_line
+        self.lines[line.cvs[0]] = line
+        return self
+
+    def add_surface(self, surface: FreeEnergySurface):
+        """
+        function to add a free energy surface to the landscape
+        :param surface: the fes to add
+        :return: the fes for the landscape
+        """
+        if surface not in self.surfaces:
+            self.surfaces.append(surface)
+        else:
+            raise ValueError("This surface is already in the space")
         return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
