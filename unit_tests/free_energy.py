@@ -33,7 +33,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         file = pd.DataFrame(file).rename(columns={'projection': 'energy'})
         line = FreeEnergyLine(file)
         self.assertEqual(line.data.loc[:, 'energy'].to_list(), file.loc[:, 'energy'].to_list())
-        self.assertEqual(line.cv, 'CM1')
+        self.assertEqual(line.cvs[0], 'CM1')
 
     def test_fes_read_from_plumed(self):
         """
@@ -41,7 +41,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine.from_plumed(file)
-        self.assertEqual(line.cv, 'CM1')
+        self.assertEqual(line.cvs[0], 'CM1')
 
     def test_fes_read_with_time_data(self):
         """
@@ -94,7 +94,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         line = FreeEnergyLine.from_plumed(file)
         line.set_datum(0)
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
+        trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
         figure.add_trace(trace)
         self.assertTrue(0 in line.data['energy'])
         # figure.show()
@@ -109,7 +109,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         line.set_datum(datum=(6, 8))
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
+        trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
         figure.add_trace(trace)
         # figure.show()
 
@@ -125,7 +125,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         line.set_datum(datum=(6, 8))
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
+        trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
         figure.add_trace(trace)
         # figure.show()
 
@@ -172,10 +172,23 @@ class TestFreeEnergyLine(unittest.TestCase):
         data2 = line.set_datum(3).data
         pd.testing.assert_frame_equal(data2, data1)
         figure = go.Figure()
-        trace = go.Scatter(x=line.data[line.cv], y=line.data['energy'])
+        trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
         figure.add_trace(trace)
         self.assertTrue(0 in line.data['energy'])
         # figure.show()
+
+    def test_get_error_from_time_dynamics(self):
+        """
+        testing that the normalise function works with a range
+        :return:
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine.from_plumed(all_fes_files)
+        line = line.set_errors_from_time_dynamics(5, bins=100)
+        self.assertTrue('energy_err' in line.data.columns.to_list())
+        self.assertTrue('population_err' in line.data.columns.to_list())
 
 
 class TestFreeEnergyLandscape(unittest.TestCase):
