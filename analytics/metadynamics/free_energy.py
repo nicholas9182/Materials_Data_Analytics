@@ -74,17 +74,8 @@ class FreeEnergyShape:
             raise ValueError("fes_file must be a pd.Dataframe or a list[pd.Dataframe]")
 
         self.temperature = temperature
-        self.cv = self.data.columns.values[0]
+        self.cvs = self.data.columns.values.tolist()[:dimension]
         self.dimension = dimension
-        cv_min = self.data[self.cv].min()
-        cv_max = self.data[self.cv].max()
-
-        if self.data.shape[0] > 2:
-            lower = cv_min + (cv_max - cv_min) / 6
-            upper = cv_min + (5*(cv_max - cv_min)) / 6
-            self.set_datum((lower, upper))
-        else:
-            self.set_datum((cv_min, cv_max))
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
@@ -116,7 +107,18 @@ class FreeEnergyShape:
 class FreeEnergyLine(FreeEnergyShape):
 
     def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+
         super().__init__(data, temperature, dimension=1)
+
+        cv_min = self.data[self.cvs[0]].min()
+        cv_max = self.data[self.cvs[0]].max()
+
+        if self.data.shape[0] > 2:
+            lower = cv_min + (cv_max - cv_min) / 6
+            upper = cv_min + (5 * (cv_max - cv_min)) / 6
+            self.set_datum((lower, upper))
+        else:
+            self.set_datum((cv_min, cv_max))
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
@@ -142,18 +144,18 @@ class FreeEnergyLine(FreeEnergyShape):
         :return: self
         """
         if type(datum) == float or type(datum) == int:
-            adjust_value = self.data.loc[(self.data[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
+            adjust_value = self.data.loc[(self.data[self.cvs[0]] - datum).abs().argsort()[:1], 'energy'].values[0]
             self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data is not None:
                 for _, v in self.time_data.items():
-                    adjust_value = v.loc[(v[self.cv] - datum).abs().argsort()[:1], 'energy'].values[0]
+                    adjust_value = v.loc[(v[self.cvs[0]] - datum).abs().argsort()[:1], 'energy'].values[0]
                     v['energy'] = v['energy'] - adjust_value
         elif type(datum) == tuple:
-            adjust_value = self.data.loc[self.data[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
+            adjust_value = self.data.loc[self.data[self.cvs[0]].between(min(datum), max(datum)), 'energy'].values.mean()
             self.data['energy'] = self.data['energy'] - adjust_value
             if self.time_data is not None:
                 for _, v in self.time_data.items():
-                    adjust_value = v.loc[v[self.cv].between(min(datum), max(datum)), 'energy'].values.mean()
+                    adjust_value = v.loc[v[self.cvs[0]].between(min(datum), max(datum)), 'energy'].values.mean()
                     v['energy'] = v['energy'] - adjust_value
         else:
             raise ValueError("Enter either a float or a tuple!")
@@ -174,16 +176,16 @@ class FreeEnergyLine(FreeEnergyShape):
         for key, df in self.time_data.items():
 
             if type(region_1) == int or type(region_1) == float:
-                value_1 = df.loc[(df[self.cv] - region_1).abs().argsort()[:1], 'energy'].values[0]
+                value_1 = df.loc[(df[self.cvs[0]] - region_1).abs().argsort()[:1], 'energy'].values[0]
             elif type(region_1) == tuple:
-                value_1 = df.loc[df[self.cv].between(min(region_1), max(region_1)), 'energy'].values.mean()
+                value_1 = df.loc[df[self.cvs[0]].between(min(region_1), max(region_1)), 'energy'].values.mean()
             else:
                 raise ValueError("Use either a number or tuple of two numbers")
 
             if (type(region_2) == int or type(region_2) == float) and region_2 is not None:
-                value_2 = df.loc[(df[self.cv] - region_2).abs().argsort()[:1], 'energy'].values[0]
+                value_2 = df.loc[(df[self.cvs[0]] - region_2).abs().argsort()[:1], 'energy'].values[0]
             elif type(region_2) == tuple and region_2 is not None:
-                value_2 = df.loc[df[self.cv].between(min(region_2), max(region_2)), 'energy'].values.mean()
+                value_2 = df.loc[df[self.cvs[0]].between(min(region_2), max(region_2)), 'energy'].values.mean()
             elif region_2 is None:
                 value_2 = 0
             else:
@@ -195,9 +197,9 @@ class FreeEnergyLine(FreeEnergyShape):
         time_data = pd.concat(time_data).sort_values('time_stamp')
         return time_data
 
-    def get_fes_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200) -> pd.DataFrame:
+    def set_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200):
         """
-        Function to get the FES with some error bars, where the error bars are obtained from considering the time dynamics of the fes.
+        Function to get data and errors from considering the time dynamics of the FES
         :param n_timestamps: How many past FES time stamps to look at. Consider plotting the value of the minima as a function of time to see what
         an appropriate value is for this
         :param bins: Number of data points to have on your FES
@@ -215,18 +217,45 @@ class FreeEnergyLine(FreeEnergyShape):
 
         data = (pd.concat(data)
                 .query('timestamp < @min_timestamp')
-                .assign(bin=lambda x: pd.cut(x[self.cv], bins))
+                .assign(bin=lambda x: pd.cut(x[self.cvs[0]], bins))
                 )
 
         binned_data = pd.DataFrame({
-            self.cv: data.groupby('bin').mean()[self.cv],
+            self.cvs[0]: data.groupby('bin').mean()[self.cvs[0]],
             'energy': data.groupby('bin').mean()['energy'],
             'energy_err': data.groupby('bin').std()['energy']/np.sqrt(n_timestamps),
             'population': data.groupby('bin').mean()['population'],
             'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
-        })
+        }).dropna()
 
-        return binned_data
+        self.data = binned_data
+
+        return self
+
+
+class FreeEnergySurface(FreeEnergyShape):
+
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+        super().__init__(data, temperature, dimension=2)
+
+    @staticmethod
+    def _read_file(file: str, temperature: float = 298):
+        """
+        Function to read in fes surface data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
+        :param file: file to read in
+        :param temperature: temperature of system
+        :return: data in that file in pandas format
+        """
+        col_names = open(file).readline().strip().split(" ")[2:]
+        drop_cols = [c for c in col_names if 'der_' in c]
+
+        data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+                .drop(columns=drop_cols)
+                .rename(columns={'file.free': 'energy'})
+                .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
+                )
+
+        return data
 
 
 class FreeEnergySpace:
@@ -243,6 +272,7 @@ class FreeEnergySpace:
         self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
         self.temperature = temperature
         self.lines = {}
+        self.surfaces = []
         self.trajectories = {}
 
     @staticmethod
@@ -278,13 +308,25 @@ class FreeEnergySpace:
 
         return self
 
-    def add_line(self, fes_line: FreeEnergyLine):
+    def add_line(self, line: FreeEnergyLine):
         """
         function to add a free energy line to the landscape
-        :param fes_line: the fes to add
+        :param line: the fes to add
         :return: the fes for the landscape
         """
-        self.lines[fes_line.cv] = fes_line
+        self.lines[line.cvs[0]] = line
+        return self
+
+    def add_surface(self, surface: FreeEnergySurface):
+        """
+        function to add a free energy surface to the landscape
+        :param surface: the fes to add
+        :return: the fes for the landscape
+        """
+        if surface not in self.surfaces:
+            self.surfaces.append(surface)
+        else:
+            raise ValueError("This surface is already in the space")
         return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
