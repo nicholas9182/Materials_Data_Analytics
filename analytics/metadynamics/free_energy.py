@@ -49,16 +49,15 @@ class MetaTrajectory:
         return data
 
 
-class FreeEnergyLine:
-    """
-    Class to handle 1D fes files
-    """
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+class FreeEnergyShape:
+
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None):
         """
-        current philosophy is to build a fes from data with an energy column and a column for the cv. Then use an alternate constructor to do it from
-        a fes file. This makes it more general and allows us to calculate the fes from the hills ourselves at a later date
-        :param data: data with the cv and the energy in two columns
-        :param temperature: temperature at which the fes is defined
+        Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
+        shapes should inherit from this class, and then make changes depending on whether the shape has particular features
+        :param data: the data needed to make the shape
+        :param temperature: the temperature at which the shape is defined
+        :param dimension: the dimension of the shape
         """
         if type(data) == pd.DataFrame:
             if {'energy'}.issubset(data.columns) is False:
@@ -76,6 +75,7 @@ class FreeEnergyLine:
 
         self.temperature = temperature
         self.cv = self.data.columns.values[0]
+        self.dimension = dimension
         cv_min = self.data[self.cv].min()
         cv_max = self.data[self.cv].max()
 
@@ -94,16 +94,29 @@ class FreeEnergyLine:
         :return: fes object
         """
         if type(file) == str:
-            data = FreeEnergyLine._read_file(file, **kwargs)
+            data = cls._read_file(file, **kwargs)
         elif type(file) == list:
             individual_files = [f.split("/")[-1] for f in file]
             time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
-            data_frames = [FreeEnergyLine._read_file(f) for f in file]
+            data_frames = [cls._read_file(f) for f in file]
             data = {time_stamps[i]: data_frames[i] for i in range(0, len(file))}
         else:
             raise ValueError("")
 
         return cls(data, **kwargs)
+
+    @staticmethod
+    def _read_file(file, **kwargs):
+        pass
+
+    def set_datum(self, datum):
+        pass
+
+
+class FreeEnergyLine(FreeEnergyShape):
+
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+        super().__init__(data, temperature, dimension=1)
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
