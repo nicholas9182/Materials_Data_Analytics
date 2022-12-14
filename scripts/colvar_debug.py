@@ -1,5 +1,5 @@
 import os
-from analytics.metadynamics.free_energy import FreeEnergySpace, FreeEnergyLine, MetaTrajectory
+from analytics.metadynamics.free_energy import FreeEnergySpace, FreeEnergyLine, MetaTrajectory, FreeEnergySurface
 
 space = FreeEnergySpace("/Users/nicholassiemons/Dropbox/OBT/0091/001/HILLS")
 
