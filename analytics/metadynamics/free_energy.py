@@ -166,7 +166,7 @@ class FreeEnergyLine(FreeEnergyShape):
                             region_2: float | int | tuple[float | int, float | int] = None) -> pd.DataFrame:
         """
         Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
-        It can accept both numbers and tuples. If a tuple is given, it well take the mean of the CV over the interval given by the tuple.
+        It can accept both numbers and tuples. If a tuple is given, it will take the mean of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
         :return: pandas dataframe with the data
@@ -334,7 +334,7 @@ class FreeEnergySpace:
         Function to turn the hills into long format, and allow for time binning and height power conversion
         :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing a smaller long format hills
         dataframe.
-        :param height_power: raise the height to the power of this so to see hills easier. Useful when plotting and you want to see the small hills.
+        :param height_power: raise the height to the power of this so to see hills easier. Useful when plotting, and you want to see the small hills.
         :return:
         """
         height_label = 'height^' + str(height_power) if height_power != 1 else 'height'

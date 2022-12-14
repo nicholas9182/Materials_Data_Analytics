@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
 import plumed as pl
-from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine
+from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
 tracemalloc.start()
 
 
@@ -189,6 +189,18 @@ class TestFreeEnergyLine(unittest.TestCase):
         line = line.set_errors_from_time_dynamics(5, bins=100)
         self.assertTrue('energy_err' in line.data.columns.to_list())
         self.assertTrue('population_err' in line.data.columns.to_list())
+
+
+class TestFreeEnergySurface(unittest.TestCase):
+
+    def test_surface_reader(self):
+
+        file = "../test_trajectories/ndi_na_binding/FES_CM1_D1/FES"
+        surface = FreeEnergySurface.from_plumed(file)
+        self.assertTrue("energy" in surface.data.columns.to_list())
+        self.assertTrue("D1" in surface.data.columns.to_list())
+        self.assertTrue("CM1" in surface.data.columns.to_list())
+        self.assertTrue("population" in surface.data.columns.to_list())
 
 
 class TestFreeEnergyLandscape(unittest.TestCase):
