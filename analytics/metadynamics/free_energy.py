@@ -97,10 +97,78 @@ class FreeEnergyShape:
         return cls(data, **kwargs)
 
     @staticmethod
-    def _read_file(file, **kwargs):
-        pass
+    def _get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
+        """
+        Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a pythagorean distance
+        :param data: data
+        :param ref_coordinate: dict with the column as the key and the value as the value
+        :param val_col: column from which to get the value
+        :return: value
+        """
+        new_cols = []
 
-    def set_datum(self, datum):
+        for key, value in ref_coordinate.items():
+            new_col = key + "_distance"
+            new_cols.append(new_col)
+            data[new_col] = (data[key].abs() - value)**2
+
+        data["total_distance"] = 0
+        for c in new_cols:
+            data["total_distance"] = data["total_distance"] + data[c]
+
+        sorted_data = data.sort_values('total_distance').reset_index(drop=True)
+        closest_value = sorted_data.loc[0, val_col]
+        return closest_value
+
+    @staticmethod
+    def _get_mean_in_range(data: pd.DataFrame, ref_col, val_col, area: tuple[int | float, int | float]):
+        """
+        Get the mean value in val_col over a range in ref_col, assumes ordered data
+        :param data: data
+        :param ref_col: the column over which you take the range
+        :param val_col: the column from which you want the mean
+        :param area: tuple specifying the range
+        :return: value
+        """
+        column_filtered = data[ref_col].between(min(area), max(area))
+        data_filtered = data.loc[column_filtered, val_col]
+        return data_filtered.values.mean()
+
+    def set_datum(self, datum: dict[str, float | int | tuple[float | int, float | int]]):
+        """
+        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x-axis value an
+        energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
+        :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
+        :return: self
+        """
+        if type(datum) != dict:
+            raise TypeError("Datum must be a dictionary with the cv and value")
+
+        for cv, d in datum.items():
+            if cv not in self.cvs:
+                raise ValueError("The keys for the datum dictionary need to be cvs!")
+
+        if type(datum[self.cvs[0]]) == float or type(datum[self.cvs[0]]) == int:
+            adjust_value = self._get_nearest_value(self.data, datum, 'energy')
+            self.data['energy'] = self.data['energy'] - adjust_value
+            if self.time_data is not None:
+                for _, v in self.time_data.items():
+                    adjust_value = self._get_nearest_value(v, datum, 'energy')
+                    v['energy'] = v['energy'] - adjust_value
+        elif type(datum[self.cvs[0]]) == tuple:
+            adjust_value = self._get_mean_in_range(self.data, self.cvs[0], 'energy', datum[self.cvs[0]])
+            self.data['energy'] = self.data['energy'] - adjust_value
+            if self.time_data is not None:
+                for _, v in self.time_data.items():
+                    adjust_value = self._get_mean_in_range(v, self.cvs[0], 'energy', datum[self.cvs[0]])
+                    v['energy'] = v['energy'] - adjust_value
+        else:
+            raise ValueError("Enter either a float or a tuple!")
+
+        return self
+
+    @staticmethod
+    def _read_file(file, **kwargs):
         pass
 
 
@@ -116,9 +184,9 @@ class FreeEnergyLine(FreeEnergyShape):
         if self.data.shape[0] > 2:
             lower = cv_min + (cv_max - cv_min) / 6
             upper = cv_min + (5 * (cv_max - cv_min)) / 6
-            self.set_datum((lower, upper))
+            self.set_datum({self.cvs[0]: (lower, upper)})
         else:
-            self.set_datum((cv_min, cv_max))
+            self.set_datum({self.cvs[0]: (cv_min, cv_max)})
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
@@ -135,32 +203,6 @@ class FreeEnergyLine(FreeEnergyShape):
                 )
 
         return data
-
-    def set_datum(self, datum: float | int | tuple[float | int, float | int]):
-        """
-        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x-axis value an
-        energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
-        :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
-        :return: self
-        """
-        if type(datum) == float or type(datum) == int:
-            adjust_value = self.data.loc[(self.data[self.cvs[0]] - datum).abs().argsort()[:1], 'energy'].values[0]
-            self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data is not None:
-                for _, v in self.time_data.items():
-                    adjust_value = v.loc[(v[self.cvs[0]] - datum).abs().argsort()[:1], 'energy'].values[0]
-                    v['energy'] = v['energy'] - adjust_value
-        elif type(datum) == tuple:
-            adjust_value = self.data.loc[self.data[self.cvs[0]].between(min(datum), max(datum)), 'energy'].values.mean()
-            self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data is not None:
-                for _, v in self.time_data.items():
-                    adjust_value = v.loc[v[self.cvs[0]].between(min(datum), max(datum)), 'energy'].values.mean()
-                    v['energy'] = v['energy'] - adjust_value
-        else:
-            raise ValueError("Enter either a float or a tuple!")
-
-        return self
 
     def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
                             region_2: float | int | tuple[float | int, float | int] = None) -> pd.DataFrame:

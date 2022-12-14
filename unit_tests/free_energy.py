@@ -92,11 +92,29 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine.from_plumed(file)
-        line.set_datum(0)
+        line.set_datum({'CM1': 0})
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
         figure.add_trace(trace)
         self.assertTrue(0 in line.data['energy'])
+        # figure.show()
+
+    def test_normalise_with_float_on_time_data(self):
+        """
+        testing that the normalise function works with a range
+        :return:
+        """
+        folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
+        pattern = "FES*dat"
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        line = FreeEnergyLine.from_plumed(all_fes_files)
+        line.set_datum(datum={'CM1': 7})
+        self.assertTrue(0 in line.time_data[0]['energy'])
+        self.assertTrue(0 in line.time_data[1]['energy'])
+        self.assertTrue(0 in line.time_data[2]['energy'])
+        figure = go.Figure()
+        trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
+        figure.add_trace(trace)
         # figure.show()
 
     def test_normalise_with_tuple(self):
@@ -106,7 +124,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine.from_plumed(file)
-        line.set_datum(datum=(6, 8))
+        line.set_datum(datum={'CM1': (6, 8)})
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
@@ -122,7 +140,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
-        line.set_datum(datum=(6, 8))
+        line.set_datum(datum={'CM1': (6, 8)})
         self.assertAlmostEqual(line.data.loc[line.data['CM1'] > 6].loc[line.data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
@@ -168,8 +186,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
-        data1 = line.set_datum(3).data
-        data2 = line.set_datum(3).data
+        data1 = line.set_datum({'CM1': 3}).data
+        data2 = line.set_datum({'CM1': 3}).data
         pd.testing.assert_frame_equal(data2, data1)
         figure = go.Figure()
         trace = go.Scatter(x=line.data[line.cvs[0]], y=line.data['energy'])
@@ -201,6 +219,16 @@ class TestFreeEnergySurface(unittest.TestCase):
         self.assertTrue("D1" in surface.data.columns.to_list())
         self.assertTrue("CM1" in surface.data.columns.to_list())
         self.assertTrue("population" in surface.data.columns.to_list())
+
+    def test_surface_datum_with_floats(self):
+
+        file = "../test_trajectories/ndi_na_binding/FES_CM1_D1/FES"
+        surface = FreeEnergySurface.from_plumed(file)
+        surface = surface.set_datum({'CM1': 0.03, 'D1': 5})
+        figure = go.Figure()
+        figure.add_trace(go.Contour(x=surface.data['CM1'], y=surface.data['D1'], z=surface.data['energy'], colorscale='Jet'))
+        self.assertTrue(0 in surface.data['energy'].values.tolist())
+        # figure.show()
 
 
 class TestFreeEnergyLandscape(unittest.TestCase):
@@ -269,5 +297,5 @@ class TestFreeEnergyLandscape(unittest.TestCase):
         landscape.add_metad_trajectory(traj6)
         landscape.add_metad_trajectory(traj7)
 
-        fes = landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum(0)
+        fes = landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
         self.assertEqual(fes.data[fes.data['D1'] == 0]['energy'].values[0], 0)
