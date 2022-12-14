@@ -99,17 +99,26 @@ class FreeEnergyShape:
     @staticmethod
     def _get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
         """
-        Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value
+        Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a pythagorean distance
         :param data: data
         :param ref_coordinate: dict with the column as the key and the value as the value
         :param val_col: column from which to get the value
         :return: value
         """
-        ref_col = list(ref_coordinate.keys())[0]
-        value = list(ref_coordinate.values())[0]
-        sorted_data = (data[ref_col] - value).abs().argsort()
-        closest_value = sorted_data[:1]
-        return data.loc[closest_value, val_col].values[0]
+        new_cols = []
+
+        for key, value in ref_coordinate.items():
+            new_col = key + "_distance"
+            new_cols.append(new_col)
+            data[new_col] = (data[key].abs() - value)**2
+
+        data["total_distance"] = 0
+        for c in new_cols:
+            data["total_distance"] = data["total_distance"] + data[c]
+
+        sorted_data = data.sort_values('total_distance').reset_index(drop=True)
+        closest_value = sorted_data.loc[0, val_col]
+        return closest_value
 
     @staticmethod
     def _get_mean_in_range(data: pd.DataFrame, ref_col, val_col, area: tuple[int | float, int | float]):
@@ -134,6 +143,10 @@ class FreeEnergyShape:
         """
         if type(datum) != dict:
             raise TypeError("Datum must be a dictionary with the cv and value")
+
+        for cv, d in datum.items():
+            if cv not in self.cvs:
+                raise ValueError("The keys for the datum dictionary need to be cvs!")
 
         if type(datum[self.cvs[0]]) == float or type(datum[self.cvs[0]]) == int:
             adjust_value = self._get_nearest_value(self.data, datum, 'energy')

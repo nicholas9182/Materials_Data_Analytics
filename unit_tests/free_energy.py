@@ -220,6 +220,16 @@ class TestFreeEnergySurface(unittest.TestCase):
         self.assertTrue("CM1" in surface.data.columns.to_list())
         self.assertTrue("population" in surface.data.columns.to_list())
 
+    def test_surface_datum_with_floats(self):
+
+        file = "../test_trajectories/ndi_na_binding/FES_CM1_D1/FES"
+        surface = FreeEnergySurface.from_plumed(file)
+        surface = surface.set_datum({'CM1': 0.03, 'D1': 5})
+        figure = go.Figure()
+        figure.add_trace(go.Contour(x=surface.data['CM1'], y=surface.data['D1'], z=surface.data['energy'], colorscale='Jet'))
+        self.assertTrue(0 in surface.data['energy'].values.tolist())
+        # figure.show()
+
 
 class TestFreeEnergyLandscape(unittest.TestCase):
 
