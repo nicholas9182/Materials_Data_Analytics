@@ -258,7 +258,7 @@ class FreeEnergyLine(FreeEnergyShape):
             data.append(value)
 
         data = (pd.concat(data)
-                .query('timestamp < @min_timestamp')
+                .query('timestamp > @min_timestamp')
                 .assign(bin=lambda x: pd.cut(x[self.cvs[0]], bins))
                 )
 
