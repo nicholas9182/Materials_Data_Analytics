@@ -31,6 +31,7 @@ class MetaTrajectory:
         col_names = open(file).readline().strip().split(" ")[2:]
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                   .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                  .assign(time=lambda x: x['time'] / 1000)
                   )
 
         return colvar
@@ -265,7 +266,7 @@ class FreeEnergyLine(FreeEnergyShape):
         binned_data = pd.DataFrame({
             self.cvs[0]: data.groupby('bin').mean()[self.cvs[0]],
             'energy': data.groupby('bin').mean()['energy'],
-            'energy_err': data.groupby('bin').std()['energy']/np.sqrt(n_timestamps),
+            'energy_err': data.groupby('bin').std()['energy'],
             'population': data.groupby('bin').mean()['population'],
             'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
         }).dropna()
