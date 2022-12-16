@@ -31,6 +31,7 @@ class MetaTrajectory:
         col_names = open(file).readline().strip().split(" ")[2:]
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                   .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                  .assign(time=lambda x: x['time'] / 1000)
                   )
 
         return colvar
