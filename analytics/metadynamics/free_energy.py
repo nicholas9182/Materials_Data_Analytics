@@ -265,7 +265,7 @@ class FreeEnergyLine(FreeEnergyShape):
         binned_data = pd.DataFrame({
             self.cvs[0]: data.groupby('bin').mean()[self.cvs[0]],
             'energy': data.groupby('bin').mean()['energy'],
-            'energy_err': data.groupby('bin').std()['energy']/np.sqrt(n_timestamps),
+            'energy_err': data.groupby('bin').std()['energy'],
             'population': data.groupby('bin').mean()['population'],
             'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
         }).dropna()
