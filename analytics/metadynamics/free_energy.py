@@ -463,22 +463,53 @@ class FreeEnergySpace:
         return figure
 
     @staticmethod
-    def _reweight_traj_data(data: pd.DataFrame, cv: str, bins: int | list[int | float] = 200, temperature: float = 298):
+    def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200, temperature: float = 298):
         """
-        Function to reweight a data frame using weights
+        Function to reweight a data frame using weights. Can do both one dimensional binning and two dimensional binning
         :param data: data frame to reweight
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
         :param temperature to get the population
         :return: reweighted dataframe
         """
-        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
+        if type(cv) == str:
+            histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
+            reweighted_data = (pd.DataFrame(histogram, index=['population', cv])
+                               .transpose()
+                               .dropna()
+                               .pipe(boltzmann_population_to_energy, temperature=temperature)
+                               )
+        elif type(cv) == list and len(cv) == 2:
+            histogram = np.histogram2d(x=data[cv[0]], y=data[cv[1]], bins=bins, weights=data['weight'], density=True)
+            x_points = [(histogram[1][i] + histogram[1][i + 1]) / 2 for i in range(0, len(histogram[1]) - 1)]
+            y_points = [(histogram[2][i] + histogram[2][i + 1]) / 2 for i in range(0, len(histogram[2]) - 1)]
+            reweighted_data = (pd.DataFrame(histogram[0], index=x_points, columns=y_points)
+                               .melt(var_name=cv[1], value_name="population", ignore_index=False)
+                               .reset_index(names=cv[0])
+                               .pipe(boltzmann_population_to_energy, temperature=temperature)
+                               )
+        else:
+            raise ValueError('Reweighting only supports one or two CVs at the moment')
 
-        return (pd.DataFrame(histogram, index=['population', cv])
-                .transpose()
-                .dropna()
-                .pipe(boltzmann_population_to_energy, temperature=temperature)
-                )
+        return reweighted_data
+
+    def get_reweighted_surface(self, cvs: list[str, str], bins: list[int, int]):
+        """
+        Function to get a reweighted surface
+        :param cvs: list with the two cvs. The first will go on the x-axis, the second on the y-axis
+        :param bins: list with two integers for the number of bins in each CV
+        :return: a free energy surface
+        """
+        data = []
+        for w, t in self.trajectories.items():
+            if cvs[0] in t.cvs and cvs[1] in t.cvs:
+                data.append(t.data)
+        if not data:
+            raise ValueError("no trajectories in this space have that CV")
+        data = pd.concat(data).sort_values('time')
+        fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
+        surface = FreeEnergySurface(fes_data)
+        return surface
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
         """
