@@ -107,6 +107,7 @@ class FreeEnergyShape:
         :return: value
         """
         new_cols = []
+        data = data.copy()
 
         for key, value in ref_coordinate.items():
             new_col = key + "_distance"
