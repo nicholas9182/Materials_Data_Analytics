@@ -461,32 +461,54 @@ class FreeEnergySpace:
 
         return figure
 
-    def get_reweighted_line(self, cv, bins: int | list[int | float] = 200):
+    @staticmethod
+    def _reweight_traj_data(data: pd.DataFrame, cv: str, bins: int | list[int | float] = 200, temperature: float = 298):
+        """
+        Function to reweight a data frame using weights
+        :param data: data frame to reweight
+        :param cv: the collective variable you are reweighting over
+        :param bins: number of bins, or a list of bin boundaries
+        :param temperature to get the population
+        :return: reweighted dataframe
+        """
+        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
+
+        return (pd.DataFrame(histogram, index=['population', cv])
+                .transpose()
+                .dropna()
+                .pipe(boltzmann_population_to_energy, temperature=temperature)
+                )
+
+    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
         analysis
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
+        :param n_timestamps: number of time stamps to have in the time_data
         :return:
         """
+        # combine the dats from the walkers into one dataframe
         data = []
-
         for w, t in self.trajectories.items():
             if cv in t.cvs:
                 data.append(t.data)
-
         if not data:
             raise ValueError("no trajectories in this space have that CV")
+        data = pd.concat(data).sort_values('time')
 
-        data = pd.concat(data)
+        # create data to feed to FreeEnergyLine either with or without time data
+        if n_timestamps is None:
+            fes_data = self._reweight_traj_data(data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
+        elif type(n_timestamps) == int:
+            fes_data = {}
+            max_time = data['time'].max()
+            for i in range(0, n_timestamps):
+                time = (i + 1) * max_time / n_timestamps
+                filtered_data = data.query('time <= @time')
+                fes_data[i+1] = self._reweight_traj_data(filtered_data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
+        else:
+            raise ValueError("n_timestamps needs to be None or integer!")
 
-        histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
-
-        data = (pd.DataFrame(histogram, index=['population', cv])
-                .transpose()
-                .dropna()
-                .pipe(boltzmann_population_to_energy, temperature=self.temperature)
-                )
-
-        line = FreeEnergyLine(data[[cv, 'energy', 'population']], temperature=self.temperature)
+        line = FreeEnergyLine(fes_data, temperature=self.temperature)
         return line
