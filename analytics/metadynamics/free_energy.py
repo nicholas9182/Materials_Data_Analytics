@@ -11,7 +11,7 @@ class MetaTrajectory:
     """
     Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
     """
-    def __init__(self, colvar_file: str, temperature: float = 298):
+    def __init__(self, colvar_file: str, temperature: float = 298, features: dict = None):
 
         self.data = (self._read_file(colvar_file)
                      .pipe(self._get_weights, temperature=temperature)
@@ -20,6 +20,7 @@ class MetaTrajectory:
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
         self.temperature = temperature
+        self.features = features
 
     @staticmethod
     def _read_file(file: str):
@@ -49,10 +50,24 @@ class MetaTrajectory:
 
         return data
 
+    def get_data(self, with_features: bool = False):
+        """
+        function to get the data from a free energy shape
+        :param with_features:
+        :return:
+        """
+        data = self.data.copy()
+        if with_features:
+            data['temperature'] = self.temperature
+            for key, value in self.features.items():
+                data[key] = value
+
+        return data
+
 
 class FreeEnergyShape:
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None, features: dict = None):
         """
         Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
         shapes should inherit from this class, and then make changes depending on whether the shape has particular features
@@ -77,6 +92,7 @@ class FreeEnergyShape:
         self.temperature = temperature
         self.cvs = self.data.columns.values.tolist()[:dimension]
         self.dimension = dimension
+        self.features = features
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
@@ -173,12 +189,26 @@ class FreeEnergyShape:
     def _read_file(file, **kwargs):
         pass
 
+    def get_data(self, with_features: bool = False):
+        """
+        function to get the data from a free energy shape
+        :param with_features:
+        :return:
+        """
+        data = self.data.copy()
+        if with_features:
+            data['temperature'] = self.temperature
+            for key, value in self.features.items():
+                data[key] = value
+
+        return data
+
 
 class FreeEnergyLine(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, features: dict = None):
 
-        super().__init__(data, temperature, dimension=1)
+        super().__init__(data, temperature, dimension=1, features=features)
 
         cv_min = self.data[self.cvs[0]].min()
         cv_max = self.data[self.cvs[0]].max()
@@ -207,12 +237,13 @@ class FreeEnergyLine(FreeEnergyShape):
         return data
 
     def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
-                            region_2: float | int | tuple[float | int, float | int] = None) -> pd.DataFrame:
+                            region_2: float | int | tuple[float | int, float | int] = None, with_features: bool = False) -> pd.DataFrame:
         """
         Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
         It can accept both numbers and tuples. If a tuple is given, it will take the mean of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
+        :param with_features: whether to return data with the line features
         :return: pandas dataframe with the data
         """
         time_data = []
@@ -239,6 +270,12 @@ class FreeEnergyLine(FreeEnergyShape):
             time_data.append(pd.DataFrame({'time_stamp': [key], 'energy_difference': [difference]}))
 
         time_data = pd.concat(time_data).sort_values('time_stamp')
+
+        if with_features:
+            time_data['temperature'] = self.temperature
+            for key, value in self.features.items():
+                time_data[key] = value
+
         return time_data
 
     def set_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200):
@@ -279,8 +316,8 @@ class FreeEnergyLine(FreeEnergyShape):
 
 class FreeEnergySurface(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298):
-        super().__init__(data, temperature, dimension=2)
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, features: dict = None):
+        super().__init__(data, temperature, dimension=2, features=features)
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
@@ -304,7 +341,7 @@ class FreeEnergySurface(FreeEnergyShape):
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str, temperature: float = 298):
+    def __init__(self, hills_file: str, temperature: float = 298, features: dict = None):
 
         self.hills_path = hills_file
         self.hills, self.sigmas = self._read_file(hills_file)
@@ -318,6 +355,7 @@ class FreeEnergySpace:
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
+        self.features = features
 
     @staticmethod
     def _read_file(file: str):
@@ -346,6 +384,7 @@ class FreeEnergySpace:
         :return: the appended trajectories
         """
         if meta_trajectory not in self.trajectories.values():
+            meta_trajectory.features = self.features
             self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
             print(f"trajectory is already in this space!")
@@ -358,7 +397,9 @@ class FreeEnergySpace:
         :param line: the fes to add
         :return: the fes for the landscape
         """
-        self.lines[line.cvs[0]] = line
+        cv = line.cvs[0]
+        line.features = self.features
+        self.lines[cv] = line
         return self
 
     def add_surface(self, surface: FreeEnergySurface):
@@ -368,6 +409,7 @@ class FreeEnergySpace:
         :return: the fes for the landscape
         """
         if surface not in self.surfaces:
+            surface.features = self.features
             self.surfaces.append(surface)
         else:
             raise ValueError("This surface is already in the space")
@@ -508,7 +550,7 @@ class FreeEnergySpace:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
         fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
-        surface = FreeEnergySurface(fes_data)
+        surface = FreeEnergySurface(fes_data, temperature=self.temperature, features=self.features)
         return surface
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
@@ -542,5 +584,20 @@ class FreeEnergySpace:
         else:
             raise ValueError("n_timestamps needs to be None or integer!")
 
-        line = FreeEnergyLine(fes_data, temperature=self.temperature)
+        line = FreeEnergyLine(fes_data, temperature=self.temperature, features=self.features)
         return line
+
+    def get_data(self, with_features: bool = False):
+        """
+        function to get the data from a free energy shape
+        :param with_features:
+        :return:
+        """
+        data = self.hills.copy()
+        if with_features:
+            data['temperature'] = self.temperature
+            for key, value in self.features.items():
+                data[key] = value
+
+
+        return data
