@@ -11,7 +11,7 @@ class MetaTrajectory:
     """
     Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
     """
-    def __init__(self, colvar_file: str, temperature: float = 298, features: dict = None):
+    def __init__(self, colvar_file: str, temperature: float = 298, metadata: dict = None):
 
         self.data = (self._read_file(colvar_file)
                      .pipe(self._get_weights, temperature=temperature)
@@ -20,7 +20,7 @@ class MetaTrajectory:
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
         self.temperature = temperature
-        self.features = features
+        self.metadata = metadata
 
     @staticmethod
     def _read_file(file: str):
@@ -50,16 +50,16 @@ class MetaTrajectory:
 
         return data
 
-    def get_data(self, with_features: bool = False):
+    def get_data(self, with_metadata: bool = False):
         """
         function to get the data from a free energy shape
-        :param with_features:
+        :param with_metadata:
         :return:
         """
         data = self.data.copy()
-        if with_features:
+        if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.features.items():
+            for key, value in self.metadata.items():
                 data[key] = value
 
         return data
@@ -67,7 +67,7 @@ class MetaTrajectory:
 
 class FreeEnergyShape:
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None, features: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None, metadata: dict = None):
         """
         Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
         shapes should inherit from this class, and then make changes depending on whether the shape has particular features
@@ -92,7 +92,7 @@ class FreeEnergyShape:
         self.temperature = temperature
         self.cvs = self.data.columns.values.tolist()[:dimension]
         self.dimension = dimension
-        self.features = features
+        self.metadata = metadata
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
@@ -189,16 +189,16 @@ class FreeEnergyShape:
     def _read_file(file, **kwargs):
         pass
 
-    def get_data(self, with_features: bool = False):
+    def get_data(self, with_metadata: bool = False):
         """
         function to get the data from a free energy shape
-        :param with_features:
+        :param with_metadata:
         :return:
         """
         data = self.data.copy()
-        if with_features:
+        if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.features.items():
+            for key, value in self.metadata.items():
                 data[key] = value
 
         return data
@@ -206,9 +206,9 @@ class FreeEnergyShape:
 
 class FreeEnergyLine(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, features: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, metadata: dict = None):
 
-        super().__init__(data, temperature, dimension=1, features=features)
+        super().__init__(data, temperature, metadata=metadata, dimension=1)
 
         cv_min = self.data[self.cvs[0]].min()
         cv_max = self.data[self.cvs[0]].max()
@@ -237,13 +237,13 @@ class FreeEnergyLine(FreeEnergyShape):
         return data
 
     def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
-                            region_2: float | int | tuple[float | int, float | int] = None, with_features: bool = False) -> pd.DataFrame:
+                            region_2: float | int | tuple[float | int, float | int] = None, with_metadata: bool = False) -> pd.DataFrame:
         """
         Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
         It can accept both numbers and tuples. If a tuple is given, it will take the mean of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
-        :param with_features: whether to return data with the line features
+        :param with_metadata: whether to return data with the line metadata
         :return: pandas dataframe with the data
         """
         time_data = []
@@ -271,9 +271,9 @@ class FreeEnergyLine(FreeEnergyShape):
 
         time_data = pd.concat(time_data).sort_values('time_stamp')
 
-        if with_features:
+        if with_metadata:
             time_data['temperature'] = self.temperature
-            for key, value in self.features.items():
+            for key, value in self.metadata.items():
                 time_data[key] = value
 
         return time_data
@@ -316,8 +316,8 @@ class FreeEnergyLine(FreeEnergyShape):
 
 class FreeEnergySurface(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, features: dict = None):
-        super().__init__(data, temperature, dimension=2, features=features)
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, metadata: dict = None):
+        super().__init__(data, temperature, dimension=2, metadata=metadata)
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
@@ -341,7 +341,7 @@ class FreeEnergySurface(FreeEnergyShape):
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str, temperature: float = 298, features: dict = None):
+    def __init__(self, hills_file: str, temperature: float = 298, metadata: dict = None):
 
         self.hills_path = hills_file
         self.hills, self.sigmas = self._read_file(hills_file)
@@ -355,7 +355,7 @@ class FreeEnergySpace:
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
-        self.features = features
+        self.metadata = metadata
 
     @staticmethod
     def _read_file(file: str):
@@ -384,7 +384,7 @@ class FreeEnergySpace:
         :return: the appended trajectories
         """
         if meta_trajectory not in self.trajectories.values():
-            meta_trajectory.features = self.features
+            meta_trajectory.metadata = self.metadata
             self.trajectories[meta_trajectory.walker] = meta_trajectory
         else:
             print(f"trajectory is already in this space!")
@@ -398,7 +398,7 @@ class FreeEnergySpace:
         :return: the fes for the landscape
         """
         cv = line.cvs[0]
-        line.features = self.features
+        line.metadata = self.metadata
         self.lines[cv] = line
         return self
 
@@ -409,7 +409,7 @@ class FreeEnergySpace:
         :return: the fes for the landscape
         """
         if surface not in self.surfaces:
-            surface.features = self.features
+            surface.metadata = self.metadata
             self.surfaces.append(surface)
         else:
             raise ValueError("This surface is already in the space")
@@ -550,7 +550,7 @@ class FreeEnergySpace:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
         fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
-        surface = FreeEnergySurface(fes_data, temperature=self.temperature, features=self.features)
+        surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self.metadata)
         return surface
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
@@ -584,20 +584,19 @@ class FreeEnergySpace:
         else:
             raise ValueError("n_timestamps needs to be None or integer!")
 
-        line = FreeEnergyLine(fes_data, temperature=self.temperature, features=self.features)
+        line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self.metadata)
         return line
 
-    def get_data(self, with_features: bool = False):
+    def get_data(self, with_metadata: bool = False):
         """
         function to get the data from a free energy shape
-        :param with_features:
+        :param with_metadata:
         :return:
         """
         data = self.hills.copy()
-        if with_features:
+        if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.features.items():
+            for key, value in self.metadata.items():
                 data[key] = value
-
 
         return data
