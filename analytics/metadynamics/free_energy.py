@@ -452,7 +452,7 @@ class FreeEnergySpace:
 
         return figs
 
-    def get_hills_average_across_walkers(self, time_resolution: int = 5):
+    def get_hills_average_across_walkers(self, time_resolution: int = 5, with_metadata: bool = False):
         """
         function to get the average hill height, averaged across the walkers.
         :return:
@@ -464,7 +464,14 @@ class FreeEnergySpace:
                     .reset_index()
                     )
 
-        return av_hills[['time', 'height']]
+        av_hills = av_hills[['time', 'height']]
+
+        if with_metadata:
+            av_hills['temperature'] = self.temperature
+            for key, value in self.metadata.items():
+                av_hills[key] = value
+
+        return av_hills
 
     def get_average_hills_figure(self, **kwargs):
         """
@@ -478,7 +485,7 @@ class FreeEnergySpace:
         figure.update_traces(line=dict(width=1))
         return figure
 
-    def get_hills_max_across_walkers(self, time_resolution: int = 5):
+    def get_hills_max_across_walkers(self, time_resolution: int = 5, with_metadata: bool = False):
         """
         function to get the average hill height, averaged across the walkers.
         :return:
@@ -490,7 +497,14 @@ class FreeEnergySpace:
                      .reset_index()
                      )
 
-        return max_hills[['time', 'height']]
+        max_hills = max_hills[['time', 'height']]
+
+        if with_metadata:
+            max_hills['temperature'] = self.temperature
+            for key, value in self.metadata.items():
+                max_hills[key] = value
+
+        return max_hills
 
     def get_max_hills_figure(self, **kwargs):
         """
