@@ -233,6 +233,26 @@ class TestFreeEnergySurface(unittest.TestCase):
 
 class TestFreeEnergySpace(unittest.TestCase):
 
+    landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
+
+    traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
+    traj1 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.1")
+    traj2 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.2")
+    traj3 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.3")
+    traj4 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.4")
+    traj5 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.5")
+    traj6 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.6")
+    traj7 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.7")
+
+    landscape.add_metad_trajectory(traj0)
+    landscape.add_metad_trajectory(traj1)
+    landscape.add_metad_trajectory(traj2)
+    landscape.add_metad_trajectory(traj3)
+    landscape.add_metad_trajectory(traj4)
+    landscape.add_metad_trajectory(traj5)
+    landscape.add_metad_trajectory(traj6)
+    landscape.add_metad_trajectory(traj7)
+
     def test_make_landscape(self):
         """
         check that landscape constructor works
@@ -248,8 +268,7 @@ class TestFreeEnergySpace(unittest.TestCase):
 
     def test_hills_plotter_default_values(self):
 
-        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
-        figures = landscape.get_hills_figures()
+        figures = self.landscape.get_hills_figures()
         self.assertEqual(len(figures), 8)
         self.assertTrue(figures[0]._validate)
         self.assertTrue(figures[1]._validate)
@@ -277,27 +296,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
-
-        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
-        traj1 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.1")
-        traj2 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.2")
-        traj3 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.3")
-        traj4 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.4")
-        traj5 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.5")
-        traj6 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.6")
-        traj7 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.7")
-
-        landscape.add_metad_trajectory(traj0)
-        landscape.add_metad_trajectory(traj1)
-        landscape.add_metad_trajectory(traj2)
-        landscape.add_metad_trajectory(traj3)
-        landscape.add_metad_trajectory(traj4)
-        landscape.add_metad_trajectory(traj5)
-        landscape.add_metad_trajectory(traj6)
-        landscape.add_metad_trajectory(traj7)
-
-        fes = landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
+        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
         self.assertEqual(fes.data[fes.data['D1'] == 0]['energy'].values[0], 0)
 
     def test_two_bin_reweighted_cv_with_time_stamps(self):
@@ -305,29 +304,49 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
-
-        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
-        traj1 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.1")
-        traj2 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.2")
-        traj3 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.3")
-        traj4 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.4")
-        traj5 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.5")
-        traj6 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.6")
-        traj7 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.7")
-
-        landscape.add_metad_trajectory(traj0)
-        landscape.add_metad_trajectory(traj1)
-        landscape.add_metad_trajectory(traj2)
-        landscape.add_metad_trajectory(traj3)
-        landscape.add_metad_trajectory(traj4)
-        landscape.add_metad_trajectory(traj5)
-        landscape.add_metad_trajectory(traj6)
-        landscape.add_metad_trajectory(traj7)
-
-        fes = landscape.get_reweighted_line('D1', bins=[0, 3, 7], n_timestamps=5).set_datum({'D1': 0})
+        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], n_timestamps=5).set_datum({'D1': 0})
         self.assertEqual(fes.data[fes.data['D1'] == 0]['energy'].values[0], 0)
         self.assertTrue(type(fes.time_data) == dict)
         self.assertTrue(type(fes.time_data[1]) == pd.DataFrame)
         self.assertTrue(type(fes.time_data[3]) == pd.DataFrame)
         self.assertTrue(type(fes.time_data[5]) == pd.DataFrame)
+
+    def test_temperature_parsed_to_traj(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS", temperature=320)
+        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
+        landscape.add_metad_trajectory(traj0)
+        self.assertEqual(landscape.trajectories[0].temperature, 320)
+
+    def test_metad_parsed_to_traj(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS", metadata=dict(oligomer='NDI'))
+        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
+        landscape.add_metad_trajectory(traj0)
+        self.assertEqual(landscape.trajectories[0].metadata['oligomer'], 'NDI')
+
+    def test_temperature_parsed_to_line(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS", temperature=320)
+        traj0 = FreeEnergyLine.from_plumed("../test_trajectories/ndi_na_binding/FES_CM1.dat")
+        landscape.add_line(traj0)
+        self.assertEqual(landscape.lines['CM1'].temperature, 320)
+
+    def test_metad_parsed_to_line(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS", metadata=dict(oligomer='NDI'))
+        traj0 = FreeEnergyLine.from_plumed("../test_trajectories/ndi_na_binding/FES_CM1.dat")
+        landscape.add_line(traj0)
+        self.assertEqual(landscape.lines['CM1'].metadata['oligomer'], 'NDI')

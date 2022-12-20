@@ -383,12 +383,9 @@ class FreeEnergySpace:
         :param meta_trajectory: a metaD trajectory object to add to the landscape
         :return: the appended trajectories
         """
-        if meta_trajectory not in self.trajectories.values():
-            meta_trajectory.metadata = self.metadata
-            self.trajectories[meta_trajectory.walker] = meta_trajectory
-        else:
-            print(f"trajectory is already in this space!")
-
+        meta_trajectory.temperature = self.temperature
+        meta_trajectory.metadata = self.metadata
+        self.trajectories[meta_trajectory.walker] = meta_trajectory
         return self
 
     def add_line(self, line: FreeEnergyLine):
@@ -399,6 +396,7 @@ class FreeEnergySpace:
         """
         cv = line.cvs[0]
         line.metadata = self.metadata
+        line.temperature = self.temperature
         self.lines[cv] = line
         return self
 
@@ -408,11 +406,9 @@ class FreeEnergySpace:
         :param surface: the fes to add
         :return: the fes for the landscape
         """
-        if surface not in self.surfaces:
-            surface.metadata = self.metadata
-            self.surfaces.append(surface)
-        else:
-            raise ValueError("This surface is already in the space")
+        surface.metadata = self.metadata
+        surface.temperature = self.temperature
+        self.surfaces.append(surface)
         return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
