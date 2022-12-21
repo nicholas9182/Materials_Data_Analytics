@@ -352,13 +352,14 @@ class FreeEnergySpace:
 
     def __init__(self, hills_file: str = None, temperature: float = 298, metadata: dict = None):
 
-        self._hills, self.sigmas = self._read_file(hills_file)
-        self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
-        self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
-        self.max_time = self._hills['time'].max()
-        self.dt = self.max_time/self.n_timesteps
-        self._hills['walker'] = self._hills.groupby('time').cumcount()
-        self.cvs = self._hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+        if hills_file is not None:
+            self._hills, self.sigmas = self._read_file(hills_file)
+            self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
+            self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
+            self.max_time = self._hills['time'].max()
+            self.dt = self.max_time/self.n_timesteps
+            self._hills['walker'] = self._hills.groupby('time').cumcount()
+            self.cvs = self._hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -559,11 +560,18 @@ class FreeEnergySpace:
         """
         if type(cv) == str:
             histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
-            reweighted_data = (pd.DataFrame(histogram, index=['population', cv])
-                               .transpose()
-                               .dropna()
-                               .pipe(boltzmann_population_to_energy, temperature=temperature)
-                               )
+            x_points = [(histogram[1][i] + histogram[1][i + 1]) / 2 for i in range(0, len(histogram[1]) - 1)]
+            if type(bins) == list:
+                x_widths = [(histogram[1][i+1] - histogram[1][i]) for i in range(0, len(histogram[1]) - 1)]
+                pop = [histogram[0][i] * x_widths[i] for i in range(0, len(histogram[0]))]
+            else:
+                pop = [p for p in histogram[0]]
+
+            reweighted_data = pd.DataFrame({
+                'population': pop,
+                cv: x_points
+            }).pipe(boltzmann_population_to_energy, temperature=temperature)
+
         elif type(cv) == list and len(cv) == 2:
             histogram = np.histogram2d(x=data[cv[0]], y=data[cv[1]], bins=bins, weights=data['weight'], density=True)
             x_points = [(histogram[1][i] + histogram[1][i + 1]) / 2 for i in range(0, len(histogram[1]) - 1)]
@@ -588,7 +596,7 @@ class FreeEnergySpace:
         data = []
         for w, t in self.trajectories.items():
             if cvs[0] in t.cvs and cvs[1] in t.cvs:
-                data.append(t.data)
+                data.append(t.get_data())
         if not data:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')

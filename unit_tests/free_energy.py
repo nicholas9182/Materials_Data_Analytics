@@ -297,7 +297,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
-        self.assertEqual(fes._data[fes._data['D1'] == 0]['energy'].values[0], 0)
+        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
 
     def test_two_bin_reweighted_cv_with_time_stamps(self):
         """
@@ -305,7 +305,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], n_timestamps=5).set_datum({'D1': 0})
-        self.assertEqual(fes._data[fes._data['D1'] == 0]['energy'].values[0], 0)
+        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
         self.assertTrue(type(fes._time_data) == dict)
         self.assertTrue(type(fes._time_data[1]) == pd.DataFrame)
         self.assertTrue(type(fes._time_data[3]) == pd.DataFrame)
