@@ -27,7 +27,7 @@ def main(colvar_file: str, condition: str, traj_file: str = None, sample_size: i
     :param output_structures: output the structures?
     :return:
     """
-    data = MetaTrajectory(colvar_file=colvar_file, temperature=temperature).data
+    data = MetaTrajectory(colvar_file=colvar_file, temperature=temperature)._data
 
     for c in condition:
         data = data.query(c)

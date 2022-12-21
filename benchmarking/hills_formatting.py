@@ -5,7 +5,7 @@ from timer import Timer
 
 def benchmark_formatting_hills_v1() -> pd.DataFrame:
     """
-    old way of formatting the hills that is very slow
+    old way of formatting the _hills that is very slow
     :return:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")

@@ -6,12 +6,12 @@ from analytics.metadynamics.free_energy import FreeEnergySpace
 
 def benchmark_plotting_hills_v1(time_res: int) -> pd.DataFrame:
     """
-    old way of formatting the hills that is very slow using apply and assign
+    old way of formatting the _hills that is very slow using apply and assign
     :return:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
     landscape = FreeEnergySpace(data)
-    hills = landscape.hills
+    hills = landscape._hills
     cvs = landscape.cvs
     long_hills = (hills
                   .melt(value_vars=cvs+['height'], id_vars=['time', 'walker'])
@@ -31,7 +31,7 @@ def benchmark_plotting_hills_v2(time_res: int) -> pd.DataFrame:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
     landscape = FreeEnergySpace(data)
-    hills = landscape.hills
+    hills = landscape._hills
     cvs = landscape.cvs
     long_hills = (hills
                   .melt(value_vars=cvs+['height'], id_vars=['time', 'walker'])
@@ -49,7 +49,7 @@ def benchmark_plotting_hills_v3(time_res: int) -> pd.DataFrame:
     """
     data = pl.read_as_pandas("/Users/nicholassiemons/Dropbox/OBT/0091/002/HILLS")
     landscape = FreeEnergySpace(data)
-    hills = landscape.hills
+    hills = landscape._hills
     cvs = landscape.cvs
     long_hills = (hills
                   .melt(value_vars=cvs+['height'], id_vars=['time', 'walker'])

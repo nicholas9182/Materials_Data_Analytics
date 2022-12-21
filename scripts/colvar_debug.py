@@ -13,5 +13,5 @@ files = [path + f for f in os.listdir(path) if 'COLVAR_REWEIGHT' in f and 'bck' 
 [space.add_metad_trajectory(MetaTrajectory(f)) for f in files]
 
 data = space.get_line('CM4', bins=2)
-data = data.data
+data = data._data
 print(data)

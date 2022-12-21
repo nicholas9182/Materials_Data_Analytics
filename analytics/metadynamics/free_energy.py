@@ -13,21 +13,21 @@ class MetaTrajectory:
     """
     def __init__(self, colvar_file: str, temperature: float = 298, metadata: dict = None):
 
-        self.data = (self._read_file(colvar_file)
-                     .pipe(self._get_weights, temperature=temperature)
-                     )
+        self._data = (self._read_file(colvar_file)
+                      .pipe(self._get_weights, temperature=temperature)
+                      )
 
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = self.data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
+        self.cvs = self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
         self.temperature = temperature
-        self.metadata = metadata
+        self._metadata = metadata
 
     @staticmethod
     def _read_file(file: str):
         """
-        Function to read in colvar data, replacement for pl.read_as_pandas
+        Function to read in colvar _data, replacement for pl.read_as_pandas
         :param file: file to read in
-        :return: data in that file in pandas format
+        :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
@@ -52,14 +52,14 @@ class MetaTrajectory:
 
     def get_data(self, with_metadata: bool = False):
         """
-        function to get the data from a free energy shape
+        function to get the _data from a free energy shape
         :param with_metadata:
         :return:
         """
-        data = self.data.copy()
+        data = self._data.copy()
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 data[key] = value
 
         return data
@@ -71,34 +71,34 @@ class FreeEnergyShape:
         """
         Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
         shapes should inherit from this class, and then make changes depending on whether the shape has particular features
-        :param data: the data needed to make the shape
+        :param data: the _data needed to make the shape
         :param temperature: the temperature at which the shape is defined
         :param dimension: the dimension of the shape
         """
         if type(data) == pd.DataFrame:
             if {'energy'}.issubset(data.columns) is False:
                 raise ValueError("make sure there is an energy column in your dataframe")
-            self.time_data = None
-            self.data = data
+            self._time_data = None
+            self._data = data
         elif type(data) == dict:
             for _, value in data.items():
                 if {'energy'}.issubset(value.columns) is False:
                     raise ValueError("make sure there is an energy column in each dataframe in your dict")
-            self.time_data = data
-            self.data = data[max(data)].copy()
+            self._time_data = data
+            self._data = data[max(data)].copy()
         else:
             raise ValueError("fes_file must be a pd.Dataframe or a list[pd.Dataframe]")
 
         self.temperature = temperature
-        self.cvs = self.data.columns.values.tolist()[:dimension]
+        self.cvs = self._data.columns.values.tolist()[:dimension]
         self.dimension = dimension
-        self.metadata = metadata
+        self._metadata = metadata
 
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
         """
         alternate constructor to build the fes from a plumed file
-        :param file: the file or list of files to make the plumed fes from. if list then it will make the time data
+        :param file: the file or list of files to make the plumed fes from. if list then it will make the time _data
         :return: fes object
         """
         if type(file) == str:
@@ -117,7 +117,7 @@ class FreeEnergyShape:
     def _get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
         """
         Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a pythagorean distance
-        :param data: data
+        :param data: _data
         :param ref_coordinate: dict with the column as the key and the value as the value
         :param val_col: column from which to get the value
         :return: value
@@ -141,8 +141,8 @@ class FreeEnergyShape:
     @staticmethod
     def _get_mean_in_range(data: pd.DataFrame, ref_col, val_col, area: tuple[int | float, int | float]):
         """
-        Get the mean value in val_col over a range in ref_col, assumes ordered data
-        :param data: data
+        Get the mean value in val_col over a range in ref_col, assumes ordered _data
+        :param data: _data
         :param ref_col: the column over which you take the range
         :param val_col: the column from which you want the mean
         :param area: tuple specifying the range
@@ -167,17 +167,17 @@ class FreeEnergyShape:
                 raise ValueError("The keys for the datum dictionary need to be cvs!")
 
         if type(datum[self.cvs[0]]) == float or type(datum[self.cvs[0]]) == int:
-            adjust_value = self._get_nearest_value(self.data, datum, 'energy')
-            self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data is not None:
-                for _, v in self.time_data.items():
+            adjust_value = self._get_nearest_value(self._data, datum, 'energy')
+            self._data['energy'] = self._data['energy'] - adjust_value
+            if self._time_data is not None:
+                for _, v in self._time_data.items():
                     adjust_value = self._get_nearest_value(v, datum, 'energy')
                     v['energy'] = v['energy'] - adjust_value
         elif type(datum[self.cvs[0]]) == tuple:
-            adjust_value = self._get_mean_in_range(self.data, self.cvs[0], 'energy', datum[self.cvs[0]])
-            self.data['energy'] = self.data['energy'] - adjust_value
-            if self.time_data is not None:
-                for _, v in self.time_data.items():
+            adjust_value = self._get_mean_in_range(self._data, self.cvs[0], 'energy', datum[self.cvs[0]])
+            self._data['energy'] = self._data['energy'] - adjust_value
+            if self._time_data is not None:
+                for _, v in self._time_data.items():
                     adjust_value = self._get_mean_in_range(v, self.cvs[0], 'energy', datum[self.cvs[0]])
                     v['energy'] = v['energy'] - adjust_value
         else:
@@ -189,16 +189,25 @@ class FreeEnergyShape:
     def _read_file(file, **kwargs):
         pass
 
-    def get_data(self, with_metadata: bool = False):
+    def get_data(self, with_metadata: bool = False, with_timedata: bool = False):
         """
-        function to get the data from a free energy shape
-        :param with_metadata:
+        function to get the _data from a free energy shape
+        :param with_metadata: also return the metadata as columns
+        :param with_timedata: return the time data with the time stamp as a column
         :return:
         """
-        data = self.data.copy()
+        if with_timedata:
+            data = []
+            for ts, d in self._time_data.items():
+                d['timestamp'] = ts
+                data.append(d)
+            data = pd.concat(data)
+        else:
+            data = self._data.copy()
+
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 data[key] = value
 
         return data
@@ -210,10 +219,10 @@ class FreeEnergyLine(FreeEnergyShape):
 
         super().__init__(data, temperature, metadata=metadata, dimension=1)
 
-        cv_min = self.data[self.cvs[0]].min()
-        cv_max = self.data[self.cvs[0]].max()
+        cv_min = self._data[self.cvs[0]].min()
+        cv_max = self._data[self.cvs[0]].max()
 
-        if self.data.shape[0] > 2:
+        if self._data.shape[0] > 2:
             lower = cv_min + (cv_max - cv_min) / 6
             upper = cv_min + (5 * (cv_max - cv_min)) / 6
             self.set_datum({self.cvs[0]: (lower, upper)})
@@ -223,10 +232,10 @@ class FreeEnergyLine(FreeEnergyShape):
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
         """
-        Function to read in fes line data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
+        Function to read in fes line _data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
         :param file: file to read in
         :param temperature: temperature of system
-        :return: data in that file in pandas format
+        :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
         data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
@@ -243,12 +252,12 @@ class FreeEnergyLine(FreeEnergyShape):
         It can accept both numbers and tuples. If a tuple is given, it will take the mean of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
-        :param with_metadata: whether to return data with the line metadata
-        :return: pandas dataframe with the data
+        :param with_metadata: whether to return _data with the line _metadata
+        :return: pandas dataframe with the _data
         """
         time_data = []
 
-        for key, df in self.time_data.items():
+        for key, df in self._time_data.items():
 
             if type(region_1) == int or type(region_1) == float:
                 value_1 = df.loc[(df[self.cvs[0]] - region_1).abs().argsort()[:1], 'energy'].values[0]
@@ -273,26 +282,26 @@ class FreeEnergyLine(FreeEnergyShape):
 
         if with_metadata:
             time_data['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 time_data[key] = value
 
         return time_data
 
     def set_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200):
         """
-        Function to get data and errors from considering the time dynamics of the FES
+        Function to get _data and errors from considering the time dynamics of the FES
         :param n_timestamps: How many past FES time stamps to look at. Consider plotting the value of the minima as a function of time to see what
         an appropriate value is for this
-        :param bins: Number of data points to have on your FES
+        :param bins: Number of _data points to have on your FES
         :return: dataframe with the errors.
         """
-        if self.time_data is None:
-            raise ValueError("You need time data to use this function")
+        if self._time_data is None:
+            raise ValueError("You need time _data to use this function")
 
         data = []
-        min_timestamp = max(self.time_data) - n_timestamps
+        min_timestamp = max(self._time_data) - n_timestamps
 
-        for key, value in self.time_data.items():
+        for key, value in self._time_data.items():
             value['timestamp'] = key
             data.append(value)
 
@@ -309,7 +318,7 @@ class FreeEnergyLine(FreeEnergyShape):
             'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
         }).dropna()
 
-        self.data = binned_data
+        self._data = binned_data
 
         return self
 
@@ -322,10 +331,10 @@ class FreeEnergySurface(FreeEnergyShape):
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
         """
-        Function to read in fes surface data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
+        Function to read in fes surface _data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
         :param file: file to read in
         :param temperature: temperature of system
-        :return: data in that file in pandas format
+        :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
         drop_cols = [c for c in col_names if 'der_' in c]
@@ -341,28 +350,27 @@ class FreeEnergySurface(FreeEnergyShape):
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str, temperature: float = 298, metadata: dict = None):
+    def __init__(self, hills_file: str = None, temperature: float = 298, metadata: dict = None):
 
-        self.hills_path = hills_file
-        self.hills, self.sigmas = self._read_file(hills_file)
-        self.n_walker = self.hills[self.hills['time'] == min(self.hills['time'])].shape[0]
-        self.n_timesteps = self.hills[['time']].drop_duplicates().shape[0]
-        self.max_time = self.hills['time'].max()
+        self._hills, self.sigmas = self._read_file(hills_file)
+        self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
+        self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
+        self.max_time = self._hills['time'].max()
         self.dt = self.max_time/self.n_timesteps
-        self.hills['walker'] = self.hills.groupby('time').cumcount()
-        self.cvs = self.hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+        self._hills['walker'] = self._hills.groupby('time').cumcount()
+        self.cvs = self._hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
-        self.metadata = metadata
+        self._metadata = metadata
 
     @staticmethod
     def _read_file(file: str):
         """
-        Function to read in hills data
+        Function to read in _hills _data
         :param file: file to read in
-        :return: data in that file in pandas format
+        :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
         sigmas = [col for col in col_names if col.split("_")[0] == 'sigma']
@@ -384,7 +392,7 @@ class FreeEnergySpace:
         :return: the appended trajectories
         """
         meta_trajectory.temperature = self.temperature
-        meta_trajectory.metadata = self.metadata
+        meta_trajectory._metadata = self._metadata
         self.trajectories[meta_trajectory.walker] = meta_trajectory
         return self
 
@@ -395,7 +403,7 @@ class FreeEnergySpace:
         :return: the fes for the landscape
         """
         cv = line.cvs[0]
-        line.metadata = self.metadata
+        line._metadata = self._metadata
         line.temperature = self.temperature
         self.lines[cv] = line
         return self
@@ -406,21 +414,26 @@ class FreeEnergySpace:
         :param surface: the fes to add
         :return: the fes for the landscape
         """
-        surface.metadata = self.metadata
+        surface._metadata = self._metadata
         surface.temperature = self.temperature
         self.surfaces.append(surface)
         return self
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
-        Function to turn the hills into long format, and allow for time binning and height power conversion
-        :param time_resolution: bin the data into time bins with this number of decimal places. Useful for producing a smaller long format hills
+        Function to turn the _hills into long format, and allow for time binning and height power conversion
+        :param time_resolution: bin the _data into time bins with this number of decimal places. Useful for producing a smaller long format _hills
         dataframe.
-        :param height_power: raise the height to the power of this so to see hills easier. Useful when plotting, and you want to see the small hills.
+        :param height_power: raise the height to the power of this so to see _hills easier. Useful when plotting, and you want to see the small
+        _hills.
         :return:
         """
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
         height_label = 'height^' + str(height_power) if height_power != 1 else 'height'
-        long_hills = self.hills.rename(columns={'height': height_label})
+        long_hills = self._hills.rename(columns={'height': height_label})
         long_hills[height_label] = long_hills[height_label].pow(height_power)
         long_hills = (long_hills
                       .melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
@@ -434,9 +447,13 @@ class FreeEnergySpace:
 
     def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
         """
-        Function to get a dictionary of plotly figure objects summarising the dynamics and hills for each walker in a metadynamics simulation.
+        Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a metadynamics simulation.
         :return:
         """
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
         long_hills = self.get_long_hills(**kwargs).groupby('walker')
         figs = {}
         for name, df in long_hills:
@@ -453,7 +470,11 @@ class FreeEnergySpace:
         function to get the average hill height, averaged across the walkers.
         :return:
         """
-        av_hills = (self.hills
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
+        av_hills = (self._hills
                     .assign(time=lambda x: x['time'].round(time_resolution))
                     .groupby(['time'])
                     .mean()
@@ -464,16 +485,20 @@ class FreeEnergySpace:
 
         if with_metadata:
             av_hills['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 av_hills[key] = value
 
         return av_hills
 
     def get_average_hills_figure(self, **kwargs):
         """
-        function to get figure of average hills across walkers
+        function to get figure of average _hills across walkers
         :return:
         """
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
         av_hills = self.get_hills_average_across_walkers(**kwargs)
         figure = px.line(av_hills, x='time', y='height', log_y=True, template=custom_dark_template,
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
@@ -486,7 +511,11 @@ class FreeEnergySpace:
         function to get the average hill height, averaged across the walkers.
         :return:
         """
-        max_hills = (self.hills
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
+        max_hills = (self._hills
                      .assign(time=lambda x: x['time'].round(time_resolution))
                      .groupby(['time'])
                      .max()
@@ -497,16 +526,20 @@ class FreeEnergySpace:
 
         if with_metadata:
             max_hills['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 max_hills[key] = value
 
         return max_hills
 
     def get_max_hills_figure(self, **kwargs):
         """
-        function to get figure of average hills across walkers
+        function to get figure of average _hills across walkers
         :return:
         """
+
+        if self._hills is None:
+            raise ValueError("The space needs some hills data!")
+
         max_hills = self.get_hills_max_across_walkers(**kwargs)
         figure = px.line(max_hills, x='time', y='height', log_y=True, template=custom_dark_template,
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'})
@@ -517,8 +550,8 @@ class FreeEnergySpace:
     @staticmethod
     def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200, temperature: float = 298):
         """
-        Function to reweight a data frame using weights. Can do both one dimensional binning and two dimensional binning
-        :param data: data frame to reweight
+        Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional binning
+        :param data: _data frame to reweight
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
         :param temperature to get the population
@@ -560,7 +593,7 @@ class FreeEnergySpace:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
         fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
-        surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self.metadata)
+        surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
@@ -569,19 +602,19 @@ class FreeEnergySpace:
         analysis
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
-        :param n_timestamps: number of time stamps to have in the time_data
+        :param n_timestamps: number of time stamps to have in the _time_data
         :return:
         """
         # combine the dats from the walkers into one dataframe
         data = []
         for w, t in self.trajectories.items():
             if cv in t.cvs:
-                data.append(t.data)
+                data.append(t.get_data())
         if not data:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
 
-        # create data to feed to FreeEnergyLine either with or without time data
+        # create _data to feed to FreeEnergyLine either with or without time _data
         if n_timestamps is None:
             fes_data = self._reweight_traj_data(data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
         elif type(n_timestamps) == int:
@@ -594,19 +627,19 @@ class FreeEnergySpace:
         else:
             raise ValueError("n_timestamps needs to be None or integer!")
 
-        line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self.metadata)
+        line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
         return line
 
     def get_data(self, with_metadata: bool = False):
         """
-        function to get the data from a free energy shape
+        function to get the _data from a free energy shape
         :param with_metadata:
         :return:
         """
-        data = self.hills.copy()
+        data = self._hills.copy()
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self.metadata.items():
+            for key, value in self._metadata.items():
                 data[key] = value
 
         return data

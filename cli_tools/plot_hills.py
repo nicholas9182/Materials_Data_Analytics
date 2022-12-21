@@ -8,14 +8,14 @@ from analytics.metadynamics.free_energy import FreeEnergySpace
 @click.option("--file", "-f", default="HILLS", help="Hills file to plot", type=str)
 @click.option("--output", "-o", default="Figures/", help="Output directory for figures", type=str)
 @click.option("--time_resolution", "-tr", default=6, help="Number of decimal places for time values", type=int)
-@click.option("--height_power", "-hp", default=1, help="Power to raise height of hills for easier visualisation", type=float)
+@click.option("--height_power", "-hp", default=1, help="Power to raise height of _hills for easier visualisation", type=float)
 def main(file: str, output: str, time_resolution: int, height_power: float):
     """
-    cli tool to plot hill heights for all walkers, as well as the value of their CV. It also plots the average and max hills deposited
+    cli tool to plot hill heights for all walkers, as well as the value of their CV. It also plots the average and max _hills deposited
     :param file: the location of the HILLS file
     :param output: folder in which to put images
     :param time_resolution: how to bin the t axis for faster plotting
-    :param height_power: power to raise hills too for easier visualisation
+    :param height_power: power to raise _hills too for easier visualisation
     :return: saved figures
     """
     landscape = FreeEnergySpace(file)

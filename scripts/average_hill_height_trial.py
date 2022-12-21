@@ -5,7 +5,7 @@ hills2 = pl.read_as_pandas("../test_trajectories/ndi_na_binding/HILLS")
 landscape = FreeEnergySpace(hills2)
 
 av_hills = (landscape
-            .hills
+            ._hills
             .assign(time=lambda x: x['time'].round(1))
             .groupby(['time'])
             .mean()
@@ -15,7 +15,7 @@ av_hills = (landscape
 print(av_hills[['time', 'height']])
 
 max_hills = (landscape
-             .hills
+             ._hills
              .groupby(['time'])
              .max()
              .reset_index()
