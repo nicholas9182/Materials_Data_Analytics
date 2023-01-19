@@ -316,10 +316,10 @@ class FreeEnergyLine(FreeEnergyShape):
 
         data = []
         min_timestamp = max(self._time_data) - n_timestamps
-
         for key, value in self._time_data.items():
-            value['timestamp'] = key
-            data.append(value)
+            new_data = value.copy()
+            new_data['timestamp'] = key
+            data.append(new_data)
 
         data = (pd.concat(data)
                 .query('timestamp > @min_timestamp')
