@@ -59,8 +59,11 @@ class MetaTrajectory:
         data = self._data.copy()
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self._metadata.items():
-                data[key] = value
+            data['walker'] = self.walker
+
+            if self._metadata:
+                for key, value in self._metadata.items():
+                    data[key] = value
 
         return data
 
@@ -207,8 +210,10 @@ class FreeEnergyShape:
 
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self._metadata.items():
-                data[key] = value
+
+            if self._metadata:
+                for key, value in self._metadata.items():
+                    data[key] = value
 
         return data
 
@@ -647,7 +652,9 @@ class FreeEnergySpace:
         data = self._hills.copy()
         if with_metadata:
             data['temperature'] = self.temperature
-            for key, value in self._metadata.items():
-                data[key] = value
+
+            if self._metadata:
+                for key, value in self._metadata.items():
+                    data[key] = value
 
         return data
