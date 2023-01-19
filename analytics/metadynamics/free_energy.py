@@ -50,13 +50,15 @@ class MetaTrajectory:
 
         return data
 
-    def get_data(self, with_metadata: bool = False):
+    def get_data(self, with_metadata: bool = False, time_resolution: int = None):
         """
         function to get the _data from a free energy shape
-        :param with_metadata:
+        :param with_metadata: print the data with the metadata?
+        :param time_resolution: reduce the size of the data frame by reducing the time resolution
         :return:
         """
         data = self._data.copy()
+
         if with_metadata:
             data['temperature'] = self.temperature
             data['walker'] = self.walker
@@ -64,6 +66,15 @@ class MetaTrajectory:
             if self._metadata:
                 for key, value in self._metadata.items():
                     data[key] = value
+
+        if time_resolution:
+            data = (data
+                    .assign(time=lambda x: x['time'].round(time_resolution))
+                    .groupby(['time'])
+                    .mean()
+                    .reset_index()
+                    .assign(walker=lambda x: x['walker'].astype(int))
+                    )
 
         return data
 
