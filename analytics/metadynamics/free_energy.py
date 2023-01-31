@@ -620,13 +620,14 @@ class FreeEnergySpace:
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
 
-    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None):
+    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None, verbosity: bool = False):
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
         analysis
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
         :param n_timestamps: number of time stamps to have in the _time_data
+        :param verbosity: print progress?
         :return:
         """
         # combine the dats from the walkers into one dataframe
@@ -648,6 +649,8 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = self._reweight_traj_data(filtered_data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
+                if verbosity:
+                    print(f"Made histogram for {i} timestamp")
         else:
             raise ValueError("n_timestamps needs to be None or integer!")
 
