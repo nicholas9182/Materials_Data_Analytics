@@ -299,6 +299,22 @@ class TestFreeEnergySpace(unittest.TestCase):
         fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
         self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
 
+    def test_two_bin_reweighted_cv_one_condition(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], conditions='D1 < 5').set_datum({'D1': 0})
+        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+
+    def test_two_bin_reweighted_cv_two_condition(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], conditions=['D1 < 5', 'D1 < 4']).set_datum({'D1': 0})
+        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+
     def test_two_bin_reweighted_cv_with_time_stamps(self):
         """
         Function to test that it is normalising properly when using two bins

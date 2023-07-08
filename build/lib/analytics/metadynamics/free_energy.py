@@ -81,7 +81,7 @@ class MetaTrajectory:
 
 class FreeEnergyShape:
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, dimension: int = None, metadata: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float], temperature: float = 298, dimension: int = None, metadata: dict = None):
         """
         Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
         shapes should inherit from this class, and then make changes depending on whether the shape has particular features
