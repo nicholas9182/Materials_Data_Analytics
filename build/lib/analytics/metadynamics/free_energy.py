@@ -620,7 +620,8 @@ class FreeEnergySpace:
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
 
-    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None, verbosity: bool = False):
+    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None, verbosity: bool = False,
+                            conditions: str | list[str] = None):
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
         analysis
@@ -628,9 +629,10 @@ class FreeEnergySpace:
         :param bins: number of bins, or a list with the bin boundaries
         :param n_timestamps: number of time stamps to have in the _time_data
         :param verbosity: print progress?
+        :param conditions: some query style conditions to put on the histogram
         :return:
         """
-        # combine the dats from the walkers into one dataframe
+        # combine the data from the walkers into one dataframe
         data = []
         for w, t in self.trajectories.items():
             if cv in t.cvs:
@@ -638,6 +640,14 @@ class FreeEnergySpace:
         if not data:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
+
+        # filter the histogram if there is a condition
+        if conditions:
+            if type(conditions) == str:
+                data = data.query(conditions)
+            elif type(conditions) == list:
+                for c in conditions:
+                    data = data.query(c)
 
         # create _data to feed to FreeEnergyLine either with or without time _data
         if n_timestamps is None:

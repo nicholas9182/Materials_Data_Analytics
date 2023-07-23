@@ -46,11 +46,11 @@ def main(reference_atoms: str, selection_atoms: str, tpr_file: str, xtc_file: st
         for s in range(0, pol_num):
             sel_group = u.atoms.fragments[s].select_atoms(selection_atoms)
 
-            if verbose == 2:
-                click.echo(f"Calculating contacts between polymer {r} and polymer {s}", err=True)
-
             pairs.append((r, s))
+
             if (s, r) not in pairs and s != r:
+                if verbose == 2:
+                    click.echo(f"Calculating contacts between polymer {r} and polymer {s}", err=True)
                 for ts in u.trajectory[::trajectory_slicer]:
                     if verbose == 3:
                         click.echo(f"Calculating contacts between polymer {r} and polymer {s} at time {u.trajectory.time}", err=True)
