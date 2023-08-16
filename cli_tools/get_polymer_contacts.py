@@ -17,8 +17,9 @@ from MDAnalysis.analysis import contacts
 @click.option("--radius", "-r", default=4, help="radius in angstrom for the cut-off", type=float)
 @click.option("--trajectory_slicer", "-ts", default=1, help="take every ts'th frame from the trajectory", type=int)
 @click.option("--verbose", "-v", count=True)
+@click.option("--sparse", "-s", is_flag=True, default=False, help="Store as a sparse dataframe?")
 def main(reference_atoms: str, selection_atoms: str, tpr_file: str, xtc_file: str, pol_num: int, output_tsv: str, radius: float,
-         trajectory_slicer: int, verbose):
+         trajectory_slicer: int, verbose, sparse: bool = False):
     """
     Function to calculate edge data for a network using the polymers as a basis, and proximity as an edge
     :param reference_atoms: Pymol atom selection language for contact group a
@@ -30,6 +31,7 @@ def main(reference_atoms: str, selection_atoms: str, tpr_file: str, xtc_file: st
     :param radius: radius for the cuttoff in angstrom
     :param trajectory_slicer: take every ts'th element from the time data in the trajectory
     :param verbose: how verbose to be
+    :param sparse: output a sparse dataframe?
     :return: file with contact information
     """
 
@@ -56,14 +58,25 @@ def main(reference_atoms: str, selection_atoms: str, tpr_file: str, xtc_file: st
                         click.echo(f"Calculating contacts between polymer {r} and polymer {s} at time {u.trajectory.time}", err=True)
                     dist = contacts.distance_array(ref_group.positions, sel_group.positions)
                     n_contacts = contacts.contact_matrix(dist, radius).sum()
-                    connection_data.append(
-                        pd.DataFrame({
-                            'time': [u.trajectory.time],
-                            'ref': [r],
-                            'sel': [s],
-                            'n': [n_contacts]
-                        })
-                    )
+
+                    if sparse and n_contacts != 0:
+                        connection_data.append(
+                            pd.DataFrame({
+                                'time': [u.trajectory.time],
+                                'ref': [r],
+                                'sel': [s],
+                                'n': [n_contacts]
+                            }))
+                    elif not sparse:
+                        connection_data.append(
+                            pd.DataFrame({
+                                'time': [u.trajectory.time],
+                                'ref': [r],
+                                'sel': [s],
+                                'n': [n_contacts]
+                            }))
+                    else:
+                        pass
 
     connection_data = pd.concat(connection_data)
     connection_data.to_csv(output_tsv, sep="\t")
