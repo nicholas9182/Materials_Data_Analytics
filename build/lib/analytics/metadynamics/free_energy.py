@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 import plotly.graph_objects as go
 import plotly.express as px
 from visualisation.themes import custom_dark_template
@@ -40,7 +41,14 @@ class MetaTrajectory:
     @staticmethod
     def _get_weights(data: pd.DataFrame, temperature: float = 298, y_col: str = 'reweight_bias',
                      y_col_out: str = 'weight') -> pd.DataFrame:
-
+        """
+        Function to get the weights for each from the data obtained in the colvar file.
+        :param data:
+        :param temperature:
+        :param y_col:
+        :param y_col_out:
+        :return:
+        """
         new_col_args_1 = {y_col_out: lambda x: np.exp(x[y_col]/(Kb * temperature))}
         new_col_args_2 = {y_col_out: lambda x: x[y_col_out]/max(x[y_col_out])}
         data = (data
@@ -682,3 +690,36 @@ class FreeEnergySpace:
                     data[key] = value
 
         return data
+
+    def bulk_construct_from_standard(self, dir: str = "."):
+        """
+        function to build a free energy shape just by giving the directory where the metadynamics simulations were performed. the directory given s
+        should have COLVAR_REWEIGHT files, be a multi-walker calculation and have the fes's in folders called FES_*
+        :param dir: Directory with the files
+        :return:
+        """
+        for f in os.scandir(dir):
+            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 2:
+                path = f.path + "/"
+                print(f"Adding a free energy line from files in {path}")
+                files = [path + d for d in os.listdir(path)]
+                files = files[0] if len(files) == 1 else files
+                line = FreeEnergyLine.from_plumed(files)
+                self.add_line(line)
+
+        for f in os.scandir(dir):
+            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 3:
+                path = f.path + "/"
+                print(f"Adding a free energy surface from files in {path}")
+                files = [path + d for d in os.listdir(path)]
+                files = files[0] if len(files) == 1 else files
+                surface = FreeEnergySurface.from_plumed(files)
+                self.add_surface(surface)
+
+        for f in [dir + "/" + f for f in os.listdir(dir) if 'COLVAR_REWEIGHT' in f and 'bck' not in f]:
+            file = f.split("/")[-1]
+            print(f"Adding {file} as a metaD trajectory")
+            traj = MetaTrajectory(f)
+            self.add_metad_trajectory(traj)
+
+        return self

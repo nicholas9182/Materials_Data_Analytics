@@ -7,6 +7,8 @@ analytics.egg-info/SOURCES.txt
 analytics.egg-info/dependency_links.txt
 analytics.egg-info/top_level.txt
 analytics/analysers/__init__.py
+analytics/core/__init__.py
+analytics/core/universe.py
 analytics/materials/__init__.py
 analytics/metadynamics/__init__.py
 analytics/metadynamics/free_energy.py
@@ -15,6 +17,7 @@ analytics/simulations/super_simulations.py
 cli_tools/__init__.py
 cli_tools/colvar_plotter.py
 cli_tools/get_cv_sample.py
+cli_tools/get_polymer_contacts.py
 cli_tools/plot_hills.py
 visualisation/__init__.py
 visualisation/themes.py
