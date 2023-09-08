@@ -208,6 +208,19 @@ class TestFreeEnergyLine(unittest.TestCase):
         self.assertTrue('energy_err' in line._data.columns.to_list())
         self.assertTrue('population_err' in line._data.columns.to_list())
 
+    def test_bulk_add_lines(self):
+        """
+        testing bulk adding lines to a free energy line
+        :return:
+        """
+        dir = "/Users/nicholassiemons/Dropbox/Code_projects/analytics/test_trajectories/ndi_na_binding/"
+
+        shape = FreeEnergySpace()
+        shape.bulk_construct_from_standard(dir)
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
+        self.assertTrue(len(shape.trajectories) == 8)
+
 
 class TestFreeEnergySurface(unittest.TestCase):
 
