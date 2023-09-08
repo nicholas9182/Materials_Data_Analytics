@@ -40,7 +40,14 @@ class MetaTrajectory:
     @staticmethod
     def _get_weights(data: pd.DataFrame, temperature: float = 298, y_col: str = 'reweight_bias',
                      y_col_out: str = 'weight') -> pd.DataFrame:
-
+        """
+        Function to get the weights for each from the data obtained in the colvar file.
+        :param data:
+        :param temperature:
+        :param y_col:
+        :param y_col_out:
+        :return:
+        """
         new_col_args_1 = {y_col_out: lambda x: np.exp(x[y_col]/(Kb * temperature))}
         new_col_args_2 = {y_col_out: lambda x: x[y_col_out]/max(x[y_col_out])}
         data = (data
