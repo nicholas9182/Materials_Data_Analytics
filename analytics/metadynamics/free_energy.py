@@ -390,6 +390,42 @@ class FreeEnergySpace:
         self.trajectories = {}
         self._metadata = metadata
 
+    @classmethod
+    def from_standard_directory(cls, standard_dir, **kwargs):
+        """
+        alternate constructor to make a free energy space from a standard metadynamics directory. In this directory, the free energy lines and
+        surfaces are held in folders called FES_* . The reweight data is held in COLVAR files called COLVAR_REWEIGHT.* .
+        :param standard_dir: The directory with the plumed/gromacs files
+        :return: a populated FreeEnergySpace
+        """
+        space = cls(**kwargs)
+
+        for f in os.scandir(standard_dir):
+            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 2:
+                path = f.path + "/"
+                print(f"Adding a free energy line from files in {path}")
+                files = [path + d for d in os.listdir(path)]
+                files = files[0] if len(files) == 1 else files
+                line = FreeEnergyLine.from_plumed(files)
+                space.add_line(line)
+
+        for f in os.scandir(standard_dir):
+            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 3:
+                path = f.path + "/"
+                print(f"Adding a free energy surface from files in {path}")
+                files = [path + d for d in os.listdir(path)]
+                files = files[0] if len(files) == 1 else files
+                surface = FreeEnergySurface.from_plumed(files)
+                space.add_surface(surface)
+
+        for f in [standard_dir + "/" + f for f in os.listdir(standard_dir) if 'COLVAR_REWEIGHT' in f and 'bck' not in f]:
+            file = f.split("/")[-1]
+            print(f"Adding {file} as a metaD trajectory")
+            traj = MetaTrajectory(f)
+            space.add_metad_trajectory(traj)
+
+        return space
+
     @staticmethod
     def _read_file(file: str):
         """
@@ -691,35 +727,3 @@ class FreeEnergySpace:
 
         return data
 
-    def bulk_construct_from_standard(self, dir: str = "."):
-        """
-        function to build a free energy shape just by giving the directory where the metadynamics simulations were performed. the directory given s
-        should have COLVAR_REWEIGHT files, be a multi-walker calculation and have the fes's in folders called FES_*
-        :param dir: Directory with the files
-        :return:
-        """
-        for f in os.scandir(dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 2:
-                path = f.path + "/"
-                print(f"Adding a free energy line from files in {path}")
-                files = [path + d for d in os.listdir(path)]
-                files = files[0] if len(files) == 1 else files
-                line = FreeEnergyLine.from_plumed(files)
-                self.add_line(line)
-
-        for f in os.scandir(dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 3:
-                path = f.path + "/"
-                print(f"Adding a free energy surface from files in {path}")
-                files = [path + d for d in os.listdir(path)]
-                files = files[0] if len(files) == 1 else files
-                surface = FreeEnergySurface.from_plumed(files)
-                self.add_surface(surface)
-
-        for f in [dir + "/" + f for f in os.listdir(dir) if 'COLVAR_REWEIGHT' in f and 'bck' not in f]:
-            file = f.split("/")[-1]
-            print(f"Adding {file} as a metaD trajectory")
-            traj = MetaTrajectory(f)
-            self.add_metad_trajectory(traj)
-
-        return self
