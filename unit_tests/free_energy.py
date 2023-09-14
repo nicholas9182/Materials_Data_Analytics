@@ -21,6 +21,16 @@ class TestMetaTrajectory(unittest.TestCase):
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
 
+    def test_colvar_read_opes(self):
+        """
+        checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct plumed read in
+        """
+        file = "../test_trajectories/ndi_single_opes/COLVAR.0"
+        cv_traj = MetaTrajectory(file)
+        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias', 'reweight_factor', 'zed', 'neff', 'nker', 'weight'])
+        self.assertEqual(cv_traj.walker, 0)
+        self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
+
 
 class TestFreeEnergyLine(unittest.TestCase):
 
@@ -378,3 +388,4 @@ class TestFreeEnergySpace(unittest.TestCase):
         traj0 = FreeEnergyLine.from_plumed("../test_trajectories/ndi_na_binding/FES_CM1.dat")
         landscape.add_line(traj0)
         self.assertEqual(landscape.lines['CM1']._metadata['oligomer'], 'NDI')
+
