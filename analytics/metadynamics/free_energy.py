@@ -19,7 +19,10 @@ class MetaTrajectory:
                       )
 
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
+        self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed', 'neff', 'nker'], errors='ignore')
+                    .columns
+                    .to_list()
+                    )
         self.temperature = temperature
         self._metadata = metadata
 
@@ -31,8 +34,12 @@ class MetaTrajectory:
         :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
+
+        # TODO: Check that opes.bias is the right bias to use for reweighting!
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                   .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                  .rename(columns={'opes.bias': 'reweight_bias', 'opes.rct': 'reweight_factor', 'opes.zed': 'zed', 'opes.neff': 'neff',
+                                   'opes.nker': 'nker'})
                   .assign(time=lambda x: x['time'] / 1000)
                   )
 
