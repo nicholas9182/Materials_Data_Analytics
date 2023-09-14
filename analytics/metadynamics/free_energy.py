@@ -389,8 +389,7 @@ class FreeEnergySpace:
             self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
             self.max_time = self._hills['time'].max()
             self.dt = self.max_time/self.n_timesteps
-            self._hills['walker'] = self._hills.groupby('time').cumcount()
-            self.cvs = self._hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+            self.cvs = self._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore').columns.to_list()
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -447,8 +446,9 @@ class FreeEnergySpace:
 
         data = (data
                 .loc[:, ~data.columns.str.startswith('sigma')]
-                .drop(columns=['biasf'])
+                .drop(columns=['biasf'], errors='ignore')
                 .assign(time=lambda x: x['time'] / 1000)
+                .assign(walker = lambda x: x.groupby('time').cumcount())
                 )
 
         return data, sigmas
