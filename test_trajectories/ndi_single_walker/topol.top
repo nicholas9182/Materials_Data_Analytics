@@ -1,9 +1,0 @@
-#include "OBT.ff/forcefield.itp"
-#include "I7.itp"
-
-[ system ]
-g20 in water
-
-[ molecules ]
-I7		2
-SOL              2150
