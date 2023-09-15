@@ -397,11 +397,12 @@ class FreeEnergySpace:
         self._metadata = metadata
 
     @classmethod
-    def from_standard_directory(cls, standard_dir, **kwargs):
+    def from_standard_directory(cls, standard_dir, colvar_string_matcher: str = "COLVAR_REWEIGHT.", **kwargs):
         """
         alternate constructor to make a free energy space from a standard metadynamics directory. In this directory, the free energy lines and
         surfaces are held in folders called FES_* . The reweight data is held in COLVAR files called COLVAR_REWEIGHT.* .
         :param standard_dir: The directory with the plumed/gromacs files
+        :param colvar_string_matcher: the string that matches to the colvar files names
         :return: a populated FreeEnergySpace
         """
         space = cls(**kwargs)
@@ -424,7 +425,7 @@ class FreeEnergySpace:
                 surface = FreeEnergySurface.from_plumed(files)
                 space.add_surface(surface)
 
-        for f in [standard_dir + "/" + f for f in os.listdir(standard_dir) if 'COLVAR_REWEIGHT' in f and 'bck' not in f]:
+        for f in [standard_dir + "/" + f for f in os.listdir(standard_dir) if colvar_string_matcher in f and 'bck' not in f]:
             file = f.split("/")[-1]
             print(f"Adding {file} as a metaD trajectory")
             traj = MetaTrajectory(f)

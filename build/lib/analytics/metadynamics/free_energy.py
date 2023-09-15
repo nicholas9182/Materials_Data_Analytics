@@ -19,7 +19,10 @@ class MetaTrajectory:
                       )
 
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight']).columns.to_list()
+        self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed', 'neff', 'nker'], errors='ignore')
+                    .columns
+                    .to_list()
+                    )
         self.temperature = temperature
         self._metadata = metadata
 
@@ -31,8 +34,12 @@ class MetaTrajectory:
         :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
+
+        # TODO: Check that opes.bias is the right bias to use for reweighting!
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                   .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
+                  .rename(columns={'opes.bias': 'reweight_bias', 'opes.rct': 'reweight_factor', 'opes.zed': 'zed', 'opes.neff': 'neff',
+                                   'opes.nker': 'nker'})
                   .assign(time=lambda x: x['time'] / 1000)
                   )
 
@@ -382,8 +389,7 @@ class FreeEnergySpace:
             self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
             self.max_time = self._hills['time'].max()
             self.dt = self.max_time/self.n_timesteps
-            self._hills['walker'] = self._hills.groupby('time').cumcount()
-            self.cvs = self._hills.drop(columns=['time', 'height', 'walker']).columns.to_list()
+            self.cvs = self._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore').columns.to_list()
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -440,8 +446,9 @@ class FreeEnergySpace:
 
         data = (data
                 .loc[:, ~data.columns.str.startswith('sigma')]
-                .drop(columns=['biasf'])
+                .drop(columns=['biasf'], errors='ignore')
                 .assign(time=lambda x: x['time'] / 1000)
+                .assign(walker = lambda x: x.groupby('time').cumcount())
                 )
 
         return data, sigmas
@@ -727,35 +734,3 @@ class FreeEnergySpace:
 
         return data
 
-    def bulk_construct_from_standard(self, dir: str = "."):
-        """
-        function to build a free energy shape just by giving the directory where the metadynamics simulations were performed. the directory given s
-        should have COLVAR_REWEIGHT files, be a multi-walker calculation and have the fes's in folders called FES_*
-        :param dir: Directory with the files
-        :return:
-        """
-        for f in os.scandir(dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 2:
-                path = f.path + "/"
-                print(f"Adding a free energy line from files in {path}")
-                files = [path + d for d in os.listdir(path)]
-                files = files[0] if len(files) == 1 else files
-                line = FreeEnergyLine.from_plumed(files)
-                self.add_line(line)
-
-        for f in os.scandir(dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 3:
-                path = f.path + "/"
-                print(f"Adding a free energy surface from files in {path}")
-                files = [path + d for d in os.listdir(path)]
-                files = files[0] if len(files) == 1 else files
-                surface = FreeEnergySurface.from_plumed(files)
-                self.add_surface(surface)
-
-        for f in [dir + "/" + f for f in os.listdir(dir) if 'COLVAR_REWEIGHT' in f and 'bck' not in f]:
-            file = f.split("/")[-1]
-            print(f"Adding {file} as a metaD trajectory")
-            traj = MetaTrajectory(f)
-            self.add_metad_trajectory(traj)
-
-        return self
