@@ -468,3 +468,13 @@ class TestFreeEnergySpace(unittest.TestCase):
         landscape.add_line(traj0)
         self.assertEqual(landscape.lines['CM1']._metadata['oligomer'], 'NDI')
 
+    def test_bulk_add_trajectories_alternate_constructor_opes(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        dir = "/Users/nicholassiemons/Dropbox/Code_projects/analytics/test_trajectories/ndi_single_opes/"
+        shape = FreeEnergySpace.from_standard_directory(dir, colvar_string_matcher="COLVAR.")
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(len(shape.trajectories) == 1)
+
