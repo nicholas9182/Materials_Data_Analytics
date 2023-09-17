@@ -29,14 +29,19 @@ def main(file: str, output: str, time_resolution: int, height_power: float):
         current_time = datetime.now().strftime("%H:%M:%S")
         click.echo(f"{current_time}: Made Walker_{key}.pdf in {output}", err=True)
 
-    average_hills = landscape.get_average_hills_figure(time_resolution=time_resolution)
-    average_hills.update_traces(line_color='white')
-    average_hills.write_image(output + "/hills_mean.pdf", scale=2)
+    (landscape
+     .get_average_hills_figure(time_resolution=time_resolution)
+     .update_traces(line_color='white')
+     .write_image(output + "/hills_mean.pdf", scale=2)
+     )
     current_time = datetime.now().strftime("%H:%M:%S")
     click.echo(f"{current_time}: Made hills_mean.pdf in {output}", err=True)
-    max_hills = landscape.get_max_hills_figure(time_resolution=time_resolution)
-    max_hills.update_traces(line_color='white')
-    max_hills.write_image(output + "/hills_max.pdf", scale=2)
+
+    (landscape
+     .get_max_hills_figure(time_resolution=time_resolution)
+     .update_traces(line_color='white')
+     .write_image(output + "/hills_max.pdf", scale=2)
+     )
     current_time = datetime.now().strftime("%H:%M:%S")
     click.echo(f"{current_time}: Made hills_max.pdf in {output}", err=True)
 

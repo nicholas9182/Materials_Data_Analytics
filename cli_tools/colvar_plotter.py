@@ -30,20 +30,25 @@ def main(path: str, string_matcher: str, time_resolution: int, output: str):
         data.append(new_data)
     data = pd.concat(data)
 
-    for cv in space.trajectories[0].cvs:
+    if not space.opes:
+        images = space.trajectories[0].cvs
+    else:
+        images = space.trajectories[0].cvs + ['zed', 'neff', 'nker']
+
+    for image in images:
         figure = px.line(data,
                          x='time',
-                         y=cv,
+                         y=image,
                          template=custom_dark_template,
                          facet_row='walker',
-                         labels={'time': 'Time [ns]', cv: ''},
-                         title=cv,
+                         labels={'time': 'Time [ns]', image: ''},
+                         title=image,
                          width=1300, height=1000
                          )
         figure.update_traces(line={'width': 1}, line_color='white')
-        figure.write_image(f"{output}/{cv}.png")
+        figure.write_image(f"{output}/{image}.png")
         current_time = datetime.now().strftime("%H:%M:%S")
-        click.echo(f"{current_time}: Made {cv}.png in {output}", err=True)
+        click.echo(f"{current_time}: Made {image}.png in {output}", err=True)
 
 
 if __name__ == "__main__":

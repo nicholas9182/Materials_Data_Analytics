@@ -14,10 +14,8 @@ class MetaTrajectory:
     """
     def __init__(self, colvar_file: str, temperature: float = 298, metadata: dict = None):
 
-        self._data = (self._read_file(colvar_file)
-                      .pipe(self._get_weights, temperature=temperature)
-                      )
-
+        data, self._opes = self._read_file(colvar_file)
+        self._data = data.pipe(self._get_weights, temperature=temperature)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
         self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed', 'neff', 'nker'], errors='ignore')
                     .columns
@@ -25,6 +23,10 @@ class MetaTrajectory:
                     )
         self.temperature = temperature
         self._metadata = metadata
+
+    @property
+    def opes(self):
+        return self._opes
 
     @staticmethod
     def _read_file(file: str):
@@ -34,6 +36,7 @@ class MetaTrajectory:
         :return: _data in that file in pandas format
         """
         col_names = open(file).readline().strip().split(" ")[2:]
+        opes = True if 'opes.bias' in col_names else False
 
         # TODO: Check that opes.bias is the right bias to use for reweighting!
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
@@ -43,7 +46,7 @@ class MetaTrajectory:
                   .assign(time=lambda x: x['time'] / 1000)
                   )
 
-        return colvar
+        return colvar, opes
 
     @staticmethod
     def _get_weights(data: pd.DataFrame, temperature: float = 298, y_col: str = 'reweight_bias',
@@ -390,6 +393,7 @@ class FreeEnergySpace:
             self.max_time = self._hills['time'].max()
             self.dt = self.max_time/self.n_timesteps
             self.cvs = self._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore').columns.to_list()
+            self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -433,6 +437,13 @@ class FreeEnergySpace:
 
         return space
 
+    @property
+    def opes(self):
+        if hasattr(self, "_opes"):
+            return self._opes
+        else:
+            return None
+
     @staticmethod
     def _read_file(file: str):
         """
@@ -449,7 +460,7 @@ class FreeEnergySpace:
                 .loc[:, ~data.columns.str.startswith('sigma')]
                 .drop(columns=['biasf'], errors='ignore')
                 .assign(time=lambda x: x['time'] / 1000)
-                .assign(walker = lambda x: x.groupby('time').cumcount())
+                .assign(walker=lambda x: x.groupby('time').cumcount())
                 )
 
         return data, sigmas
@@ -463,6 +474,14 @@ class FreeEnergySpace:
         meta_trajectory.temperature = self.temperature
         meta_trajectory._metadata = self._metadata
         self.trajectories[meta_trajectory.walker] = meta_trajectory
+        opes_before = self._opes if hasattr(self, "_opes") else None
+        self._opes = meta_trajectory.opes
+
+        if opes_before is False and self._opes is True:
+            raise ValueError("The opes status of this space has changed!! Check your files")
+        elif opes_before is True and self._opes is False:
+            raise ValueError("The opes status of this space has changed!! Check your files")
+
         return self
 
     def add_line(self, line: FreeEnergyLine):
@@ -490,7 +509,7 @@ class FreeEnergySpace:
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
-        Function to turn the _hills into long format, and allow for time binning and height power conversion
+        Function to turn the _hills into long format, and allow for time binning and height power conversion. Works for both OPES and MetaD
         :param time_resolution: bin the _data into time bins with this number of decimal places. Useful for producing a smaller long format _hills
         dataframe.
         :param height_power: raise the height to the power of this so to see _hills easier. Useful when plotting, and you want to see the small
@@ -499,13 +518,18 @@ class FreeEnergySpace:
         """
 
         if self._hills is None:
-            raise ValueError("The space needs some hills data!")
+            raise ValueError("The space needs some hills/kernels data!")
 
         height_label = 'height^' + str(height_power) if height_power != 1 else 'height'
         long_hills = self._hills.rename(columns={'height': height_label})
         long_hills[height_label] = long_hills[height_label].pow(height_power)
+
+        if not self._opes:
+            long_hills = long_hills.melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
+        elif self._opes:
+            long_hills = long_hills.melt(value_vars=self.cvs + [height_label] + ['logweight'], id_vars=['time', 'walker'])
+
         long_hills = (long_hills
-                      .melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
                       .assign(time=lambda x: x['time'].round(time_resolution))
                       .groupby(['time', 'walker', 'variable'], group_keys=False)
                       .mean()
@@ -568,8 +592,10 @@ class FreeEnergySpace:
         if self._hills is None:
             raise ValueError("The space needs some hills data!")
 
+        log_y = True if not self._opes else False
+
         av_hills = self.get_hills_average_across_walkers(**kwargs)
-        figure = px.line(av_hills, x='time', y='height', log_y=True, template=custom_dark_template,
+        figure = px.line(av_hills, x='time', y='height', log_y=log_y, template=custom_dark_template,
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
                          )
         figure.update_traces(line=dict(width=1))
@@ -609,8 +635,10 @@ class FreeEnergySpace:
         if self._hills is None:
             raise ValueError("The space needs some hills data!")
 
+        log_y = True if not self._opes else False
+
         max_hills = self.get_hills_max_across_walkers(**kwargs)
-        figure = px.line(max_hills, x='time', y='height', log_y=True, template=custom_dark_template,
+        figure = px.line(max_hills, x='time', y='height', log_y=log_y, template=custom_dark_template,
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'})
         figure.update_traces(line=dict(width=1))
 
