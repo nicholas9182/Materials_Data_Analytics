@@ -20,6 +20,7 @@ class TestMetaTrajectory(unittest.TestCase):
         self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
+        self.assertTrue(cv_traj._opes is False)
 
     def test_colvar_read_opes(self):
         """
@@ -30,6 +31,7 @@ class TestMetaTrajectory(unittest.TestCase):
         self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias', 'reweight_factor', 'zed', 'neff', 'nker', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
+        self.assertTrue(cv_traj._opes is True)
 
 
 class TestFreeEnergyLine(unittest.TestCase):
@@ -308,11 +310,24 @@ class TestFreeEnergySpace(unittest.TestCase):
     def test_hills_plotter_default_values(self):
 
         figures = self.landscape.get_hills_figures()
+        self.assertTrue(self.landscape._opes is False)
         self.assertEqual(len(figures), 8)
         self.assertTrue(figures[0]._validate)
         self.assertTrue(figures[1]._validate)
         self.assertTrue(figures[2]._validate)
         self.assertTrue(figures[3]._validate)
+
+    def test_average_hills_figure(self):
+
+        figure = self.landscape.get_average_hills_figure()
+        self.assertTrue(figure._validate)
+
+    def test_kernels_plotter_default_values(self):
+
+        figures = self.landscape_opes.get_hills_figures()
+        self.assertTrue(self.landscape_opes._opes is True)
+        self.assertEqual(len(figures), 1)
+        self.assertTrue(figures[0]._validate)
 
     def test_hills_plotter_default_values_opes(self):
 
