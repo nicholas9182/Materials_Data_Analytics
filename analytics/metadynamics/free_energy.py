@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pandas as pd
 import numpy as np
 import os
@@ -17,7 +18,8 @@ class MetaTrajectory:
         data, self._opes = self._read_file(colvar_file)
         self._data = data.pipe(self._get_weights, temperature=temperature)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed', 'neff', 'nker'], errors='ignore')
+        self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed',
+                                             'neff', 'nker'], errors='ignore')
                     .columns
                     .to_list()
                     )
@@ -35,14 +37,16 @@ class MetaTrajectory:
         :param file: file to read in
         :return: _data in that file in pandas format
         """
-        col_names = open(file).readline().strip().split(" ")[2:]
+        col_file = open(file)
+        col_names = col_file.readline().strip().split(" ")[2:]
+        col_file.close()
         opes = True if 'opes.bias' in col_names else False
 
         # TODO: Check that opes.bias is the right bias to use for reweighting!
         colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
-                  .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias': 'reweight_bias'})
-                  .rename(columns={'opes.bias': 'reweight_bias', 'opes.rct': 'reweight_factor', 'opes.zed': 'zed', 'opes.neff': 'neff',
-                                   'opes.nker': 'nker'})
+                  .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias':
+                                   'reweight_bias', 'opes.bias': 'reweight_bias', 'opes.rct': 'reweight_factor',
+                                   'opes.zed': 'zed', 'opes.neff': 'neff', 'opes.nker': 'nker'})
                   .assign(time=lambda x: x['time'] / 1000)
                   )
 
@@ -99,10 +103,12 @@ class MetaTrajectory:
 
 class FreeEnergyShape:
 
-    def __init__(self, data: pd.DataFrame | dict[int | float], temperature: float = 298, dimension: int = None, metadata: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float], temperature: float = 298, dimension: int = None,
+                 metadata: dict = None):
         """
-        Current philosophy is now that there should be a super state with some general properties of free energy shapes.  Lines, surfaces and other
-        shapes should inherit from this class, and then make changes depending on whether the shape has particular features
+        Current philosophy is now that there should be a super state with some general properties of free energy shapes.
+        Lines, surfaces and other shapes should inherit from this class, and then make changes depending on whether the
+        shape has particular features
         :param data: the _data needed to make the shape
         :param temperature: the temperature at which the shape is defined
         :param dimension: the dimension of the shape
@@ -148,10 +154,11 @@ class FreeEnergyShape:
     @staticmethod
     def _get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
         """
-        Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a pythagorean distance
+        Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a
+        pythagorean distance
         :param data: _data
         :param ref_coordinate: dict with the column as the key and the value as the value
-        :param val_col: column from which to get the value
+        :param val_col: column from which to get the return
         :return: value
         """
         new_cols = []
@@ -186,8 +193,9 @@ class FreeEnergyShape:
 
     def set_datum(self, datum: dict[str, float | int | tuple[float | int, float | int]]):
         """
-        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to give that x-axis value an
-        energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that range.
+        Function to shift the fes line to set a new datum point. If a float is given, then the line will be shifted to
+        give that x-axis value an energy of 0.  If a tuple is given, then the fes will be shifted by the mean over that
+        range.
         :param datum: either the point on the fes to set as the datum, or a range of the fes to set as the datum
         :return: self
         """
@@ -249,7 +257,8 @@ class FreeEnergyShape:
 
 class FreeEnergyLine(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, metadata: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298,
+                 metadata: dict = None):
 
         super().__init__(data, temperature, metadata=metadata, dimension=1)
 
@@ -266,12 +275,15 @@ class FreeEnergyLine(FreeEnergyShape):
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
         """
-        Function to read in fes line _data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
+        Function to read in fes line _data, replacement for pl.read_as_pandas. Does some useful other operations when
+        reading in
         :param file: file to read in
         :param temperature: temperature of system
         :return: _data in that file in pandas format
         """
-        col_names = open(file).readline().strip().split(" ")[2:]
+        col_file = open(file)
+        col_names = col_file.readline().strip().split(" ")[2:]
+        col_file.close()
         data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
                 .rename(columns={'projection': 'energy'})
                 .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
@@ -280,10 +292,12 @@ class FreeEnergyLine(FreeEnergyShape):
         return data
 
     def get_time_difference(self, region_1: float | int | tuple[float | int, float | int],
-                            region_2: float | int | tuple[float | int, float | int] = None, with_metadata: bool = False) -> pd.DataFrame:
+                            region_2: float | int | tuple[float | int, float | int] = None,
+                            with_metadata: bool = False) -> pd.DataFrame:
         """
-        Function to get how the difference in energy between two points changes over time, or the energy of one point over time if region_2 is None.
-        It can accept both numbers and tuples. If a tuple is given, it will take the mean of the CV over the interval given by the tuple.
+        Function to get how the difference in energy between two points changes over time, or the energy of one point
+        over time if region_2 is None. It can accept both numbers and tuples. If a tuple is given, it will take the mean
+        of the CV over the interval given by the tuple.
         :param region_1: a point or region of the FES that you want to track as the first point
         :param region_2: a point or region of the FES that you want to track as the second point
         :param with_metadata: whether to return _data with the line _metadata
@@ -324,7 +338,8 @@ class FreeEnergyLine(FreeEnergyShape):
     def set_errors_from_time_dynamics(self, n_timestamps: int, bins: int = 200):
         """
         Function to get _data and errors from considering the time dynamics of the FES
-        :param n_timestamps: How many past FES time stamps to look at. Consider plotting the value of the minima as a function of time to see what
+        :param n_timestamps: How many past FES time stamps to look at. Consider plotting the value of the minima as a
+        function of time to see what
         an appropriate value is for this
         :param bins: Number of _data points to have on your FES
         :return: dataframe with the errors.
@@ -345,11 +360,11 @@ class FreeEnergyLine(FreeEnergyShape):
                 )
 
         binned_data = pd.DataFrame({
-            self.cvs[0]: data.groupby('bin').mean()[self.cvs[0]],
-            'energy': data.groupby('bin').mean()['energy'],
-            'energy_err': data.groupby('bin').std()['energy'],
-            'population': data.groupby('bin').mean()['population'],
-            'population_err': data.groupby('bin').std()['population']/np.sqrt(n_timestamps)
+            self.cvs[0]: data.groupby('bin', observed=True).mean()[self.cvs[0]],
+            'energy': data.groupby('bin', observed=True).mean()['energy'],
+            'energy_err': data.groupby('bin', observed=True).std()['energy'],
+            'population': data.groupby('bin', observed=True).mean()['population'],
+            'population_err': data.groupby('bin', observed=True).std()['population']/np.sqrt(n_timestamps)
         }).dropna()
 
         self._data = binned_data
@@ -359,18 +374,23 @@ class FreeEnergyLine(FreeEnergyShape):
 
 class FreeEnergySurface(FreeEnergyShape):
 
-    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298, metadata: dict = None):
+    def __init__(self, data: pd.DataFrame | dict[int | float, pd.DataFrame], temperature: float = 298,
+                 metadata: dict = None):
+
         super().__init__(data, temperature, dimension=2, metadata=metadata)
 
     @staticmethod
     def _read_file(file: str, temperature: float = 298):
         """
-        Function to read in fes surface _data, replacement for pl.read_as_pandas. Does some useful other operations when reading in
+        Function to read in fes surface _data, replacement for pl.read_as_pandas. Does some useful other operations when
+        reading in
         :param file: file to read in
         :param temperature: temperature of system
         :return: _data in that file in pandas format
         """
-        col_names = open(file).readline().strip().split(" ")[2:]
+        col_file = open(file)
+        col_names = col_file.readline().strip().split(" ")[2:]
+        col_file.close()
         drop_cols = [c for c in col_names if 'der_' in c]
 
         data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
@@ -392,7 +412,11 @@ class FreeEnergySpace:
             self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
             self.max_time = self._hills['time'].max()
             self.dt = self.max_time/self.n_timesteps
-            self.cvs = self._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore').columns.to_list()
+            self.cvs = (self
+                        ._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
+                        .columns
+                        .to_list()
+                        )
             self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
         self.temperature = temperature
         self.lines = {}
@@ -403,8 +427,9 @@ class FreeEnergySpace:
     @classmethod
     def from_standard_directory(cls, standard_dir, colvar_string_matcher: str = "COLVAR_REWEIGHT.", **kwargs):
         """
-        alternate constructor to make a free energy space from a standard metadynamics directory. In this directory, the free energy lines and
-        surfaces are held in folders called FES_* . The reweight data is held in COLVAR files called COLVAR_REWEIGHT.* .
+        alternate constructor to make a free energy space from a standard metadynamics directory. In this directory,
+        the free energy lines and surfaces are held in folders called FES_* . The reweight data is held in COLVAR files
+        called COLVAR_REWEIGHT.* .
         :param standard_dir: The directory with the plumed/gromacs files
         :param colvar_string_matcher: the string that matches to the colvar files names
         :return: a populated FreeEnergySpace
@@ -412,7 +437,9 @@ class FreeEnergySpace:
         space = cls(**kwargs)
 
         for f in os.scandir(standard_dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 2:
+
+            if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
+                    and len(f.path.split("/")[-1].split("_")) == 2):
                 path = f.path + "/"
                 print(f"Adding a free energy line from files in {path}")
                 files = [path + d for d in os.listdir(path)]
@@ -421,7 +448,8 @@ class FreeEnergySpace:
                 space.add_line(line)
 
         for f in os.scandir(standard_dir):
-            if f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES" and len(f.path.split("/")[-1].split("_")) == 3:
+            if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
+                    and len(f.path.split("/")[-1].split("_")) == 3):
                 path = f.path + "/"
                 print(f"Adding a free energy surface from files in {path}")
                 files = [path + d for d in os.listdir(path)]
@@ -429,7 +457,8 @@ class FreeEnergySpace:
                 surface = FreeEnergySurface.from_plumed(files)
                 space.add_surface(surface)
 
-        for f in [standard_dir + "/" + f for f in os.listdir(standard_dir) if colvar_string_matcher in f and 'bck' not in f]:
+        for f in [standard_dir + "/" + f for f in os.listdir(standard_dir)
+                  if colvar_string_matcher in f and 'bck' not in f]:
             file = f.split("/")[-1]
             print(f"Adding {file} as a metaD trajectory")
             traj = MetaTrajectory(f)
@@ -451,7 +480,9 @@ class FreeEnergySpace:
         :param file: file to read in
         :return: _data in that file in pandas format
         """
-        col_names = open(file).readline().strip().split(" ")[2:]
+        col_file = open(file)
+        col_names = col_file.readline().strip().split(" ")[2:]
+        col_file.close()
         sigmas = [col for col in col_names if col.split("_")[0] == 'sigma']
         data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
         sigmas = {s.split("_")[1]: data.loc[0, s] for s in sigmas}
@@ -509,10 +540,13 @@ class FreeEnergySpace:
 
     def get_long_hills(self, time_resolution: int = 6, height_power: float = 1):
         """
-        Function to turn the _hills into long format, and allow for time binning and height power conversion. Works for both OPES and MetaD
-        :param time_resolution: bin the _data into time bins with this number of decimal places. Useful for producing a smaller long format _hills
+        Function to turn the _hills into long format, and allow for time binning and height power conversion. Works for
+        both OPES and MetaD
+        :param time_resolution: bin the _data into time bins with this number of decimal places. Useful for producing a
+        smaller long format _hills
         dataframe.
-        :param height_power: raise the height to the power of this so to see _hills easier. Useful when plotting, and you want to see the small
+        :param height_power: raise the height to the power of this so to see _hills easier. Useful when plotting, and
+        you want to see the small
         _hills.
         :return:
         """
@@ -527,7 +561,9 @@ class FreeEnergySpace:
         if not self._opes:
             long_hills = long_hills.melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
         elif self._opes:
-            long_hills = long_hills.melt(value_vars=self.cvs + [height_label] + ['logweight'], id_vars=['time', 'walker'])
+            long_hills = (long_hills
+                          .melt(value_vars=self.cvs + [height_label] + ['logweight'], id_vars=['time', 'walker'])
+                          )
 
         long_hills = (long_hills
                       .assign(time=lambda x: x['time'].round(time_resolution))
@@ -540,7 +576,8 @@ class FreeEnergySpace:
 
     def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
         """
-        Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a metadynamics simulation.
+        Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a
+        metadynamics simulation.
         :return:
         """
 
@@ -550,7 +587,8 @@ class FreeEnergySpace:
         long_hills = self.get_long_hills(**kwargs).groupby('walker')
         figs = {}
         for name, df in long_hills:
-            figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'}, template=custom_dark_template)
+            figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'},
+                             template=custom_dark_template)
             figure.update_traces(line=dict(width=1))
             figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
@@ -731,14 +769,20 @@ class FreeEnergySpace:
 
         # create _data to feed to FreeEnergyLine either with or without time _data
         if n_timestamps is None:
-            fes_data = self._reweight_traj_data(data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
+            fes_data = (self
+                        ._reweight_traj_data(data, cv, bins, temperature=self.temperature)
+                        .filter([cv, 'energy', 'population'])
+                        )
         elif type(n_timestamps) == int:
             fes_data = {}
             max_time = data['time'].max()
             for i in range(0, n_timestamps):
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
-                fes_data[i+1] = self._reweight_traj_data(filtered_data, cv, bins, temperature=self.temperature)[[cv, 'energy', 'population']]
+                fes_data[i+1] = (self
+                                 ._reweight_traj_data(filtered_data, cv, bins,temperature=self.temperature)
+                                 .filter([cv, 'energy', 'population'])
+                                 )
                 if verbosity:
                     print(f"Made histogram for {i} timestamp")
         else:
@@ -762,4 +806,3 @@ class FreeEnergySpace:
                     data[key] = value
 
         return data
-
