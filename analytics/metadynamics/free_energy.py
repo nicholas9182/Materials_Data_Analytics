@@ -791,6 +791,92 @@ class FreeEnergySpace:
         line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
         return line
 
+    def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None, verbosity: bool = False,
+                            conditions: str | list[str] = None):
+        """
+        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
+        analysis. Errors are calculated from the standard deviation of the multiple walkers.
+        :param cv: the cv in which to get the reweight
+        :param bins: number of bins, or a list with the bin boundaries
+        :param n_timestamps: number of time stamps to have in the _time_data
+        :param verbosity: print progress?
+        :param conditions: some query style conditions to put on the histogram
+        :return:
+        """        
+
+        if self.n_walker == 1:
+            raise ValueError("there is only data from one walker in this space!")
+
+        if n_timestamps is None:
+            # reweight the data from each walker individually
+            fes_data = []
+            for w, t in self.trajectories.items():
+                if cv in t.cvs:
+                    data = t.get_data()
+                else:
+                    raise ValueError("no trajectories in this space have that CV")
+                
+                if conditions:
+                    if type(conditions) == str:
+                        data = data.query(conditions)
+                    elif type(conditions) == list:
+                        for c in conditions:
+                            data = data.query(c)
+                
+                fes_data.append(self._reweight_traj_data(data, cv, bins, temperature=self.temperature)[[cv, "energy", "population"]])
+
+            # bin the data
+            fes_data = (pd.concat(fes_data)
+                        .assign(bin=lambda x: pd.cut(x[cv], bins))
+            )
+            
+            # calculate errors
+            binned_fes = pd.DataFrame({
+                cv: fes_data.groupby("bin").mean()[cv],
+                "energy": fes_data.groupby("bin").mean()["energy"],
+                "energy_err": fes_data.groupby("bin").std()["energy"]/np.sqrt(self.n_walker),
+                "population": fes_data.groupby("bin").mean()["population"],
+                "population_err": fes_data.groupby("bin").std()["population"]/np.sqrt(self.n_walker),
+            }).dropna()
+        elif type(n_timestamps) == int:
+            binned_fes = {}
+            for i in range(0, n_timestamps):
+                fes_data = []
+                for w, t in self.trajectories.items():
+                    if cv in t.cvs:
+                        data = t.get_data()
+                    else:
+                        raise ValueError("no trajectories in this space have that CV")
+
+                    if conditions:
+                        if type(conditions) == str:
+                            data = data.query(conditions)
+                        elif type(conditions) == list:
+                            for c in conditions:
+                                data = data.query(c)
+                    max_time = data["time"].max()
+                    time = (i + 1) * max_time / n_timestamps
+                    filtered_data = data.query("time <= @time")
+                    fes_data.append(self._reweight_traj_data(filtered_data, cv, bins, temperature = self.temperature)[[cv, "energy", "population"]])
+                fes_data = (pd.concat(fes_data)
+                            .assign(bin=lambda x: pd.cut(x[cv], bins))
+                )
+                binned_fes[i+1] = pd.DataFrame({
+                    cv: fes_data.groupby("bin").mean()[cv],
+                    "energy": fes_data.groupby("bin").mean()["energy"],
+                    "energy_err": fes_data.groupby("bin").std()["energy"]/np.sqrt(self.n_walker),
+                    "population": fes_data.groupby("bin").mean()["population"],
+                    "population_err": fes_data.groupby("bin").std()["population"]/np.sqrt(self.n_walker),
+                }).dropna()
+                if verbosity:
+                    print(f"Made histogram for {i} timestamp.")       
+        else:
+            raise ValueError("n_timestamps needs to be None or integer!")
+
+        line = FreeEnergyLine(binned_fes, temperature=self.temperature, metadata=self._metadata)
+
+        return line
+
     def get_data(self, with_metadata: bool = False):
         """
         function to get the _data from a free energy shape
