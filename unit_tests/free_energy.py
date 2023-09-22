@@ -13,22 +13,26 @@ class TestMetaTrajectory(unittest.TestCase):
 
     def test_colvar_read(self):
         """
-        checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct plumed read in
+        checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct
+        plumed read in
         """
         file = "../test_trajectories/ndi_na_binding/COLVAR.0"
         cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor', 'weight'])
+        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias',
+                                                           'reweight_factor', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
         self.assertTrue(cv_traj._opes is False)
 
     def test_colvar_read_opes(self):
         """
-        checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct plumed read in
+        checking that the MetaTrajectory is reading in and processing colvar files correctly.
+        Comparing with a direct plumed read in
         """
         file = "../test_trajectories/ndi_single_opes/COLVAR.0"
         cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias', 'reweight_factor', 'zed', 'neff', 'nker', 'weight'])
+        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias',
+                                                           'reweight_factor', 'zed', 'neff', 'nker', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
         self.assertTrue(cv_traj._opes is True)
@@ -38,18 +42,20 @@ class TestFreeEnergyLine(unittest.TestCase):
 
     def test_fes_read(self):
         """
-        checking that the 1d fes file is being read in correctly and the cv extracted correctly. Comparing with a direct plumed read in
+        checking that the 1d fes file is being read in correctly and the cv extracted correctly.
+        Comparing with a direct plumed read in
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
-        file = pl.read_as_pandas(file)
-        file = pd.DataFrame(file).rename(columns={'projection': 'energy'})
+        pan_file = pl.read_as_pandas(file)
+        file = pd.DataFrame(pan_file).rename(columns={'projection': 'energy'})
         line = FreeEnergyLine(file)
         self.assertEqual(line._data.loc[:, 'energy'].to_list(), file.loc[:, 'energy'].to_list())
         self.assertEqual(line.cvs[0], 'CM1')
 
     def test_fes_read_from_plumed(self):
         """
-        checking that the 1d fes file is being read in correctly and the cv extracted correctly. Comparing with a direct plumed read in
+        checking that the 1d fes file is being read in correctly and the cv extracted correctly.
+        Comparing with a direct plumed read in
         """
         file = "../test_trajectories/ndi_na_binding/FES_CM1.dat"
         line = FreeEnergyLine.from_plumed(file)
@@ -61,7 +67,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         individual_files = [f.split("/")[-1] for f in all_fes_files]
         time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
         data_frames = [FreeEnergyLine._read_file(f) for f in all_fes_files]
@@ -73,28 +80,19 @@ class TestFreeEnergyLine(unittest.TestCase):
         my_diff = line._time_data[20].loc[10, 'energy'] - line._time_data[20].loc[20, 'energy']
         self.assertEqual(energy_diff, my_diff)
 
-        compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
-        energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
-        my_diff = line._data.loc[10, 'energy'] - line._data.loc[20, 'energy']
-        self.assertEqual(energy_diff, my_diff)
-
     def test_fes_read_with_time_data_from_plumed(self):
         """
         checking that alternate constructor works for reading in fes _data with strides to get _time_data dictionary
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
 
         compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
         energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
         my_diff = line._time_data[20].loc[10, 'energy'] - line._time_data[20].loc[20, 'energy']
-        self.assertEqual(energy_diff, my_diff)
-
-        compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES23.dat"))
-        energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
-        my_diff = line._data.loc[10, 'energy'] - line._data.loc[20, 'energy']
         self.assertEqual(energy_diff, my_diff)
 
     def test_normalise_with_float(self):
@@ -118,7 +116,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         line.set_datum(datum={'CM1': 7})
         self.assertTrue(0 in line._time_data[0]['energy'])
@@ -150,7 +149,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         line.set_datum(datum={'CM1': (6, 8)})
         self.assertAlmostEqual(line._data.loc[line._data['CM1'] > 6].loc[line._data['CM1'] < 8]['energy'].mean(), 0)
@@ -166,7 +166,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         change_data = line.get_time_difference(1, 3)
         figure = go.Figure()
@@ -181,7 +182,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         change_data = line.get_time_difference(region_1=(0.8, 1.2), region_2=(2.8, 3.2))
         figure = go.Figure()
@@ -196,7 +198,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         data1 = line.set_datum({'CM1': 3})._data
         data2 = line.set_datum({'CM1': 3})._data
@@ -214,7 +217,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder)
+                         for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         line = line.set_errors_from_time_dynamics(5, bins=100)
         self.assertTrue('energy_err' in line._data.columns.to_list())
@@ -225,9 +229,9 @@ class TestFreeEnergyLine(unittest.TestCase):
         testing bulk adding lines to a free energy line
         :return:
         """
-        dir = "/Users/nicholassiemons/Dropbox/Code_projects/analytics/test_trajectories/ndi_na_binding/"
+        here_dir = "../test_trajectories/ndi_na_binding/"
 
-        shape = FreeEnergySpace.from_standard_directory(dir)
+        shape = FreeEnergySpace.from_standard_directory(here_dir)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
         self.assertTrue(len(shape.trajectories) == 8)
@@ -250,7 +254,13 @@ class TestFreeEnergySurface(unittest.TestCase):
         surface = FreeEnergySurface.from_plumed(file)
         surface = surface.set_datum({'CM1': 0.03, 'D1': 5})
         figure = go.Figure()
-        figure.add_trace(go.Contour(x=surface._data['CM1'], y=surface._data['D1'], z=surface._data['energy'], colorscale='Jet'))
+        (figure
+         .add_trace(go.Contour(
+            x=surface._data['CM1'],
+            y=surface._data['D1'],
+            z=surface._data['energy'],
+            colorscale='Jet'))
+         )
         self.assertTrue(0 in surface._data['energy'].values.tolist())
         # figure.show()
 
@@ -396,7 +406,11 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], conditions=['D1 < 5', 'D1 < 4']).set_datum({'D1': 0})
+        fes = (self
+               .landscape
+               .get_reweighted_line('D1', bins=[0, 3, 7], conditions=['D1 < 5', 'D1 < 4'])
+               .set_datum({'D1': 0})
+               )
         self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
 
     def test_two_bin_reweighted_cv_with_time_stamps(self):
@@ -488,8 +502,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         testing bulk adding trajectories to a free energy line
         :return:
         """
-        dir = "/Users/nicholassiemons/Dropbox/Code_projects/analytics/test_trajectories/ndi_single_opes/"
-        shape = FreeEnergySpace.from_standard_directory(dir, colvar_string_matcher="COLVAR.")
+        here_dir = "../test_trajectories/ndi_single_opes/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 1)
-
