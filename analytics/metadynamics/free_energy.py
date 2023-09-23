@@ -683,9 +683,11 @@ class FreeEnergySpace:
         return figure
 
     @staticmethod
-    def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200, temperature: float = 298):
+    def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200,
+                            temperature: float = 298):
         """
-        Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional binning
+        Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional
+        binning
         :param data: _data frame to reweight
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
@@ -738,10 +740,11 @@ class FreeEnergySpace:
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
 
-    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None, verbosity: bool = False,
-                            conditions: str | list[str] = None):
+    def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
+                            verbosity: bool = False, conditions: str | list[str] = None):
         """
-        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
+        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
+        histogram
         analysis
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
@@ -780,7 +783,7 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = (self
-                                 ._reweight_traj_data(filtered_data, cv, bins,temperature=self.temperature)
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=self.temperature)
                                  .filter([cv, 'energy', 'population'])
                                  )
                 if verbosity:
