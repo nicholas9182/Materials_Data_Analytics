@@ -739,13 +739,68 @@ class FreeEnergySpace:
         fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
+    
+    @staticmethod
+    def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
+                            verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298,
+    ) -> (pd.DataFrame | dict[pd.DataFrame]):
+        """
+        Function to reweight a list of trajectories.
+        :param traj_list: list of trajectories to reweight.
+        :param cv: the cv in which to get the reweight.
+        :param bins: number of bins, or a list of bin boundaries.
+        :param n_timestamps: number of time stamps to have in the _time_data.
+        :param verbosity: print progress?
+        :param conditions: some query style conditions to put on the histogram.
+        :param temperature: temperature to get the population.
+        :return: reweighted trajectory data.
+        """
+        # grab the data from the trajectories
+        data = []
+        for t in traj_list:
+            if cv in t.cvs:
+                data.append(t.get_data())
+            else:
+                raise ValueError("no trajectories in this space have that CV")
+        data = pd.concat(data).sort_values('time')
+
+        # filter the data if there is a condition
+        if conditions:
+            if type(conditions) == str:
+                data = data.query(conditions)
+            elif type(conditions) == list:
+                for c in conditions:
+                    data = data.query(c)
+        
+        # reweight the data
+        if n_timestamps is None:
+            fes_data = (__class__
+                        ._reweight_traj_data(data, cv, bins, temperature)
+                        .filter([cv, 'energy', 'population'])
+            )
+        elif type(n_timestamps) == int:
+            fes_data = {}
+            max_time = data['time'].max()
+            for i in range(0, n_timestamps):
+                time = (i + 1) * max_time / n_timestamps
+                filtered_data = data.query('time <= @time')
+                fes_data[i+1] = (__class__
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature)
+                                 .filter([cv, 'energy', 'population'])
+                )
+                if verbosity:
+                    print(f"Made histogram for {i} timestamp")
+        else:
+            raise ValueError("n_timestamps needs to be None or integer!")
+
+        return fes_data
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None):
+                            verbosity: bool = False, conditions: str | list[str] = None,
+    ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
-        histogram
-        analysis
+        histogram analysis.
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
         :param n_timestamps: number of time stamps to have in the _time_data
@@ -753,45 +808,80 @@ class FreeEnergySpace:
         :param conditions: some query style conditions to put on the histogram
         :return:
         """
-        # combine the data from the walkers into one dataframe
-        data = []
+        # grab the trajectories and put them in a list
+        traj_list = []
         for w, t in self.trajectories.items():
-            if cv in t.cvs:
-                data.append(t.get_data())
-        if not data:
-            raise ValueError("no trajectories in this space have that CV")
-        data = pd.concat(data).sort_values('time')
+            traj_list.append(t)
 
-        # filter the histogram if there is a condition
-        if conditions:
-            if type(conditions) == str:
-                data = data.query(conditions)
-            elif type(conditions) == list:
-                for c in conditions:
-                    data = data.query(c)
-
-        # create _data to feed to FreeEnergyLine either with or without time _data
-        if n_timestamps is None:
-            fes_data = (self
-                        ._reweight_traj_data(data, cv, bins, temperature=self.temperature)
-                        .filter([cv, 'energy', 'population'])
-                        )
-        elif type(n_timestamps) == int:
-            fes_data = {}
-            max_time = data['time'].max()
-            for i in range(0, n_timestamps):
-                time = (i + 1) * max_time / n_timestamps
-                filtered_data = data.query('time <= @time')
-                fes_data[i+1] = (self
-                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=self.temperature)
-                                 .filter([cv, 'energy', 'population'])
-                                 )
-                if verbosity:
-                    print(f"Made histogram for {i} timestamp")
-        else:
-            raise ValueError("n_timestamps needs to be None or integer!")
+        # reweight the trajectories
+        fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbosity, conditions, self.temperature)
 
         line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
+        return line
+    
+    @staticmethod
+    def _calc_errors_from_walker_std(data_list: list[pd.DataFrame], cv: str, n_walkers: int, bins: int | list[int | float] = 200,
+    ) -> pd.DataFrame:
+        """
+        Function to calculate the errors from the standard deviation of the multiple walkers.
+        :param data: list of dataframes with data from each walker.
+        :param cv: the collective variable to bin over.
+        :param n_walkers: number of walkers.
+        :param bins: number of bins, or a list of bin boundaries.
+        :return: dataframe with errors.
+        """
+        if n_walkers != len(data_list):
+            raise ValueError("n_walkers does not match the number of walkers in the data!")
+
+        # bin the data
+        data = (pd.concat(data_list)
+                .assign(bin=lambda x: pd.cut(x[cv], bins))
+                )
+
+        # calculate errors
+        binned_data = pd.DataFrame({
+            cv: data.groupby('bin', observed=True).mean()[cv],
+            'energy': data.groupby('bin', observed=True).mean()['energy'],
+            'energy_err': data.groupby('bin', observed=True).std()['energy']/np.sqrt(n_walkers),
+            'population': data.groupby('bin', observed=True).mean()['population'],
+            'population_err': data.groupby('bin', observed=True).std()['population']/np.sqrt(n_walkers),
+        }).dropna()
+
+        return binned_data
+
+    def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
+                                              verbosity: bool = False, conditions: str | list[str] = None,
+    ) -> FreeEnergyLine:
+        """
+        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
+        analysis. Errors are calculated from the standard deviation of the multiple walkers.
+        :param cv: the cv in which to get the reweight
+        :param bins: number of bins, or a list with the bin boundaries
+        :param n_timestamps: number of time stamps to have in the _time_data
+        :param verbosity: print progress?
+        :param conditions: some query style conditions to put on the histogram
+        :return:
+        """
+        if self.n_walker == 1:
+            raise ValueError("there is only data from one walker in this space!")
+        
+        # reweight each trajectory individually
+        fes_data = []
+        for w, t in self.trajectories.items():
+            if verbosity:
+                print(f"Getting reweighted data for walker {w}")
+            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps, verbosity=verbosity, conditions=conditions, temperature=self.temperature))
+        
+        if type(fes_data[0]) == dict:
+            binned_fes = {}
+            for time_idx in range(0, n_timestamps):
+                time_fes_data = [fes_data[walker_idx][time_idx+1] for walker_idx in range(0, len(fes_data))]
+                binned_fes[time_idx+1] = self._calc_errors_from_walker_std(time_fes_data, cv, self.n_walker, bins,)
+        else:
+            binned_fes = self._calc_errors_from_walker_std(fes_data, cv, self.n_walker, bins,)
+
+        line = FreeEnergyLine(binned_fes, temperature=self.temperature, metadata=self._metadata)
+
         return line
 
     def get_data(self, with_metadata: bool = False):

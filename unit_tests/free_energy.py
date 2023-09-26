@@ -506,3 +506,47 @@ class TestFreeEnergySpace(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 1)
+
+    def test_one_walker_reweighted_with_walker_error(self):
+        """
+        Function to test that it returns error when only one walker is present.
+        :return:
+        """
+        with self.assertRaises(ValueError):
+            self.landscape_opes.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7]).set_datum({"D1": 0})
+    
+    def test_two_bin_reweighted_with_walker_error(self):
+        """
+        Function to test that it reweights correctly with errors when using two bins.
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7]).set_datum({"D1": 0})
+        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+
+    def test_two_bin_reweighted_with_walker_one_condition(self):
+        """
+        Function to test that it reweights correctly with errors when using two bins and one condition.
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], conditions="D1 < 5").set_datum({"D1": 0})
+        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+    
+    def test_two_bin_reweighted_with_walker_two_conditions(self):
+        """
+        Function to test that it reweights correctly with errors when using two bins and one condition.
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0})
+        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+    
+    def test_two_bin_reweighted_with_walker_error_with_time_stamps(self):
+        """
+        Function to test that it reweights correctly with errors when using two bins and five timestamps.
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], n_timestamps=5).set_datum({"D1": 0})
+        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+        self.assertTrue(type(fes._time_data) == dict)
+        self.assertTrue(type(fes._time_data[1]) == pd.DataFrame)
+        self.assertTrue(type(fes._time_data[3]) == pd.DataFrame)
+        self.assertTrue(type(fes._time_data[5]) == pd.DataFrame)
