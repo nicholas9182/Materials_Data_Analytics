@@ -443,7 +443,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS", temperature=320)
-        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
+        traj0 = MetaTrajectory("../test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0", temperature=320)
         landscape.add_metad_trajectory(traj0)
         self.assertEqual(landscape.trajectories[0].temperature, 320)
 
@@ -453,7 +453,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         landscape = FreeEnergySpace("../test_trajectories/ndi_single_opes/Kernels.data", temperature=320)
-        traj0 = MetaTrajectory("../test_trajectories/ndi_single_opes/COLVAR.0")
+        traj0 = MetaTrajectory("../test_trajectories/ndi_single_opes/COLVAR.0", temperature=320)
         landscape.add_metad_trajectory(traj0)
         self.assertEqual(landscape.trajectories[0].temperature, 320)
 
