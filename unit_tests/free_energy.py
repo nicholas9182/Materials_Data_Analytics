@@ -518,7 +518,7 @@ class TestFreeEnergySpace(unittest.TestCase):
     
     def test_two_bin_reweighted_with_walker_error(self):
         """
-        Function to test that it reweights correctly with errors when using two bins.
+        Function to test that it weights correctly with errors when using two bins.
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7]).set_datum({"D1": 0})
