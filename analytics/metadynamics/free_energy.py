@@ -418,6 +418,8 @@ class FreeEnergySpace:
                         .to_list()
                         )
             self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
+        elif hills_file is None:
+            self.n_walker = 0
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -502,11 +504,13 @@ class FreeEnergySpace:
         :param meta_trajectory: a metaD trajectory object to add to the landscape
         :return: the appended trajectories
         """
-        meta_trajectory.temperature = self.temperature
+        if not meta_trajectory.temperature == self.temperature:
+            raise ValueError("Your trajectory has a different temperature to your space!")
         meta_trajectory._metadata = self._metadata
         self.trajectories[meta_trajectory.walker] = meta_trajectory
         opes_before = self._opes if hasattr(self, "_opes") else None
         self._opes = meta_trajectory.opes
+        self.n_walker = self.n_walker if hasattr(self, "_hills") else self.n_walker + 1
 
         if opes_before is False and self._opes is True:
             raise ValueError("The opes status of this space has changed!! Check your files")
@@ -743,7 +747,7 @@ class FreeEnergySpace:
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
                             verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298,
-    ) -> (pd.DataFrame | dict[pd.DataFrame]):
+                            ) -> (pd.DataFrame | dict[pd.DataFrame]):
         """
         Function to reweight a list of trajectories.
         :param traj_list: list of trajectories to reweight.
@@ -774,20 +778,20 @@ class FreeEnergySpace:
         
         # reweight the data
         if n_timestamps is None:
-            fes_data = (__class__
+            fes_data = (FreeEnergySpace
                         ._reweight_traj_data(data, cv, bins, temperature)
                         .filter([cv, 'energy', 'population'])
-            )
+                        )
         elif type(n_timestamps) == int:
             fes_data = {}
             max_time = data['time'].max()
             for i in range(0, n_timestamps):
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
-                fes_data[i+1] = (__class__
+                fes_data[i+1] = (FreeEnergySpace
                                  ._reweight_traj_data(filtered_data, cv, bins, temperature)
                                  .filter([cv, 'energy', 'population'])
-                )
+                                 )
                 if verbosity:
                     print(f"Made histogram for {i} timestamp")
         else:
@@ -797,7 +801,7 @@ class FreeEnergySpace:
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
                             verbosity: bool = False, conditions: str | list[str] = None,
-    ) -> FreeEnergyLine:
+                            ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
         histogram analysis.
@@ -820,11 +824,11 @@ class FreeEnergySpace:
         return line
     
     @staticmethod
-    def _calc_errors_from_walker_std(data_list: list[pd.DataFrame], cv: str, n_walkers: int, bins: int | list[int | float] = 200,
-    ) -> pd.DataFrame:
+    def _calc_errors_from_walker_std(data_list: list[pd.DataFrame], cv: str, n_walkers: int,
+                                     bins: int | list[int | float] = 200) -> pd.DataFrame:
         """
         Function to calculate the errors from the standard deviation of the multiple walkers.
-        :param data: list of dataframes with data from each walker.
+        :param data_list: list of dataframes with data from each walker.
         :param cv: the collective variable to bin over.
         :param n_walkers: number of walkers.
         :param bins: number of bins, or a list of bin boundaries.
@@ -849,11 +853,12 @@ class FreeEnergySpace:
 
         return binned_data
 
-    def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                                              verbosity: bool = False, conditions: str | list[str] = None,
-    ) -> FreeEnergyLine:
+    def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200,
+                                              n_timestamps: int = None, verbosity: bool = False,
+                                              conditions: str | list[str] = None) -> FreeEnergyLine:
         """
-        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted histogram
+        Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
+        histogram
         analysis. Errors are calculated from the standard deviation of the multiple walkers.
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
@@ -870,7 +875,10 @@ class FreeEnergySpace:
         for w, t in self.trajectories.items():
             if verbosity:
                 print(f"Getting reweighted data for walker {w}")
-            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps, verbosity=verbosity, conditions=conditions, temperature=self.temperature))
+            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps,
+                                                     verbosity=verbosity, conditions=conditions,
+                                                     temperature=self.temperature)
+                            )
         
         if type(fes_data[0]) == dict:
             binned_fes = {}

@@ -506,6 +506,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 1)
+        self.assertTrue(shape.n_walker == 1)
 
     def test_one_walker_reweighted_with_walker_error(self):
         """
@@ -528,7 +529,9 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it reweights correctly with errors when using two bins and one condition.
         :return:
         """
-        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], conditions="D1 < 5").set_datum({"D1": 0})
+        fes = self.landscape.get_reweighted_line_with_walker_error(
+            "D1", bins=[0, 4, 7], conditions="D1 < 5").set_datum({"D1": 0}
+                                                                 )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
     
     def test_two_bin_reweighted_with_walker_two_conditions(self):
@@ -536,7 +539,9 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it reweights correctly with errors when using two bins and one condition.
         :return:
         """
-        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0})
+        fes = self.landscape.get_reweighted_line_with_walker_error(
+            "D1", bins=[0, 4, 7], conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0}
+                                                                             )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
     
     def test_two_bin_reweighted_with_walker_error_with_time_stamps(self):
@@ -544,9 +549,21 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it reweights correctly with errors when using two bins and five timestamps.
         :return:
         """
-        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7], n_timestamps=5).set_datum({"D1": 0})
+        fes = self.landscape.get_reweighted_line_with_walker_error(
+            "D1", bins=[0, 4, 7], n_timestamps=5).set_datum({"D1": 0}
+                                                            )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
         self.assertTrue(type(fes._time_data) == dict)
         self.assertTrue(type(fes._time_data[1]) == pd.DataFrame)
         self.assertTrue(type(fes._time_data[3]) == pd.DataFrame)
         self.assertTrue(type(fes._time_data[5]) == pd.DataFrame)
+
+    def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_na_binding/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir)
+        shape.get_reweighted_line_with_walker_error('CM1', bins=200)
+        self.assertTrue(shape.n_walker == 8)
