@@ -5,7 +5,7 @@ Kb = 0.008314463  # in kJ/mol
 
 
 def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: float = 298, y_col: str = 'energy',
-                                   y_col_out: str = 'population') -> pd.DataFrame:
+                                   y_col_out: str = 'population', discrete_bins: bool = False) -> pd.DataFrame:
     """
     function to take a dataframe and perform a Boltzmann inversion on a column
     :param data: dataframe
@@ -13,11 +13,15 @@ def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: 
     :param x_col: column containing the x values of the function
     :param y_col: column containing the y values of the function
     :param y_col_out: the name of the new column with the population distribution
+    :param discrete_bins: set to true if x is a non-continuous function
     :return: dataframe with a new column
     """
     data[y_col_out] = np.exp((-data[y_col])/(Kb * temperature))
-    data[y_col_out] = data[y_col_out]/np.abs(np.trapz(x=data[x_col], y=data[y_col_out]))
-
+    if not discrete_bins:
+        area = np.trapz(x=data[x_col], y=data[y_col_out])
+    else:
+        area = np.sum(data[y_col_out])
+    data[y_col_out] = data[y_col_out]/np.abs(area)
     return data
 
 
