@@ -57,7 +57,7 @@ class MetaTrajectory:
                      y_col_out: str = 'weight') -> pd.DataFrame:
         """
         Function to get the weights for each from the data obtained in the colvar file.
-        :param data:
+        param data:
         :param temperature:
         :param y_col:
         :param y_col_out:
@@ -420,6 +420,12 @@ class FreeEnergySpace:
             self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
         elif hills_file is None:
             self.n_walker = 0
+            self._hills = None
+            self.n_timesteps = None
+            self.max_time = None
+            self.dt = None
+            self.cvs = []
+            self._opes = None
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
@@ -510,7 +516,7 @@ class FreeEnergySpace:
         self.trajectories[meta_trajectory.walker] = meta_trajectory
         opes_before = self._opes if hasattr(self, "_opes") else None
         self._opes = meta_trajectory.opes
-        self.n_walker = self.n_walker if hasattr(self, "_hills") else self.n_walker + 1
+        self.n_walker = self.n_walker if self._hills is not None else self.n_walker + 1
 
         if opes_before is False and self._opes is True:
             raise ValueError("The opes status of this space has changed!! Check your files")
