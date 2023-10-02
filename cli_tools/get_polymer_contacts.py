@@ -17,7 +17,7 @@ from MDAnalysis.analysis import contacts
 @click.option("--radius", "-r", default=4, help="radius in angstrom for the cut-off", type=float)
 @click.option("--trajectory_slicer", "-ts", default=1, help="take every ts'th frame from the trajectory", type=int)
 @click.option("--verbose", "-v", count=True)
-@click.option("--sparse", "-s", is_flag=True, default=False, help="Store as a sparse dataframe?")
+@click.option("--sparse", "-sp", is_flag=True, default=False, help="Store as a sparse dataframe?")
 def main(reference_atoms: str, selection_atoms: str, tpr_file: str, xtc_file: str, pol_num: int, output_tsv: str, radius: float,
          trajectory_slicer: int, verbose, sparse: bool = False):
     """
