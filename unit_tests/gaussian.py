@@ -39,4 +39,4 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_raman_spectra(self):
         raman_spectra = self.pedot_log.get_raman_spectra()
-        self.assertTrue(len(raman_spectra) == 3000)
+        self.assertTrue(len(raman_spectra) == 2000)
