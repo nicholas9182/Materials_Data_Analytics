@@ -20,6 +20,11 @@ class GaussianParser:
         start_line = self._lines.index([k for k in self._lines if ' Symbolic Z-matrix:' in k][0])
         end_line = self._lines.index([k for k in self._lines if ' ITRead= ' in k][0])
         self._atomcount = end_line - start_line - 3
+        self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4])*2625.5
+
+    @property
+    def energy(self):
+        return self._energy
 
     @property
     def charge(self):
