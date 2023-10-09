@@ -37,3 +37,9 @@ def boltzmann_population_to_energy(data: pd.DataFrame, temperature: float = 298,
     """
     data[y_col_out] = -np.log(data[y_col]) * Kb * temperature
     return data
+
+
+def lorentzian(x: list, x0: float, w: float, h: float):
+    y = [(h/np.pi)*((w/2)/((x-x0)**2 + (w/2)**2)) for x in x]
+    return y
+
