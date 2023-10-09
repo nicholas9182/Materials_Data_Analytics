@@ -12,6 +12,8 @@ analytics/core/universe.py
 analytics/materials/__init__.py
 analytics/metadynamics/__init__.py
 analytics/metadynamics/free_energy.py
+analytics/quantum_chemistry/__init__.py
+analytics/quantum_chemistry/gaussian.py
 analytics/simulations/__init__.py
 analytics/simulations/super_simulations.py
 cli_tools/__init__.py
