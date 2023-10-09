@@ -32,7 +32,7 @@ class TestGaussianParser(unittest.TestCase):
     def test_atomcount(self):
         self.assertTrue(self.pedot_log.atomcount == 28)
 
-    def test_raman(self):
+    def test_raman_frequencies(self):
         raman_frequencies = self.pedot_log.get_raman_frequencies()
         self.assertTrue(type(raman_frequencies) == pd.DataFrame)
         self.assertTrue(len(raman_frequencies) == 78)
@@ -40,3 +40,7 @@ class TestGaussianParser(unittest.TestCase):
     def test_raman_spectra(self):
         raman_spectra = self.pedot_log.get_raman_spectra()
         self.assertTrue(len(raman_spectra) == 2000)
+
+    def test_energy(self):
+        energy = self.pedot_log.energy
+        self.assertTrue(energy == -4096904.424959145)
