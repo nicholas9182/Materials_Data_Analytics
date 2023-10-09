@@ -17,9 +17,9 @@ class GaussianParser:
         self._raman = True if len([r for r in self._keywords if 'raman' in r]) > 0 else False
         self._opt = True if len([r for r in self._keywords if 'opt' in r]) > 0 else False
         self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
-        start_line = self._lines.index([k for k in self._lines if ' Symbolic Z-matrix:' in k][0])
-        end_line = self._lines.index([k for k in self._lines if ' ITRead= ' in k][0])
-        self._atomcount = end_line - start_line - 3
+        start_line = self._lines.index([k for k in self._lines if 'Redundant internal coordinates found in' in k][0])
+        end_line = self._lines.index([k for k in self._lines if 'Recover connectivity data from disk' in k][0])
+        self._atomcount = end_line - start_line - 1
         self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4])*2625.5
 
     @property
