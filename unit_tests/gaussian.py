@@ -194,7 +194,3 @@ class TestGaussianParser(unittest.TestCase):
     def test_get_mulliken_charges_with_coordinates_bbl(self):
         data = self.pedot_log.get_mulliken_charges(with_coordinates=True, heavy_atoms=True)
         self.assertTrue(type(data) == pd.DataFrame)
-
-    def test_get_coordinates_pedot_rotate(self):
-        coordinates = self.pedot_log.get_coordinates(theta=(np.pi/2))
-        self.assertTrue(len(coordinates) == self.pedot_log.atomcount)

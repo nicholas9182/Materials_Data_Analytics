@@ -1,5 +1,5 @@
 import pandas as pd
-from analytics.laws_and_constants import lorentzian, rotate_xy
+from analytics.laws_and_constants import lorentzian
 
 pd.set_option('mode.chained_assignment', None)
 
@@ -48,7 +48,7 @@ class GaussianParser:
     def atoms(self) -> list:
         return self._atoms
 
-    def get_coordinates(self, heavy_atoms: bool = False, **kwargs) -> pd.DataFrame:
+    def get_coordinates(self, heavy_atoms: bool = False) -> pd.DataFrame:
         """
         function to get the coordinates from the log file
         :param heavy_atoms:
@@ -60,15 +60,11 @@ class GaussianParser:
                                          )
         end_line = start_line + self._atomcount
 
-        x = [float(a.split()[3]) for a in self._lines[start_line:end_line]]
-        y = [float(a.split()[4]) for a in self._lines[start_line:end_line]]
-        x_rotated, y_rotated = rotate_xy(x, y, **kwargs)
-
         data = (pd.DataFrame({
             'atom_id': [i for i in range(1, self._atomcount+1)],
             'element': self._atoms,
-            'x': x_rotated,
-            'y': y_rotated,
+            'x': [float(a.split()[3]) for a in self._lines[start_line:end_line]],
+            'y': [float(a.split()[4]) for a in self._lines[start_line:end_line]],
             'z': [float(a.split()[5]) for a in self._lines[start_line:end_line]]
         }))
 
