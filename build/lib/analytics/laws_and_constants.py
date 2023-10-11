@@ -39,7 +39,30 @@ def boltzmann_population_to_energy(data: pd.DataFrame, temperature: float = 298,
     return data
 
 
-def lorentzian(x: list, x0: float, w: float, h: float):
+def lorentzian(x: list, x0: float, w: float, h: float) -> list[float]:
+    """
+    lorentzian function
+    :param x: a list of x values
+    :param x0: the center of the lorentzian
+    :param w: width of the lorentzian peak
+    :param h: height of the lorentzian peak
+    :return: list of y values
+    """
     y = [(h/np.pi)*((w/2)/((x-x0)**2 + (w/2)**2)) for x in x]
     return y
 
+
+def rotate_xy(x: list, y: list, theta: float = 0) -> tuple[list, list]:
+    """
+    function to rotate x/y data to x'/y' through angle theta
+    :param x: list of x coordinates
+    :param y: list of y coordinates
+    :param theta: angle in radians
+    :return: two lists of new x' and y' values
+    """
+    if len(x) != len(y):
+        raise ValueError("your x and y need to be the same length")
+
+    x_new = [x[i]*np.cos(theta) + y[i]*np.sin(theta) for i in range(0, len(x))]
+    y_new = [-x[i]*np.sin(theta) + y[i]*np.cos(theta) for i in range(0, len(x))]
+    return x_new, y_new
