@@ -8,6 +8,7 @@ analytics.egg-info/dependency_links.txt
 analytics.egg-info/top_level.txt
 analytics/analysers/__init__.py
 analytics/core/__init__.py
+analytics/core/coordinate_transformer.py
 analytics/core/universe.py
 analytics/materials/__init__.py
 analytics/metadynamics/__init__.py

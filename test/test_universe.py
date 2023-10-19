@@ -23,3 +23,4 @@ class TestUniverse(unittest.TestCase):
         landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
         my_universe = Universe(fes=landscape)
         self.assertTrue(my_universe._fes == [landscape])
+

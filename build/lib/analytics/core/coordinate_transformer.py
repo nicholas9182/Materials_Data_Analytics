@@ -65,28 +65,26 @@ class CoordinateTransformer:
         theta_z = theta_z * 0.0174533
 
         # define the rotation matrices
-        rx = np.array([
+        rx = np.matrix([
             [1, 0, 0],
             [0, np.cos(theta_x), -np.sin(theta_x)],
             [0, np.sin(theta_x), np.cos(theta_x)]
         ])
 
-        ry = np.array([
+        ry = np.matrix([
             [np.cos(theta_y), 0, np.sin(theta_y)],
             [0, 1, 0],
             [-np.sin(theta_y), 0, np.cos(theta_y)]
         ])
 
-        rz = np.array([
+        rz = np.matrix([
             [np.cos(theta_z), -np.sin(theta_z), 0],
             [np.sin(theta_z), np.cos(theta_z), 0],
             [0, 0, 1]
         ])
 
-        r = np.matmul(rz, np.matmul(ry, rx))
-
         # matrix multiply to get the new coordinates
-        new_coords = [np.matmul(r, self._coordinates[i]) for i in self._n]
+        new_coords = [rz * ry * rx * self._coordinates[i] for i in self._n]
 
         # write out to self
         self._data[self._x_name] = [c.flat[0] for c in new_coords]

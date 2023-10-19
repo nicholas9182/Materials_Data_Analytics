@@ -508,6 +508,17 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertTrue(len(shape.trajectories) == 1)
         self.assertTrue(shape.n_walker == 1)
 
+    def test_bulk_add_trajectories_alternate_constructor_opes_traj_metad(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_single_opes/"
+        shape = FreeEnergySpace.from_standard_directory(
+            here_dir, colvar_string_matcher="COLVAR.", metadata={'unit': 'NDI'}
+        ).trajectories[0].get_data(with_metadata=True)
+        self.assertTrue('unit' in shape.columns)
+
     def test_one_walker_reweighted_with_walker_error(self):
         """
         Function to test that it returns error when only one walker is present.
