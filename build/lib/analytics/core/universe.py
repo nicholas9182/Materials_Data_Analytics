@@ -1,3 +1,4 @@
+from __future__ import annotations
 import MDAnalysis as mda
 from analytics.metadynamics.free_energy import FreeEnergySpace
 
@@ -20,7 +21,7 @@ class Universe:
             self._fes = [fes]
         elif type(fes) == list:
             self._fes = fes
-        elif type(fes) is None:
+        elif fes is None:
             self._fes = fes
         else:
             raise ValueError("fes must be a FreeEnergyShape, or list of FreeEnergyShapes")
@@ -29,4 +30,3 @@ class Universe:
             self._mdu = mda.Universe(tpr_file, xtc_file)
         else:
             self._mdu = None
-
