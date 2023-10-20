@@ -898,18 +898,24 @@ class FreeEnergySpace:
 
         return line
 
-    def get_data(self, with_metadata: bool = False):
+    def get_data(self, with_metadata: bool = False, trajectory_data: bool = False):
         """
         function to get the _data from a free energy shape
-        :param with_metadata:
+        :param with_metadata: print out the metadata?
+        :param trajectory_data: return the trajectory data?
         :return:
         """
-        data = self._hills.copy()
-        if with_metadata:
-            data['temperature'] = self.temperature
+        if trajectory_data is False:
+            data = self._hills.copy()
+            if with_metadata:
+                data['temperature'] = self.temperature
 
-            if self._metadata:
-                for key, value in self._metadata.items():
-                    data[key] = value
+                if self._metadata:
+                    for key, value in self._metadata.items():
+                        data[key] = value
+        elif trajectory_data is True:
+            data = pd.concat([t.get_data(with_metadata=with_metadata) for t in self.trajectories.values()])
+        else:
+            raise ValueError("trajectory_data needs to be a bool!")
 
         return data
