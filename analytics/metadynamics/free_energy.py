@@ -132,6 +132,10 @@ class FreeEnergyShape:
         self.dimension = dimension
         self._metadata = metadata
 
+    @property
+    def metadata(self):
+        return self._metadata
+
     @classmethod
     def from_plumed(cls, file: str | list[str], **kwargs):
         """
@@ -432,6 +436,10 @@ class FreeEnergySpace:
         self.trajectories = {}
         self._metadata = metadata
 
+    @property
+    def metadata(self):
+        return self._metadata
+
     @classmethod
     def from_standard_directory(cls, standard_dir, colvar_string_matcher: str = "COLVAR_REWEIGHT.", **kwargs):
         """
@@ -442,6 +450,8 @@ class FreeEnergySpace:
         :param colvar_string_matcher: the string that matches to the colvar files names
         :return: a populated FreeEnergySpace
         """
+        temperature = kwargs['temperature'] if 'temperature' in kwargs.keys() else 298
+
         space = cls(**kwargs)
 
         for f in os.scandir(standard_dir):
@@ -452,7 +462,7 @@ class FreeEnergySpace:
                 print(f"Adding a free energy line from files in {path}")
                 files = [path + d for d in os.listdir(path)]
                 files = files[0] if len(files) == 1 else files
-                line = FreeEnergyLine.from_plumed(files)
+                line = FreeEnergyLine.from_plumed(files, temperature=temperature)
                 space.add_line(line)
 
         for f in os.scandir(standard_dir):
@@ -462,14 +472,14 @@ class FreeEnergySpace:
                 print(f"Adding a free energy surface from files in {path}")
                 files = [path + d for d in os.listdir(path)]
                 files = files[0] if len(files) == 1 else files
-                surface = FreeEnergySurface.from_plumed(files)
+                surface = FreeEnergySurface.from_plumed(files, temperature=temperature)
                 space.add_surface(surface)
 
         for f in [standard_dir + "/" + f for f in os.listdir(standard_dir)
                   if colvar_string_matcher in f and 'bck' not in f]:
             file = f.split("/")[-1]
             print(f"Adding {file} as a metaD trajectory")
-            traj = MetaTrajectory(f)
+            traj = MetaTrajectory(f, temperature=temperature)
             space.add_metad_trajectory(traj)
 
         return space

@@ -218,9 +218,13 @@ class GaussianParser:
                 .query('frequencies != "************"')
                 .assign(frequencies=lambda x: x['frequencies'].astype('float'))
                 .assign(raman_activity=lambda x: x['raman_activity'].astype('float'))
-                .assign(activity_cutoff=1)
-                #.assign(activity_cutoff=lambda x: x['raman_activity'].max().astype('float')*(1-frac_filter))
-                .query('raman_activity > activity_cutoff')
+                )
+
+        cutoff = data['raman_activity'].max().astype('float')*(1-frac_filter)
+
+        data = (data
+                .query('raman_activity > @cutoff')
+                .assign(cutoff=cutoff)
                 )
 
         return data
