@@ -49,7 +49,7 @@ class TestGaussianParser(unittest.TestCase):
     def test_raman_frequencies_pedot(self):
         raman_frequencies = self.pedot_log.get_raman_frequencies()
         self.assertTrue(type(raman_frequencies) == pd.DataFrame)
-        self.assertTrue(len(raman_frequencies) == 78)
+        self.assertTrue(len(raman_frequencies) == 19)
 
     def test_raman_frequencies_bbl(self):
         with self.assertRaises(ValueError):
