@@ -508,6 +508,46 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertTrue(len(shape.trajectories) == 1)
         self.assertTrue(shape.n_walker == 1)
 
+    def test_bulk_add_trajectories_alternate_constructor(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_na_binding/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(len(shape.trajectories) == 8)
+        self.assertTrue(shape.n_walker == 8)
+
+    def test_bulk_add_trajectories_alternate_constructor_temp(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_na_binding/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350)
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(len(shape.trajectories) == 8)
+        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(shape.trajectories[0].temperature == 350)
+        self.assertTrue(shape.lines['D1'].temperature == 350)
+        self.assertTrue(shape.surfaces[0].temperature == 350)
+
+    def test_bulk_add_trajectories_alternate_constructor_temp_with_metadata(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_na_binding/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350,
+                                                        metadata={'ion': 'Na'})
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(len(shape.trajectories) == 8)
+        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(shape.trajectories[0].temperature == 350)
+        self.assertTrue(shape.lines['D1'].temperature == 350)
+        self.assertTrue(shape.surfaces[0].temperature == 350)
+
     def test_bulk_add_trajectories_alternate_constructor_opes_traj_metad(self):
         """
         testing bulk adding trajectories to a free energy line
