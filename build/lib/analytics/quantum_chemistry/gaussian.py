@@ -195,13 +195,17 @@ class GaussianParser:
     def atomcount(self) -> int:
         return self._atomcount
 
-    def get_raman_frequencies(self) -> pd.DataFrame:
+    def get_raman_frequencies(self, frac_filter: float = 0.99) -> pd.DataFrame:
         """
         method to get the raman frequencies from the log file
+        :param frac_filter: take this fraction of peaks with the highest intensities
         :return:
         """
         if self._raman is False:
             raise ValueError("This gaussian log file doesnt have raman data in it!")
+
+        if frac_filter < 0 or frac_filter > 1:
+            raise ValueError("frac_filter must be between 0 and 1!")
 
         frequencies = [line.split("--")[1].split() for line in self._lines if "Frequencies --" in line]
         frequencies = [item for sublist in frequencies for item in sublist]
@@ -214,11 +218,14 @@ class GaussianParser:
                 .query('frequencies != "************"')
                 .assign(frequencies=lambda x: x['frequencies'].astype('float'))
                 .assign(raman_activity=lambda x: x['raman_activity'].astype('float'))
+                .assign(activity_cutoff=1)
+                #.assign(activity_cutoff=lambda x: x['raman_activity'].max().astype('float')*(1-frac_filter))
+                .query('raman_activity > activity_cutoff')
                 )
 
         return data
 
-    def get_raman_spectra(self, width: float = 20, wn_min: int = 500, wn_max: int = 2500, wn_step: int = 1):
+    def get_raman_spectra(self, width: float = 20, wn_min: int = 500, wn_max: int = 2500, wn_step: int = 1, **kwargs):
         """
         method to get a theoretical spectrum from the gaussian log file
         :param width: the width of the lorentzian peaks
@@ -227,7 +234,7 @@ class GaussianParser:
         :param wn_step: the number of intervals in the spectrum
         :return:
         """
-        peaks = self.get_raman_frequencies()
+        peaks = self.get_raman_frequencies(**kwargs)
         wn = [w for w in range(wn_min, wn_max, wn_step)]
         intensity = [0] * len(wn)
 
