@@ -401,6 +401,18 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertEqual(round(fes._data['energy'].values[6], 3), -17.051)
         self.assertEqual(round(fes._data['energy'].values[8], 3), -16.319)
 
+    def test_reweighted_line_cv_adaptive_with_walker_err(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error('D1', bins=10, adaptive_bins=True)
+        self.assertEqual(fes._data['energy'].values[0], 0)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.231)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.564)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.051)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.319)
+
     def test_two_bin_reweighted_cv_opes(self):
         """
         Function to test that it is normalising properly when using two bins

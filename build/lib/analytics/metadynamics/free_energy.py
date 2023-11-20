@@ -711,9 +711,10 @@ class FreeEnergySpace:
         :param data: _data frame to reweight
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
-        :param temperature to get the population
+        :param temperature: temperature to get the population
         :return: reweighted dataframe
         """
+
         if type(cv) == str:
             histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
             x_points = [(histogram[1][i] + histogram[1][i + 1]) / 2 for i in range(0, len(histogram[1]) - 1)]
@@ -762,7 +763,7 @@ class FreeEnergySpace:
     
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298,
+                            verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298
                             ) -> (pd.DataFrame | dict[pd.DataFrame]):
         """
         Function to reweight a list of trajectories.
@@ -816,7 +817,7 @@ class FreeEnergySpace:
         return fes_data
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None,
+                            verbosity: bool = False, conditions: str | list[str] = None, adaptive_bins: bool = False
                             ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
@@ -826,12 +827,18 @@ class FreeEnergySpace:
         :param n_timestamps: number of time stamps to have in the _time_data
         :param verbosity: print progress?
         :param conditions: some query style conditions to put on the histogram
+        :param adaptive_bins: whether to use bins with equal number of points
         :return:
         """
         # grab the trajectories and put them in a list
         traj_list = []
         for w, t in self.trajectories.items():
             traj_list.append(t)
+
+        # if using adaptive bins then get the quantiles
+        if adaptive_bins is True:
+            traj_list_data = [s.get_data() for s in traj_list]
+            bins = pd.qcut(pd.concat(traj_list_data)[cv], bins, retbins=True)[1]
 
         # reweight the trajectories
         fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbosity, conditions, self.temperature)
@@ -871,7 +878,8 @@ class FreeEnergySpace:
 
     def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200,
                                               n_timestamps: int = None, verbosity: bool = False,
-                                              conditions: str | list[str] = None) -> FreeEnergyLine:
+                                              conditions: str | list[str] = None, adaptive_bins: bool = False
+                                              ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
         histogram
@@ -881,19 +889,24 @@ class FreeEnergySpace:
         :param n_timestamps: number of time stamps to have in the _time_data
         :param verbosity: print progress?
         :param conditions: some query style conditions to put on the histogram
+        :param adaptive_bins: whether to make bins on quartiles
         :return:
         """
         if self.n_walker == 1:
             raise ValueError("there is only data from one walker in this space!")
+
+        # grab the trajectories and put them in a list to get the bins if using adaptive
+        if adaptive_bins is True:
+            traj_data = [t.get_data() for t in self.trajectories.values()]
+            bins = pd.qcut(pd.concat(traj_data)[cv], bins, retbins=True)[1]
         
         # reweight each trajectory individually
         fes_data = []
         for w, t in self.trajectories.items():
             if verbosity:
                 print(f"Getting reweighted data for walker {w}")
-            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps,
-                                                     verbosity=verbosity, conditions=conditions,
-                                                     temperature=self.temperature)
+            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps, verbosity=verbosity,
+                                                     conditions=conditions, temperature=self.temperature)
                             )
         
         if type(fes_data[0]) == dict:
