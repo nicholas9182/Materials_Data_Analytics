@@ -704,16 +704,19 @@ class FreeEnergySpace:
 
     @staticmethod
     def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200,
-                            temperature: float = 298):
+                            temperature: float = 298, adaptive_bins: bool = False):
         """
         Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional
         binning
         :param data: _data frame to reweight
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
-        :param temperature to get the population
+        :param temperature: temperature to get the population
+        :param adaptive_bins: whether to use quartiles for binning or equal width bins
         :return: reweighted dataframe
         """
+        bins = bins if adaptive_bins is False else pd.qcut(data[cv], bins, retbins=True)[1]
+
         if type(cv) == str:
             histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
             x_points = [(histogram[1][i] + histogram[1][i + 1]) / 2 for i in range(0, len(histogram[1]) - 1)]
@@ -763,7 +766,7 @@ class FreeEnergySpace:
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
                             verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298,
-                            ) -> (pd.DataFrame | dict[pd.DataFrame]):
+                            adaptive_bins: bool = False) -> (pd.DataFrame | dict[pd.DataFrame]):
         """
         Function to reweight a list of trajectories.
         :param traj_list: list of trajectories to reweight.
@@ -773,6 +776,7 @@ class FreeEnergySpace:
         :param verbosity: print progress?
         :param conditions: some query style conditions to put on the histogram.
         :param temperature: temperature to get the population.
+        :param adaptive_bins: whether to use bins based on quartiles of size
         :return: reweighted trajectory data.
         """
         # grab the data from the trajectories
@@ -795,7 +799,7 @@ class FreeEnergySpace:
         # reweight the data
         if n_timestamps is None:
             fes_data = (FreeEnergySpace
-                        ._reweight_traj_data(data, cv, bins, temperature=temperature)
+                        ._reweight_traj_data(data, cv, bins, temperature=temperature, adaptive_bins=adaptive_bins)
                         .filter([cv, 'energy', 'population'])
                         )
         elif type(n_timestamps) == int:
@@ -805,7 +809,8 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = (FreeEnergySpace
-                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature)
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature,
+                                                      adaptive_bins=adaptive_bins)
                                  .filter([cv, 'energy', 'population'])
                                  )
                 if verbosity:
@@ -816,7 +821,7 @@ class FreeEnergySpace:
         return fes_data
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None,
+                            verbosity: bool = False, conditions: str | list[str] = None, adaptive_bins: bool = False
                             ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
@@ -826,6 +831,7 @@ class FreeEnergySpace:
         :param n_timestamps: number of time stamps to have in the _time_data
         :param verbosity: print progress?
         :param conditions: some query style conditions to put on the histogram
+        :param adaptive_bins: whether to use bins with equal number of points
         :return:
         """
         # grab the trajectories and put them in a list
@@ -834,7 +840,8 @@ class FreeEnergySpace:
             traj_list.append(t)
 
         # reweight the trajectories
-        fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbosity, conditions, self.temperature)
+        fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbosity, conditions, self.temperature,
+                                            adaptive_bins)
 
         line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
         return line

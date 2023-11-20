@@ -221,7 +221,7 @@ class GaussianParser:
                 .assign(raman_activity=lambda x: x['raman_activity'].astype('float'))
                 )
 
-        cutoff = data['raman_activity'].max().astype('float')*(1-frac_filter)
+        cutoff = data['raman_activity'].max()*(1-frac_filter)
 
         data = (data
                 .query('raman_activity > @cutoff')

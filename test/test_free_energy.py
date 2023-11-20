@@ -377,6 +377,30 @@ class TestFreeEnergySpace(unittest.TestCase):
         fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
         self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
 
+    def test_reweighted_line_cv(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line('D1', bins=10).set_datum({'D1': 0})
+        self.assertEqual(fes._data['energy'].values[0], 0)
+        self.assertEqual(round(fes._data['energy'].values[2], 5), 6.47530)
+        self.assertEqual(round(fes._data['energy'].values[4], 5), -3.71956)
+        self.assertEqual(round(fes._data['energy'].values[6], 5), -7.09612)
+        self.assertEqual(round(fes._data['energy'].values[8], 5), 1.06099)
+
+    def test_reweighted_line_cv_adaptive(self):
+        """
+        Function to test that it is normalising properly when using two bins
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line('D1', bins=10, adaptive_bins=True).set_datum({'D1': 0})
+        self.assertEqual(fes._data['energy'].values[0], 0)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.231)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.564)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.051)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.319)
+
     def test_two_bin_reweighted_cv_opes(self):
         """
         Function to test that it is normalising properly when using two bins
