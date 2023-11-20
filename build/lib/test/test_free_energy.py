@@ -519,6 +519,19 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertTrue(len(shape.trajectories) == 8)
         self.assertTrue(shape.n_walker == 8)
 
+    def test_bulk_add_trajectories_alternate_constructor_temp_check(self):
+        """
+        testing bulk adding trajectories to a free energy line
+        :return:
+        """
+        here_dir = "../test_trajectories/ndi_na_binding/"
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350)
+        line = shape.get_reweighted_line('D1', bins=80)
+        self.assertTrue(type(line) == FreeEnergyLine)
+        self.assertTrue(type(shape) == FreeEnergySpace)
+        self.assertTrue(len(shape.trajectories) == 8)
+        self.assertTrue(shape.n_walker == 8)
+
     def test_bulk_add_trajectories_alternate_constructor_temp(self):
         """
         testing bulk adding trajectories to a free energy line
