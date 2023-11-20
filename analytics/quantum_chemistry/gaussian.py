@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from analytics.laws_and_constants import lorentzian
 
 pd.set_option('mode.chained_assignment', None)
@@ -229,7 +230,7 @@ class GaussianParser:
 
         return data
 
-    def get_raman_spectra(self, width: float = 20, wn_min: int = 500, wn_max: int = 2500, wn_step: int = 1, **kwargs):
+    def get_raman_spectra(self, width: float = 20, wn_min: int = 500, wn_max: int = 2500, wn_step: float = 1, **kwargs):
         """
         method to get a theoretical spectrum from the gaussian log file
         :param width: the width of the lorentzian peaks
@@ -239,7 +240,7 @@ class GaussianParser:
         :return:
         """
         peaks = self.get_raman_frequencies(**kwargs)
-        wn = [w for w in range(wn_min, wn_max, wn_step)]
+        wn = [w for w in np.arange(wn_min, wn_max, wn_step)]
         intensity = [0] * len(wn)
 
         for index, row in peaks.iterrows():

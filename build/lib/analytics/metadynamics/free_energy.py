@@ -795,7 +795,7 @@ class FreeEnergySpace:
         # reweight the data
         if n_timestamps is None:
             fes_data = (FreeEnergySpace
-                        ._reweight_traj_data(data, cv, bins, temperature)
+                        ._reweight_traj_data(data, cv, bins, temperature=temperature)
                         .filter([cv, 'energy', 'population'])
                         )
         elif type(n_timestamps) == int:
@@ -805,7 +805,7 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = (FreeEnergySpace
-                                 ._reweight_traj_data(filtered_data, cv, bins, temperature)
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature)
                                  .filter([cv, 'energy', 'population'])
                                  )
                 if verbosity:
