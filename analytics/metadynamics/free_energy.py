@@ -845,48 +845,16 @@ class FreeEnergySpace:
 
         line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
         return line
-    
-    @staticmethod
-    def _calc_errors_from_walker_std(data_list: list[pd.DataFrame], cv: str, n_walkers: int,
-                                     bins: int | list[int | float] = 200) -> pd.DataFrame:
-        """
-        Function to calculate the errors from the standard deviation of the multiple walkers.
-        :param data_list: list of dataframes with data from each walker.
-        :param cv: the collective variable to bin over.
-        :param n_walkers: number of walkers.
-        :param bins: number of bins, or a list of bin boundaries.
-        :return: dataframe with errors.
-        """
-        if n_walkers != len(data_list):
-            raise ValueError("n_walkers does not match the number of walkers in the data!")
-
-        # bin the data
-        data = (pd.concat(data_list)
-                .assign(bin=lambda x: pd.cut(x[cv], bins))
-                )
-
-        # calculate errors
-        binned_data = pd.DataFrame({
-            cv: data.groupby('bin', observed=True).mean()[cv],
-            'energy': data.groupby('bin', observed=True).mean()['energy'],
-            'energy_err': data.groupby('bin', observed=True).std()['energy']/np.sqrt(n_walkers),
-            'population': data.groupby('bin', observed=True).mean()['population'],
-            'population_err': data.groupby('bin', observed=True).std()['population']/np.sqrt(n_walkers),
-        }).dropna()
-
-        return binned_data
 
     def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200,
-                                              n_timestamps: int = None, verbosity: bool = False,
-                                              conditions: str | list[str] = None, adaptive_bins: bool = False
-                                              ) -> FreeEnergyLine:
+                                              verbosity: bool = False, conditions: str | list[str] = None,
+                                              adaptive_bins: bool = False) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
         histogram
         analysis. Errors are calculated from the standard deviation of the multiple walkers.
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
-        :param n_timestamps: number of time stamps to have in the _time_data
         :param verbosity: print progress?
         :param conditions: some query style conditions to put on the histogram
         :param adaptive_bins: whether to make bins on quartiles
@@ -896,28 +864,45 @@ class FreeEnergySpace:
             raise ValueError("there is only data from one walker in this space!")
 
         # grab the trajectories and put them in a list to get the bins if using adaptive
-        if adaptive_bins is True:
+        if adaptive_bins is True and type(bins) == int:
             traj_data = [t.get_data() for t in self.trajectories.values()]
-            bins = pd.qcut(pd.concat(traj_data)[cv], bins, retbins=True)[1]
-        
+            bins = pd.qcut(pd.concat(traj_data)[cv], bins, retbins=True, duplicates='drop')[1]
+        elif adaptive_bins is True and type(bins) == list:
+            raise ValueError("If using adaptive bins then give bins an integer, not a list")
+        elif adaptive_bins is False and type(bins) == int:
+            traj_data = [t.get_data() for t in self.trajectories.values()]
+            bins = pd.cut(pd.concat(traj_data)[cv], bins, retbins=True, duplicates='drop')[1]
+
         # reweight each trajectory individually
         fes_data = []
         for w, t in self.trajectories.items():
             if verbosity:
                 print(f"Getting reweighted data for walker {w}")
-            fes_data.append(self._reweight_traj_list([t], cv, bins, n_timestamps=n_timestamps, verbosity=verbosity,
-                                                     conditions=conditions, temperature=self.temperature)
+            new_fes_data = (self
+                            ._reweight_traj_list([t], cv, bins, verbosity=verbosity, conditions=conditions,
+                                                 temperature=self.temperature)
+                            .assign(walker=w)
                             )
-        
-        if type(fes_data[0]) == dict:
-            binned_fes = {}
-            for time_idx in range(0, n_timestamps):
-                time_fes_data = [fes_data[walker_idx][time_idx+1] for walker_idx in range(0, len(fes_data))]
-                binned_fes[time_idx+1] = self._calc_errors_from_walker_std(time_fes_data, cv, self.n_walker, bins,)
-        else:
-            binned_fes = self._calc_errors_from_walker_std(fes_data, cv, self.n_walker, bins,)
+            fes_data.append(new_fes_data)
 
-        line = FreeEnergyLine(binned_fes, temperature=self.temperature, metadata=self._metadata)
+        # get the mean and std for each value of the cv and turn it into a line
+        line = (pd
+                .concat(fes_data)
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna()
+                .groupby([cv])
+                .apply(lambda df: (df
+                                   .assign(energy_err=lambda x: x['energy'].std()/np.sqrt(len(self.trajectories)))
+                                   .assign(population_err=lambda x: x['population'].std()/np.sqrt(len(self.trajectories)))
+                                   .assign(energy=lambda x: x['energy'].mean())
+                                   .assign(population=lambda x: x['population'].mean())
+                                   .drop(columns=["walker"])
+                                   .drop_duplicates()
+                                   )
+                       )
+                .reset_index(drop=True)
+                .pipe(FreeEnergyLine, temperature=self.temperature, metadata=self._metadata)
+                )
 
         return line
 
