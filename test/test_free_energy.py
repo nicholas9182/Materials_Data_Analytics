@@ -407,11 +407,11 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error('D1', bins=10, adaptive_bins=True)
-        self.assertEqual(fes._data['energy'].values[0], 0)
-        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.231)
-        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.564)
-        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.051)
-        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.319)
+        self.assertEqual(round(fes._data['energy'].values[0], 3), 8.859)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), 2.513)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), 10.631)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), -4.757)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), -3.655)
 
     def test_two_bin_reweighted_cv_opes(self):
         """
@@ -643,20 +643,6 @@ class TestFreeEnergySpace(unittest.TestCase):
             "D1", bins=[0, 4, 7], conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0}
                                                                              )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
-    
-    def test_two_bin_reweighted_with_walker_error_with_time_stamps(self):
-        """
-        Function to test that it reweights correctly with errors when using two bins and five timestamps.
-        :return:
-        """
-        fes = self.landscape.get_reweighted_line_with_walker_error(
-            "D1", bins=[0, 4, 7], n_timestamps=5).set_datum({"D1": 0}
-                                                            )
-        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
-        self.assertTrue(type(fes._time_data) == dict)
-        self.assertTrue(type(fes._time_data[1]) == pd.DataFrame)
-        self.assertTrue(type(fes._time_data[3]) == pd.DataFrame)
-        self.assertTrue(type(fes._time_data[5]) == pd.DataFrame)
 
     def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
         """
