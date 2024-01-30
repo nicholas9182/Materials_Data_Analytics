@@ -15,7 +15,6 @@ class GaussianParser:
         self._log_file = log_file
         self._lines = [line for line in open(log_file, 'r')]
         self._keywords = [k for k in self._lines if '#p ' in k][0].split()[1:]
-        self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
         self._multiplicity = int([m for m in self._lines if 'Charge =' in m][0][27:])
         self._raman = True if len([r for r in self._keywords if 'raman' in r]) > 0 else False
         self._opt = True if len([r for r in self._keywords if 'opt' in r]) > 0 else False
@@ -23,6 +22,11 @@ class GaussianParser:
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
         self._esp = True if len([r for r in self._lines if 'ESP charges:' in r]) > 0 else False
+
+        if len([c for c in self._lines if 'Charge =' in c]) > 0:
+            self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
+        else:
+            self._charge = None
 
         if len([e for e in self._lines if 'SCF Done' in e]) > 0:
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
