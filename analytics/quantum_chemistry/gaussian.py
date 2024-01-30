@@ -15,23 +15,33 @@ class GaussianParser:
         self._log_file = log_file
         self._lines = [line for line in open(log_file, 'r')]
         self._keywords = [k for k in self._lines if '#p ' in k][0].split()[1:]
-        self._charge = int([c for c in self._lines if 'Charge =' in c][0].split()[2])
-        self._multiplicity = int([m for m in self._lines if 'Charge =' in m][0].split()[5])
+        self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
+        self._multiplicity = int([m for m in self._lines if 'Charge =' in m][0][27:])
         self._raman = True if len([r for r in self._keywords if 'raman' in r]) > 0 else False
         self._opt = True if len([r for r in self._keywords if 'opt' in r]) > 0 else False
         self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
-        self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
-        self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
         self._esp = True if len([r for r in self._lines if 'ESP charges:' in r]) > 0 else False
 
-        self._mull_start = self._lines.index([k for k in self._lines if 'Mulliken charges' in k][0]) + 2
-        self._mull_end = self._lines.index([k for k in self._lines if 'Sum of Mulliken charges' in k][0])
-        self._atomcount = self._mull_end - self._mull_start
-        self._atoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end]]
-        self._heavyatoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end] if 'H' not in a]
-        self._heavyatomcount = len(self._heavyatoms)
+        if len([e for e in self._lines if 'SCF Done' in e]) > 0:
+            self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
+            self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
+            self._mull_start = self._lines.index([k for k in self._lines if 'Mulliken charges' in k][0]) + 2
+            self._mull_end = self._lines.index([k for k in self._lines if 'Sum of Mulliken charges' in k][0])
+            self._atomcount = self._mull_end - self._mull_start
+            self._atoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end]]
+            self._heavyatoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end] if 'H' not in a]
+            self._heavyatomcount = len(self._heavyatoms)
+        else:
+            self._energy = None
+            self._unrestricted = None
+            self._mull_start = None
+            self._mull_end = None
+            self._atomcount = None
+            self._atoms = None
+            self._heavyatoms = None
+            self._heavyatomcount = None
 
     @property
     def esp(self):
