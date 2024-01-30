@@ -19,6 +19,10 @@ class TestGaussianParser(unittest.TestCase):
     def test_charge_bbl(self):
         self.assertTrue(self.bbl_log.charge == -2)
 
+    def test_charge_bbl_double_digit(self):
+        bbl_log_double_digit_charge = GaussianParser("../test_trajectories/bbl/step1.log")
+        self.assertTrue(bbl_log_double_digit_charge.charge == -12)
+
     def test_multiplicity_pedot(self):
         self.assertTrue(self.pedot_log.multiplicity == 1)
 
@@ -65,7 +69,6 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_energy_bbl(self):
         energy = self.bbl_log.energy
-        print(energy)
         self.assertTrue(energy == -12531769.403127551)
 
     def test_functional_pedot(self):
