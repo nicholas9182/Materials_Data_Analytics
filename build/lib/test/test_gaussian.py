@@ -71,6 +71,10 @@ class TestGaussianParser(unittest.TestCase):
         energy = self.bbl_log.energy
         self.assertTrue(energy == -12531769.403127551)
 
+    def test_energy_bbl_no_SCF(self):
+        energy = GaussianParser("../test_trajectories/bbl/step1_no_scf.log").energy
+        self.assertTrue(energy is None)
+
     def test_functional_pedot(self):
         func = self.pedot_log.functional
         self.assertTrue(func == "B3LYP")

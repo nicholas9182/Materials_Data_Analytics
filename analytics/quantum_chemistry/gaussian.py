@@ -24,6 +24,11 @@ class GaussianParser:
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
         self._esp = True if len([r for r in self._lines if 'ESP charges:' in r]) > 0 else False
 
+        if len([c for c in self._lines if 'Charge =' in c]) > 0:
+            self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
+        else:
+            self._charge = None
+
         if len([e for e in self._lines if 'SCF Done' in e]) > 0:
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
