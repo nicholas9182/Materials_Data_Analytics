@@ -13,6 +13,14 @@ class TestGaussianParser(unittest.TestCase):
     pedot_log = GaussianParser("../test_trajectories/pedot_raman/step1.log")
     bbl_log = GaussianParser("../test_trajectories/bbl/step3.log")
 
+    def test_get_bonds(self):
+        result = self.bbl_log.get_bonds()
+        self.assertTrue(type(result))
+        self.assertTrue(result.iloc[0, 0] == 1)
+        self.assertTrue(result.iloc[10, 2] == 1.3935)
+        self.assertTrue(result.iloc[30, 3] == "C")
+        self.assertTrue(result.iloc[50, 1] == 41)
+
     def test_charge_pedot(self):
         self.assertTrue(self.pedot_log.charge == 0)
 

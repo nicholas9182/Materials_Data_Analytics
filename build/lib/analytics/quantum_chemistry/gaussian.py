@@ -64,6 +64,40 @@ class GaussianParser:
     def atoms(self) -> list:
         return self._atoms
 
+    def get_bonds(self):
+        """
+        function to extract the bond data from the gaussian log file
+        :return:
+        """
+        if self._opt is False:
+            start_line = len(self._lines) - \
+                         (self._lines[::-1].index([k for k in self._lines if '!    Initial Parameters    !' in k][0])-4)
+            end_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Trust Radius=' in k][0])+2
+        else:
+            start_line = len(self._lines) - \
+                         (self._lines[::-1].index([k for k in self._lines if '!   Optimized Parameters   !' in k][0])-4)
+
+            end_line = len(self._lines) - \
+                    (self._lines[::-1].index(
+                        [k for k in self._lines if 'Largest change from initial coordinates is atom' in k][0]) + 2
+                     )
+
+        bond_lines = [r for r in self._lines[start_line:end_line] if '! R' in r]
+
+        data = (pd
+                .DataFrame({
+                    'atom_id_1': [int(r.split()[2][2:][:-1].split(",")[0]) for r in bond_lines],
+                    'atom_id_2': [int(r.split()[2][2:][:-1].split(",")[1]) for r in bond_lines],
+                    'length': [float(r.split()[3]) for r in bond_lines]
+                    })
+                .assign(
+                    atom_1=lambda x: [self._atoms[i-1] for i in x['atom_id_1']],
+                    atom_2=lambda x: [self._atoms[i-1] for i in x['atom_id_2']]
+                    )
+                )
+
+        return data
+
     def get_coordinates(self, heavy_atoms: bool = False) -> pd.DataFrame:
         """
         function to get the coordinates from the log file
