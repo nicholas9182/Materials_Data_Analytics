@@ -99,14 +99,15 @@ class GaussianParser:
 
         return data
 
-    def get_bonds_from_coordinates(self, cutoff=2, heavy_atoms: bool = False):
+    def get_bonds_from_coordinates(self, cutoff: float = 2, heavy_atoms: bool = False, pre_optimisation: bool = False):
         """
         function to get bond data from the coordinates, using a cut-off distance
         :param cutoff: The cutoff for calculating the bond lengths
         :param heavy_atoms: just get the bonds involving heavy atoms
+        :param pre_optimisation: get the coordinated before the optimisation has begun?
         :return:
         """
-        coordinates = self.get_coordinates()
+        coordinates = self.get_coordinates(heavy_atoms=heavy_atoms, pre_optimisation=pre_optimisation)
 
         cross = (coordinates
                  .merge(coordinates, how='cross', suffixes=('_1', '_2'))
@@ -133,16 +134,21 @@ class GaussianParser:
 
         return data
 
-    def get_coordinates(self, heavy_atoms: bool = False) -> pd.DataFrame:
+    def get_coordinates(self, heavy_atoms: bool = False, pre_optimisation: bool = False) -> pd.DataFrame:
         """
         function to get the coordinates from the log file
-        :param heavy_atoms:
+        :param heavy_atoms: return just the heavy atoms?
+        :param pre_optimisation: get the coordinated before the optimisation has begun?
         :return:
         """
-        start_line = len(self._lines) - (self
-                                         ._lines[::-1]
-                                         .index([k for k in self._lines if 'Standard orientation:' in k][0]) - 4
-                                         )
+        if pre_optimisation is False:
+            start_line = len(self._lines) - (self
+                                             ._lines[::-1]
+                                             .index([k for k in self._lines if 'Standard orientation:' in k][0]) - 4
+                                             )
+        else:
+            start_line = self._lines.index([k for k in self._lines if 'Standard orientation:' in k][0]) + 5
+        
         end_line = start_line + self._atomcount
 
         data = (pd.DataFrame({
