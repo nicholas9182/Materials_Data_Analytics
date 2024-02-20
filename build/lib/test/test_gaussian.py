@@ -12,6 +12,7 @@ class TestGaussianParser(unittest.TestCase):
     """
     pedot_log = GaussianParser("../test_trajectories/pedot_raman/step1.log")
     bbl_log = GaussianParser("../test_trajectories/bbl/step3.log")
+    raman_log = GaussianParser("../test_trajectories/bbl/raman.log")
 
     def test_get_bonds_from_log(self):
         result = self.bbl_log.get_bonds_from_log()
@@ -60,6 +61,10 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_keywords(self):
         self.assertTrue(type(self.pedot_log.keywords) == list)
+
+    def test_keywords_long_keywords(self):
+        self.assertTrue(type(self.raman_log.keywords) == list)
+        self.assertTrue(self.raman_log._raman is True)
 
     def test_raman_pedot(self):
         self.assertTrue(self.pedot_log.raman is True)

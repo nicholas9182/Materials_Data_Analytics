@@ -15,7 +15,8 @@ class GaussianParser:
         self._log_file = log_file
         self._lines = [line for line in open(log_file, 'r')]
         self._keywords = [k for k in self._lines if '#p ' in k][0].split()[1:]
-        self._raman = True if len([r for r in self._keywords if 'raman' in r]) > 0 else False
+        self._raman = True if len([line.split("--")[1].split()
+                                   for line in self._lines if "Frequencies --" in line]) > 0 else False
         self._opt = True if len([r for r in self._keywords if 'opt' in r]) > 0 else False
         self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
