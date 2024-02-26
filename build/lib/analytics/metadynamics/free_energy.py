@@ -704,7 +704,7 @@ class FreeEnergySpace:
 
     @staticmethod
     def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200,
-                            temperature: float = 298):
+                            temperature: float = 298, conditions: str | list[str] = None):
         """
         Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional
         binning
@@ -712,8 +712,17 @@ class FreeEnergySpace:
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
         :param temperature: temperature to get the population
+        :param conditions: conditions for the reweighting to discard frames
         :return: reweighted dataframe
         """
+
+        # filter the data if there is a condition
+        if conditions:
+            if type(conditions) == str:
+                data = data.query(conditions)
+            elif type(conditions) == list:
+                for c in conditions:
+                    data = data.query(c)
 
         if type(cv) == str:
             histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
@@ -743,11 +752,12 @@ class FreeEnergySpace:
 
         return reweighted_data
 
-    def get_reweighted_surface(self, cvs: list[str, str], bins: list[int, int]):
+    def get_reweighted_surface(self, cvs: list[str, str], bins: list[int, int], conditions: str | list[str] = None):
         """
         Function to get a reweighted surface
         :param cvs: list with the two cvs. The first will go on the x-axis, the second on the y-axis
         :param bins: list with two integers for the number of bins in each CV
+        :param conditions: conditions to apply to the reweighting
         :return: a free energy surface
         """
         data = []
@@ -757,7 +767,7 @@ class FreeEnergySpace:
         if not data:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
-        fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
+        fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature, conditions=conditions)
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
     
@@ -784,19 +794,11 @@ class FreeEnergySpace:
             else:
                 raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
-
-        # filter the data if there is a condition
-        if conditions:
-            if type(conditions) == str:
-                data = data.query(conditions)
-            elif type(conditions) == list:
-                for c in conditions:
-                    data = data.query(c)
         
         # reweight the data
         if n_timestamps is None:
             fes_data = (FreeEnergySpace
-                        ._reweight_traj_data(data, cv, bins, temperature=temperature)
+                        ._reweight_traj_data(data, cv, bins, temperature=temperature, conditions=conditions)
                         .filter([cv, 'energy', 'population'])
                         )
         elif type(n_timestamps) == int:
@@ -806,7 +808,8 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = (FreeEnergySpace
-                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature)
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature,
+                                                      conditions=conditions)
                                  .filter([cv, 'energy', 'population'])
                                  )
                 if verbosity:
