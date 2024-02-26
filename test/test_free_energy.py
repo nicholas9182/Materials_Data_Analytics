@@ -644,6 +644,19 @@ class TestFreeEnergySpace(unittest.TestCase):
                                                                              )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
 
+    def test_reweighted_with_walker_two_conditions(self):
+        """
+        Function to test that it reweights correctly with errors when using two bins and one condition.
+        :return:
+        """
+        fes = self.landscape.get_reweighted_line_with_walker_error(
+            "D1", bins=10, conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0})
+        data = fes.get_data().round(4)
+        self.assertTrue(type(data) == pd.DataFrame)
+        self.assertTrue(data['D1'].iloc[2] == 1.9888)
+        self.assertTrue(data['energy'].iloc[6] == -7.3278)
+        self.assertTrue(data['energy_err'].iloc[1] == 0.7621)
+
     def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
         """
         testing bulk adding trajectories to a free energy line

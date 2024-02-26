@@ -241,3 +241,12 @@ class TestGaussianParser(unittest.TestCase):
     def test_get_mulliken_charges_with_coordinates_bbl(self):
         data = self.pedot_log.get_mulliken_charges(with_coordinates=True, heavy_atoms=True)
         self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_get_spin_contamination(self):
+        data = self.bbl_log.get_spin_contamination()
+        self.assertTrue(type(data) == pd.DataFrame)
+        self.assertTrue(data['before_annihilation'].iloc[0] == 2.0630)
+
+    def test_get_spin_contamination_rDFT(self):
+        data = self.raman_log.get_spin_contamination()
+        self.assertTrue(type(data) == pd.DataFrame)

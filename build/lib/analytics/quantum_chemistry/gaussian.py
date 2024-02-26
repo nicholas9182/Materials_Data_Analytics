@@ -100,6 +100,19 @@ class GaussianParser:
 
         return data
 
+    def get_spin_contamination(self) -> pd.DataFrame:
+        """
+        Function to get the spin contamination from a log file
+        :return: pandas data frame of the spin contamination
+        """
+        contamination_lines = [s for s in self._lines if "S**2 before annihilation" in s]
+        data = pd.DataFrame({
+            'iteration': [i for i in range(len(contamination_lines))],
+            'before_annihilation': [float(s.split()[3][:-1]) for s in contamination_lines],
+            'after_annihilation': [float(s.split()[5]) for s in contamination_lines]
+        })
+        return data
+
     def get_bonds_from_coordinates(self, cutoff: float = 2, heavy_atoms: bool = False, pre_optimisation: bool = False):
         """
         function to get bond data from the coordinates, using a cut-off distance
