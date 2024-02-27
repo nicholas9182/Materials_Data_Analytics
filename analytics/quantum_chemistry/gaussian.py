@@ -65,24 +65,62 @@ class GaussianParser:
     def atoms(self) -> list:
         return self._atoms
 
+    def get_thermo_chemistry(self) -> pd.DataFrame:
+        """
+        Function to extract the thermochemistry values from a log file
+        :return: thermochemistry values
+        """
+        if self._raman is False:
+            raise ValueError("Your log file needs to be from a vibrational analysis")
+
+        zero_point_correction = float([line for line in self._lines
+                                       if "Zero-point correction" in line][0].split()[2]) * 2625.5
+        energy_thermal_cor = float([line for line in self._lines
+                                    if "Thermal correction to Energy=" in line][0].split()[4]) * 2625.5
+        enthalpy_thermal_cor = float([line for line in self._lines
+                                      if "Thermal correction to Enthalpy=" in line][0].split()[4]) * 2625.5
+        gibbs_thermal_cor = float([line for line in self._lines
+                                   if "Thermal correction to Gibbs Free Energy=" in line][0].split()[6]) * 2625.5
+        electronic_and_zp = float([line for line in self._lines
+                                   if "Sum of electronic and zero-point Energies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_e = float([line for line in self._lines
+                                    if "Sum of electronic and thermal Energies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_s = float([line for line in self._lines
+                                    if "Sum of electronic and thermal Enthalpies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_g = float([line for line in self._lines
+                                    if "Sum of electronic and thermal Free Energies=" in line][0].split()[7]) * 2625.5
+
+        return pd.DataFrame({
+            'zp_corr': [zero_point_correction],
+            'e_corr': [energy_thermal_cor],
+            's_corr': [enthalpy_thermal_cor],
+            'g_corr': [gibbs_thermal_cor],
+            'e_elec_zp': [electronic_and_zp],
+            'e_elec_therm': [elec_and_thermal_e],
+            's_elec_therm': [elec_and_thermal_s],
+            'g_elec_therm': [elec_and_thermal_g]
+        }).round(5)
+
     def get_bonds_from_log(self):
         """
-        function to extract the bond data from the gaussian log file. Use with caution - it doesnt always seem to get
+        function to extract the bond data from the gaussian log file. Use with caution - it doesn't always seem to get
         the bond data right
         :return:
         """
         if self._opt is False:
             start_line = len(self._lines) - \
-                         (self._lines[::-1].index([k for k in self._lines if '!    Initial Parameters    !' in k][0])-4)
-            end_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Trust Radius=' in k][0])+2
+                         (self._lines[::-1].index(
+                             [k for k in self._lines if '!    Initial Parameters    !' in k][0]) - 4)
+            end_line = len(self._lines) - self._lines[::-1].index(
+                [k for k in self._lines if 'Trust Radius=' in k][0]) + 2
         else:
             start_line = len(self._lines) - \
-                         (self._lines[::-1].index([k for k in self._lines if '!   Optimized Parameters   !' in k][0])-4)
+                         (self._lines[::-1].index(
+                             [k for k in self._lines if '!   Optimized Parameters   !' in k][0]) - 4)
 
             end_line = len(self._lines) - \
-                    (self._lines[::-1].index(
-                        [k for k in self._lines if 'Largest change from initial coordinates is atom' in k][0]) + 2
-                     )
+                       (self._lines[::-1].index(
+                           [k for k in self._lines if 'Largest change from initial coordinates is atom' in k][0]) + 2)
 
         bond_lines = [r for r in self._lines[start_line:end_line] if '! R' in r]
 
@@ -91,12 +129,11 @@ class GaussianParser:
                     'atom_id_1': [int(r.split()[2][2:][:-1].split(",")[0]) for r in bond_lines],
                     'atom_id_2': [int(r.split()[2][2:][:-1].split(",")[1]) for r in bond_lines],
                     'length': [float(r.split()[3]) for r in bond_lines]
-                    })
+                })
                 .assign(
-                    element_1=lambda x: [self._atoms[i-1] for i in x['atom_id_1']],
-                    element_2=lambda x: [self._atoms[i-1] for i in x['atom_id_2']]
-                    )
-                )
+                    element_1=lambda x: [self._atoms[i - 1] for i in x['atom_id_1']],
+                    element_2=lambda x: [self._atoms[i - 1] for i in x['atom_id_2']]
+                ))
 
         return data
 
@@ -142,8 +179,8 @@ class GaussianParser:
                 .groupby(['atom_id_1', 'atom_id_2'])
                 .agg(length=('length', 'first'))
                 .reset_index()
-                .assign(element_1=lambda x: [self._atoms[i-1] for i in x['atom_id_1']])
-                .assign(element_2=lambda x: [self._atoms[i-1] for i in x['atom_id_2']])
+                .assign(element_1=lambda x: [self._atoms[i - 1] for i in x['atom_id_1']])
+                .assign(element_2=lambda x: [self._atoms[i - 1] for i in x['atom_id_2']])
                 )
 
         return data
@@ -162,11 +199,11 @@ class GaussianParser:
                                              )
         else:
             start_line = self._lines.index([k for k in self._lines if 'Standard orientation:' in k][0]) + 5
-        
+
         end_line = start_line + self._atomcount
 
         data = (pd.DataFrame({
-            'atom_id': [i for i in range(1, self._atomcount+1)],
+            'atom_id': [i for i in range(1, self._atomcount + 1)],
             'element': self._atoms,
             'x': [float(a.split()[3]) for a in self._lines[start_line:end_line]],
             'y': [float(a.split()[4]) for a in self._lines[start_line:end_line]],
@@ -325,7 +362,7 @@ class GaussianParser:
                 .assign(raman_activity=lambda x: x['raman_activity'].astype('float'))
                 )
 
-        cutoff = data['raman_activity'].max()*(1-frac_filter)
+        cutoff = data['raman_activity'].max() * (1 - frac_filter)
 
         data = (data
                 .query('raman_activity > @cutoff')
