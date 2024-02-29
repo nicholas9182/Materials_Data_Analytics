@@ -250,3 +250,10 @@ class TestGaussianParser(unittest.TestCase):
     def test_get_spin_contamination_rDFT(self):
         data = self.raman_log.get_spin_contamination()
         self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_get_thermochemistry(self):
+        data = self.raman_log.get_thermo_chemistry()
+        self.assertTrue(type(data) == pd.DataFrame)
+        self.assertTrue(data['g_corr'].iloc[0] == 3342.10134)
+        self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)
+        self.assertTrue(data['g_elec_therm'].iloc[0] == -18887783.57055)

@@ -287,11 +287,14 @@ class FreeEnergyLine(FreeEnergyShape):
         """
         col_file = open(file)
         col_names = col_file.readline().strip().split(" ")[2:]
+        cv = col_names[0]
         col_file.close()
-        data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
-                .rename(columns={'projection': 'energy'})
-                .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
-                )
+        data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        if "file.free" in col_names:
+            data = data.rename(columns={'file.free': 'energy', 'der_'+cv: 'delta_e'})
+        else:
+            data = data.rename(columns={'projection': 'energy'})
+        data = data.pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
 
         return data
 
