@@ -412,32 +412,45 @@ class FreeEnergySurface(FreeEnergyShape):
 class FreeEnergySpace:
 
     def __init__(self, hills_file: str = None, temperature: float = 298, metadata: dict = None):
-
-        if hills_file is not None:
-            self._hills, self.sigmas = self._read_file(hills_file)
-            self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
-            self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
-            self.max_time = self._hills['time'].max()
-            self.dt = self.max_time/self.n_timesteps
-            self.cvs = (self
-                        ._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
-                        .columns
-                        .to_list()
-                        )
-            self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
-        elif hills_file is None:
-            self.n_walker = 0
-            self._hills = None
-            self.n_timesteps = None
-            self.max_time = None
-            self.dt = None
-            self.cvs = []
-            self._opes = None
+        """
+        init file for the free energy space
+        :param hills_file: path to the hills file
+        :param temperature: temperature at which the free energy space is defined
+        :param metadata: any metadata to do with this space
+        """
+        self.n_walker = 0
+        self.sigmas = None
+        self._hills = None
+        self.n_timesteps = None
+        self.max_time = None
+        self.dt = None
+        self.cvs = []
+        self._opes = None
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
         self._metadata = metadata
+        self.set_hills_attributes(hills_file) if hills_file is not None else self
+
+    def set_hills_attributes(self, hills_file):
+        """
+        Function to read the hills file and set some important attributes if the hills file is there
+        :param hills_file: hills file path
+        :return:
+        """
+        self._hills, self.sigmas = self._read_file(hills_file)
+        self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
+        self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
+        self.max_time = self._hills['time'].max()
+        self.dt = self.max_time/self.n_timesteps
+        self.cvs = (self
+                    ._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
+                    .columns
+                    .to_list()
+                    )
+        self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
+        return self
 
     @property
     def metadata(self):

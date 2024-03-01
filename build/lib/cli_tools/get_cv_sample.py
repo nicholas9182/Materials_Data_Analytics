@@ -29,7 +29,7 @@ def main(colvar_file: str, condition: str, traj_file: str = None, sample_size: i
     :param ndx_file: index file with groups
     :return:
     """
-    data = MetaTrajectory(colvar_file=colvar_file, temperature=temperature)._data
+    data = MetaTrajectory(colvar_file=colvar_file, temperature=temperature).get_data()
 
     for c in condition:
         data = data.query(c)

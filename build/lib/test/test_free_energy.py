@@ -236,6 +236,15 @@ class TestFreeEnergyLine(unittest.TestCase):
         self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
         self.assertTrue(len(shape.trajectories) == 8)
 
+    def test_make_line_from_plumed_bias_exchange(self):
+        """
+        Testing bias exchange fes read in
+        :return:
+        """
+        file_list = [f for f in glob("../test_trajectories/ndi_bias_exchange/FES_D1/*")]
+        fes = FreeEnergyLine.from_plumed(file_list)
+        self.assertTrue(type(fes) == FreeEnergyLine)
+
 
 class TestFreeEnergySurface(unittest.TestCase):
 
