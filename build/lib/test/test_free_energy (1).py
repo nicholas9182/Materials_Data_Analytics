@@ -236,15 +236,6 @@ class TestFreeEnergyLine(unittest.TestCase):
         self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
         self.assertTrue(len(shape.trajectories) == 8)
 
-    def test_make_line_from_plumed_bias_exchange(self):
-        """
-        Testing bias exchange fes read in
-        :return:
-        """
-        file_list = [f for f in glob("../test_trajectories/ndi_bias_exchange/FES_D1/*")]
-        fes = FreeEnergyLine.from_plumed(file_list)
-        self.assertTrue(type(fes) == FreeEnergyLine)
-
 
 class TestFreeEnergySurface(unittest.TestCase):
 
@@ -653,19 +644,6 @@ class TestFreeEnergySpace(unittest.TestCase):
                                                                              )
         self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
 
-    def test_reweighted_with_walker_two_conditions(self):
-        """
-        Function to test that it reweights correctly with errors when using two bins and one condition.
-        :return:
-        """
-        fes = self.landscape.get_reweighted_line_with_walker_error(
-            "D1", bins=10, conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0})
-        data = fes.get_data().round(4)
-        self.assertTrue(type(data) == pd.DataFrame)
-        self.assertTrue(data['D1'].iloc[2] == 1.9888)
-        self.assertTrue(data['energy'].iloc[6] == -7.3278)
-        self.assertTrue(data['energy_err'].iloc[1] == 0.7621)
-
     def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
         """
         testing bulk adding trajectories to a free energy line
@@ -675,23 +653,3 @@ class TestFreeEnergySpace(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir)
         shape.get_reweighted_line_with_walker_error('CM1', bins=200)
         self.assertTrue(shape.n_walker == 8)
-
-
-class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
-
-    hills = [
-        "../test_trajectories/ndi_bias_exchange/HILLS.0",
-        "../test_trajectories/ndi_bias_exchange/HILLS.1",
-        "../test_trajectories/ndi_bias_exchange/HILLS.2",
-        "../test_trajectories/ndi_bias_exchange/HILLS.3"
-    ]
-
-    landscape = FreeEnergySpace(hills)
-
-    def test_attributes(self):
-        self.assertTrue(self.landscape.cvs == ['D1', 'CM1', 'CM2', 'CM3'])
-        self.assertTrue(self.landscape.dt == 0.0004)
-        self.assertTrue(self.landscape.max_time == 0.1)
-        self.assertTrue(self.landscape.n_timesteps == 250)
-        self.assertTrue(self.landscape.opes is None)
-        self.assertTrue(self.landscape.temperature == 298)
