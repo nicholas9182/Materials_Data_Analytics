@@ -287,14 +287,11 @@ class FreeEnergyLine(FreeEnergyShape):
         """
         col_file = open(file)
         col_names = col_file.readline().strip().split(" ")[2:]
-        cv = col_names[0]
         col_file.close()
-        data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
-        if "file.free" in col_names:
-            data = data.rename(columns={'file.free': 'energy', 'der_'+cv: 'delta_e'})
-        else:
-            data = data.rename(columns={'projection': 'energy'})
-        data = data.pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
+        data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+                .rename(columns={'projection': 'energy'})
+                .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
+                )
 
         return data
 
@@ -411,96 +408,33 @@ class FreeEnergySurface(FreeEnergyShape):
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str | list[str] = None, temperature: float = 298, metadata: dict = None):
-        """
-        init file for the free energy space
-        :param hills_file: path to the hills file
-        :param temperature: temperature at which the free energy space is defined
-        :param metadata: any metadata to do with this space
-        """
-        self.n_walker = 0
-        self.sigmas = None
-        self._hills = None
-        self.n_timesteps = None
-        self.max_time = None
-        self.dt = None
-        self.cvs = []
-        self._opes = None
-        self._biasexchange = None
+    def __init__(self, hills_file: str = None, temperature: float = 298, metadata: dict = None):
+
+        if hills_file is not None:
+            self._hills, self.sigmas = self._read_file(hills_file)
+            self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
+            self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
+            self.max_time = self._hills['time'].max()
+            self.dt = self.max_time/self.n_timesteps
+            self.cvs = (self
+                        ._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
+                        .columns
+                        .to_list()
+                        )
+            self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
+        elif hills_file is None:
+            self.n_walker = 0
+            self._hills = None
+            self.n_timesteps = None
+            self.max_time = None
+            self.dt = None
+            self.cvs = []
+            self._opes = None
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
         self._metadata = metadata
-
-        if hills_file is not None and type(hills_file) == str:
-            self._hills, self.sigmas, self.n_walker, self.n_timesteps, self.max_time, self.dt, self.cvs, \
-                self_opes, self._biasexchange = self.get_hills_attributes(hills_file)
-        elif hills_file is not None and type(hills_file) == list:
-            self._hills, self.sigmas, self.n_walker, self.n_timesteps, self.max_time, self.dt, self.cvs, \
-                self_opes, self._biasexchange = self.get_bias_exchange_hills_attributes(hills_file)
-
-        # if hills_file is not None and type(hills_file) == list:
-
-    def get_bias_exchange_hills_attributes(self, hills_files: list[str]):
-        """
-        Function to get attributes from a hills file if its a bias-exchange simulation
-        :param hills_files: hills file paths as a list
-        :return:
-        """
-        hills_list = [self.get_hills_attributes(h)[0] for h in hills_files]
-        sigma_list = [self.get_hills_attributes(h)[1] for h in hills_files]
-        n_timestep_list = [self.get_hills_attributes(h)[3] for h in hills_files]
-        max_time_list = [self.get_hills_attributes(h)[4] for h in hills_files]
-        dt_list = [self.get_hills_attributes(h)[5] for h in hills_files]
-        opes_list = [self.get_hills_attributes(h)[7] for h in hills_files]
-        cvs = [self.get_hills_attributes(h)[6][0] for h in hills_files]
-        sigmas = {k: v for d in sigma_list for k, v in d.items()}
-        n_walker = len(hills_files)
-        biasexchange = True
-
-        hills = (pd
-                 .concat([(hills_list[i]
-                           .rename(columns={cvs[i]: 'Value'})
-                           .assign(cv=cvs[i])
-                           .drop(columns=["walker"])
-                           ) for i in range(0, len(hills_files))])
-                 .sort_values(["time", "cv"])
-                 )
-
-        if len(set(n_timestep_list)) == 1 and len(set(max_time_list)) == 1 and len(set(dt_list)) == 1:
-            n_timesteps = n_timestep_list[0]
-            max_time = max_time_list[0]
-            dt = dt_list[0]
-        else:
-            raise ValueError("Check the time increments of your HILLS files")
-
-        if len(set(opes_list)) == 1:
-            opes = opes_list[0]
-        else:
-            raise ValueError("Check the opes status of your hills files")
-
-        return hills, sigmas, n_walker, n_timesteps, max_time, dt, cvs, opes, biasexchange
-
-    def get_hills_attributes(self, hills_file: str):
-        """
-        Function to get attributes from a hills file
-        :param hills_file: hills file path
-        :return:
-        """
-        hills, sigmas = self._read_file(hills_file)
-        n_walker = hills[hills['time'] == min(hills['time'])].shape[0]
-        n_timesteps = hills[['time']].drop_duplicates().shape[0]
-        max_time = hills['time'].max()
-        dt = max_time/n_timesteps
-        cvs = (hills
-               .drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
-               .columns
-               .to_list()
-               )
-        opes = False if 'logweight' not in hills.columns.to_list() else True
-        bias_exchange = False
-        return hills, sigmas, n_walker, n_timesteps, max_time, dt, cvs, opes, bias_exchange
 
     @property
     def metadata(self):
@@ -521,6 +455,7 @@ class FreeEnergySpace:
         space = cls(**kwargs)
 
         for f in os.scandir(standard_dir):
+
             if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
                     and len(f.path.split("/")[-1].split("_")) == 2):
                 path = f.path + "/"
@@ -769,7 +704,7 @@ class FreeEnergySpace:
 
     @staticmethod
     def _reweight_traj_data(data: pd.DataFrame, cv: str | list[str], bins: int | list[int | float] = 200,
-                            temperature: float = 298, conditions: str | list[str] = None):
+                            temperature: float = 298):
         """
         Function to reweight a _data frame using weights. Can do both one dimensional binning and two-dimensional
         binning
@@ -777,17 +712,8 @@ class FreeEnergySpace:
         :param cv: the collective variable you are reweighting over
         :param bins: number of bins, or a list of bin boundaries
         :param temperature: temperature to get the population
-        :param conditions: conditions for the reweighting to discard frames
         :return: reweighted dataframe
         """
-
-        # filter the data if there is a condition
-        if conditions:
-            if type(conditions) == str:
-                data = data.query(conditions)
-            elif type(conditions) == list:
-                for c in conditions:
-                    data = data.query(c)
 
         if type(cv) == str:
             histogram = np.histogram(a=data[cv], bins=bins, weights=data['weight'], density=True)
@@ -817,12 +743,11 @@ class FreeEnergySpace:
 
         return reweighted_data
 
-    def get_reweighted_surface(self, cvs: list[str, str], bins: list[int, int], conditions: str | list[str] = None):
+    def get_reweighted_surface(self, cvs: list[str, str], bins: list[int, int]):
         """
         Function to get a reweighted surface
         :param cvs: list with the two cvs. The first will go on the x-axis, the second on the y-axis
         :param bins: list with two integers for the number of bins in each CV
-        :param conditions: conditions to apply to the reweighting
         :return: a free energy surface
         """
         data = []
@@ -832,10 +757,10 @@ class FreeEnergySpace:
         if not data:
             raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
-        fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature, conditions=conditions)
+        fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature)
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
-
+    
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
                             verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298
@@ -860,10 +785,18 @@ class FreeEnergySpace:
                 raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
 
+        # filter the data if there is a condition
+        if conditions:
+            if type(conditions) == str:
+                data = data.query(conditions)
+            elif type(conditions) == list:
+                for c in conditions:
+                    data = data.query(c)
+        
         # reweight the data
         if n_timestamps is None:
             fes_data = (FreeEnergySpace
-                        ._reweight_traj_data(data, cv, bins, temperature=temperature, conditions=conditions)
+                        ._reweight_traj_data(data, cv, bins, temperature=temperature)
                         .filter([cv, 'energy', 'population'])
                         )
         elif type(n_timestamps) == int:
@@ -873,8 +806,7 @@ class FreeEnergySpace:
                 time = (i + 1) * max_time / n_timestamps
                 filtered_data = data.query('time <= @time')
                 fes_data[i+1] = (FreeEnergySpace
-                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature,
-                                                      conditions=conditions)
+                                 ._reweight_traj_data(filtered_data, cv, bins, temperature=temperature)
                                  .filter([cv, 'energy', 'population'])
                                  )
                 if verbosity:
