@@ -675,3 +675,41 @@ class TestFreeEnergySpace(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir)
         shape.get_reweighted_line_with_walker_error('CM1', bins=200)
         self.assertTrue(shape.n_walker == 8)
+
+
+class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
+
+    hills = [
+        "../test_trajectories/ndi_bias_exchange/HILLS.0",
+        "../test_trajectories/ndi_bias_exchange/HILLS.1",
+        "../test_trajectories/ndi_bias_exchange/HILLS.2",
+        "../test_trajectories/ndi_bias_exchange/HILLS.3"
+    ]
+
+    landscape = FreeEnergySpace(hills)
+
+    def test_attributes(self):
+        self.assertTrue(self.landscape.cvs == ['D1', 'CM1', 'CM2', 'CM3'])
+        self.assertTrue(self.landscape.dt == 0.0004)
+        self.assertTrue(self.landscape.max_time == 0.1)
+        self.assertTrue(self.landscape.n_timesteps == 250)
+        self.assertTrue(self.landscape.opes is None)
+        self.assertTrue(self.landscape.temperature == 298)
+
+    def test_get_hills_figures(self):
+        figures = self.landscape.get_hills_figures()
+        self.assertTrue(self.landscape._biasexchange is True)
+        self.assertEqual(len(figures), 4)
+
+    def test_get_average_hills_figure(self):
+        figure = self.landscape.get_average_hills_figure()
+        self.assertTrue(type(self.landscape) == FreeEnergySpace)
+
+    def test_get_max_hills_figure(self):
+        figure = self.landscape.get_max_hills_figure()
+        self.assertTrue(type(self.landscape) == FreeEnergySpace)
+
+    def test_get_hills_figures_hp(self):
+        figures = self.landscape.get_hills_figures(height_power=0.5)
+        self.assertTrue(self.landscape._biasexchange is True)
+        self.assertEqual(len(figures), 4)

@@ -411,7 +411,7 @@ class FreeEnergySurface(FreeEnergyShape):
 
 class FreeEnergySpace:
 
-    def __init__(self, hills_file: str = None, temperature: float = 298, metadata: dict = None):
+    def __init__(self, hills_file: str | list[str] = None, temperature: float = 298, metadata: dict = None):
         """
         init file for the free energy space
         :param hills_file: path to the hills file
@@ -426,31 +426,81 @@ class FreeEnergySpace:
         self.dt = None
         self.cvs = []
         self._opes = None
+        self._biasexchange = None
         self.temperature = temperature
         self.lines = {}
         self.surfaces = []
         self.trajectories = {}
         self._metadata = metadata
-        self.set_hills_attributes(hills_file) if hills_file is not None else self
 
-    def set_hills_attributes(self, hills_file):
+        if hills_file is not None and type(hills_file) == str:
+            self._hills, self.sigmas, self.n_walker, self.n_timesteps, self.max_time, self.dt, self.cvs, \
+                self_opes, self._biasexchange = self.get_hills_attributes(hills_file)
+        elif hills_file is not None and type(hills_file) == list:
+            self._hills, self.sigmas, self.n_walker, self.n_timesteps, self.max_time, self.dt, self.cvs, \
+                self_opes, self._biasexchange = self.get_bias_exchange_hills_attributes(hills_file)
+
+        # if hills_file is not None and type(hills_file) == list:
+
+    def get_bias_exchange_hills_attributes(self, hills_files: list[str]):
         """
-        Function to read the hills file and set some important attributes if the hills file is there
+        Function to get attributes from a hills file if its a bias-exchange simulation
+        :param hills_files: hills file paths as a list
+        :return:
+        """
+        hills_list = [self.get_hills_attributes(h)[0] for h in hills_files]
+        sigma_list = [self.get_hills_attributes(h)[1] for h in hills_files]
+        n_timestep_list = [self.get_hills_attributes(h)[3] for h in hills_files]
+        max_time_list = [self.get_hills_attributes(h)[4] for h in hills_files]
+        dt_list = [self.get_hills_attributes(h)[5] for h in hills_files]
+        opes_list = [self.get_hills_attributes(h)[7] for h in hills_files]
+        cvs = [self.get_hills_attributes(h)[6][0] for h in hills_files]
+        sigmas = {k: v for d in sigma_list for k, v in d.items()}
+        n_walker = len(hills_files)
+        biasexchange = True
+
+        hills = (pd
+                 .concat([(hills_list[i]
+                           .rename(columns={cvs[i]: 'value'})
+                           .assign(variable=cvs[i])
+                           .drop(columns=["walker"])
+                           ) for i in range(0, len(hills_files))])
+                 .sort_values(["time", "variable"])
+                 )
+
+        if len(set(n_timestep_list)) == 1 and len(set(max_time_list)) == 1 and len(set(dt_list)) == 1:
+            n_timesteps = n_timestep_list[0]
+            max_time = max_time_list[0]
+            dt = dt_list[0]
+        else:
+            raise ValueError("Check the time increments of your HILLS files")
+
+        if len(set(opes_list)) == 1:
+            opes = opes_list[0]
+        else:
+            raise ValueError("Check the opes status of your hills files")
+
+        return hills, sigmas, n_walker, n_timesteps, max_time, dt, cvs, opes, biasexchange
+
+    def get_hills_attributes(self, hills_file: str):
+        """
+        Function to get attributes from a hills file
         :param hills_file: hills file path
         :return:
         """
-        self._hills, self.sigmas = self._read_file(hills_file)
-        self.n_walker = self._hills[self._hills['time'] == min(self._hills['time'])].shape[0]
-        self.n_timesteps = self._hills[['time']].drop_duplicates().shape[0]
-        self.max_time = self._hills['time'].max()
-        self.dt = self.max_time/self.n_timesteps
-        self.cvs = (self
-                    ._hills.drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
-                    .columns
-                    .to_list()
-                    )
-        self._opes = False if 'logweight' not in self._hills.columns.to_list() else True
-        return self
+        hills, sigmas = self._read_file(hills_file)
+        n_walker = hills[hills['time'] == min(hills['time'])].shape[0]
+        n_timesteps = hills[['time']].drop_duplicates().shape[0]
+        max_time = hills['time'].max()
+        dt = max_time/n_timesteps
+        cvs = (hills
+               .drop(columns=['time', 'height', 'walker', 'logweight'], errors='ignore')
+               .columns
+               .to_list()
+               )
+        opes = False if 'logweight' not in hills.columns.to_list() else True
+        bias_exchange = False
+        return hills, sigmas, n_walker, n_timesteps, max_time, dt, cvs, opes, bias_exchange
 
     @property
     def metadata(self):
@@ -471,7 +521,6 @@ class FreeEnergySpace:
         space = cls(**kwargs)
 
         for f in os.scandir(standard_dir):
-
             if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
                     and len(f.path.split("/")[-1].split("_")) == 2):
                 path = f.path + "/"
@@ -594,11 +643,15 @@ class FreeEnergySpace:
         long_hills = self._hills.rename(columns={'height': height_label})
         long_hills[height_label] = long_hills[height_label].pow(height_power)
 
-        if not self._opes:
+        if not self._opes and not self._biasexchange:
             long_hills = long_hills.melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
-        elif self._opes:
+        elif self._opes and not self._biasexchange:
             long_hills = (long_hills
                           .melt(value_vars=self.cvs + [height_label] + ['logweight'], id_vars=['time', 'walker'])
+                          )
+        elif self._biasexchange is True:
+            long_hills = (long_hills
+                          .assign(walker=0)
                           )
 
         long_hills = (long_hills
@@ -610,7 +663,7 @@ class FreeEnergySpace:
 
         return long_hills
 
-    def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
+    def get_hills_figures(self, **kwargs) -> dict[int | str, go.Figure]:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a
         metadynamics simulation.
@@ -620,12 +673,24 @@ class FreeEnergySpace:
         if self._hills is None:
             raise ValueError("The space needs some hills data!")
 
-        long_hills = self.get_long_hills(**kwargs).groupby('walker')
+        long_hills = self.get_long_hills(**kwargs)
+        long_hills = long_hills.groupby('walker') if self._biasexchange is False else long_hills.groupby('variable')
+
         figs = {}
         for name, df in long_hills:
+
+            if self._biasexchange is True:
+                height_label = [hl for hl in df.columns.to_list() if 'height' in hl][0]
+                df = (df
+                      .drop(columns=['variable'])
+                      .rename(columns={'value': name})
+                      .melt(id_vars=['time', 'walker'], value_vars=[name, height_label], value_name='value')
+                      )
+
             figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'},
-                             template=custom_dark_template)
-            figure.update_traces(line=dict(width=1))
+                             template='plotly_dark', markers=True)
+
+            figure.update_traces(line=dict(width=0.3), marker=dict(size=1.2))
             figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
@@ -643,12 +708,11 @@ class FreeEnergySpace:
 
         av_hills = (self._hills
                     .assign(time=lambda x: x['time'].round(time_resolution))
+                    .filter(['time', 'height'])
                     .groupby(['time'])
                     .mean()
                     .reset_index()
                     )
-
-        av_hills = av_hills[['time', 'height']]
 
         if with_metadata:
             av_hills['temperature'] = self.temperature
@@ -686,12 +750,11 @@ class FreeEnergySpace:
 
         max_hills = (self._hills
                      .assign(time=lambda x: x['time'].round(time_resolution))
+                     .filter(['time', 'height'])
                      .groupby(['time'])
                      .max()
                      .reset_index()
                      )
-
-        max_hills = max_hills[['time', 'height']]
 
         if with_metadata:
             max_hills['temperature'] = self.temperature
@@ -786,7 +849,7 @@ class FreeEnergySpace:
         fes_data = self._reweight_traj_data(data, cvs, bins, self.temperature, conditions=conditions)
         surface = FreeEnergySurface(fes_data, temperature=self.temperature, metadata=self._metadata)
         return surface
-    
+
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
                             verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298
@@ -810,7 +873,7 @@ class FreeEnergySpace:
             else:
                 raise ValueError("no trajectories in this space have that CV")
         data = pd.concat(data).sort_values('time')
-        
+
         # reweight the data
         if n_timestamps is None:
             fes_data = (FreeEnergySpace

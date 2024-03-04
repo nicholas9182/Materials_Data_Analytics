@@ -695,3 +695,21 @@ class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
         self.assertTrue(self.landscape.n_timesteps == 250)
         self.assertTrue(self.landscape.opes is None)
         self.assertTrue(self.landscape.temperature == 298)
+
+    def test_get_hills_figures(self):
+        figures = self.landscape.get_hills_figures()
+        self.assertTrue(self.landscape._biasexchange is True)
+        self.assertEqual(len(figures), 4)
+
+    def test_get_average_hills_figure(self):
+        figure = self.landscape.get_average_hills_figure()
+        self.assertTrue(type(self.landscape) == FreeEnergySpace)
+
+    def test_get_max_hills_figure(self):
+        figure = self.landscape.get_max_hills_figure()
+        self.assertTrue(type(self.landscape) == FreeEnergySpace)
+
+    def test_get_hills_figures_hp(self):
+        figures = self.landscape.get_hills_figures(height_power=0.5)
+        self.assertTrue(self.landscape._biasexchange is True)
+        self.assertEqual(len(figures), 4)
