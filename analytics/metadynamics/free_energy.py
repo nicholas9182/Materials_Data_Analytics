@@ -461,11 +461,11 @@ class FreeEnergySpace:
 
         hills = (pd
                  .concat([(hills_list[i]
-                           .rename(columns={cvs[i]: 'Value'})
-                           .assign(cv=cvs[i])
+                           .rename(columns={cvs[i]: 'value'})
+                           .assign(variable=cvs[i])
                            .drop(columns=["walker"])
                            ) for i in range(0, len(hills_files))])
-                 .sort_values(["time", "cv"])
+                 .sort_values(["time", "variable"])
                  )
 
         if len(set(n_timestep_list)) == 1 and len(set(max_time_list)) == 1 and len(set(dt_list)) == 1:
@@ -643,11 +643,15 @@ class FreeEnergySpace:
         long_hills = self._hills.rename(columns={'height': height_label})
         long_hills[height_label] = long_hills[height_label].pow(height_power)
 
-        if not self._opes:
+        if not self._opes and not self._biasexchange:
             long_hills = long_hills.melt(value_vars=self.cvs + [height_label], id_vars=['time', 'walker'])
-        elif self._opes:
+        elif self._opes and not self._biasexchange:
             long_hills = (long_hills
                           .melt(value_vars=self.cvs + [height_label] + ['logweight'], id_vars=['time', 'walker'])
+                          )
+        elif self._biasexchange is True:
+            long_hills = (long_hills
+                          .assign(walker=0)
                           )
 
         long_hills = (long_hills
@@ -659,7 +663,7 @@ class FreeEnergySpace:
 
         return long_hills
 
-    def get_hills_figures(self, **kwargs) -> dict[int, go.Figure]:
+    def get_hills_figures(self, **kwargs) -> dict[int | str, go.Figure]:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a
         metadynamics simulation.
@@ -669,12 +673,24 @@ class FreeEnergySpace:
         if self._hills is None:
             raise ValueError("The space needs some hills data!")
 
-        long_hills = self.get_long_hills(**kwargs).groupby('walker')
+        long_hills = self.get_long_hills(**kwargs)
+        long_hills = long_hills.groupby('walker') if self._biasexchange is False else long_hills.groupby('variable')
+
         figs = {}
         for name, df in long_hills:
+
+            if self._biasexchange is True:
+                height_label = [hl for hl in df.columns.to_list() if 'height' in hl][0]
+                df = (df
+                      .drop(columns=['variable'])
+                      .rename(columns={'value': name})
+                      .melt(id_vars=['time', 'walker'], value_vars=[name, height_label], value_name='value')
+                      )
+
             figure = px.line(df, x='time', y='value', facet_row='variable', labels={'time': 'Time [ns]'},
-                             template=custom_dark_template)
-            figure.update_traces(line=dict(width=1))
+                             template='plotly_dark', markers=True)
+
+            figure.update_traces(line=dict(width=0.3), marker=dict(size=1.2))
             figure.update_yaxes(title=None, matches=None)
             figure.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
             figs[name] = figure
@@ -692,12 +708,11 @@ class FreeEnergySpace:
 
         av_hills = (self._hills
                     .assign(time=lambda x: x['time'].round(time_resolution))
+                    .filter(['time', 'height'])
                     .groupby(['time'])
                     .mean()
                     .reset_index()
                     )
-
-        av_hills = av_hills[['time', 'height']]
 
         if with_metadata:
             av_hills['temperature'] = self.temperature
@@ -735,12 +750,11 @@ class FreeEnergySpace:
 
         max_hills = (self._hills
                      .assign(time=lambda x: x['time'].round(time_resolution))
+                     .filter(['time', 'height'])
                      .groupby(['time'])
                      .max()
                      .reset_index()
                      )
-
-        max_hills = max_hills[['time', 'height']]
 
         if with_metadata:
             max_hills['temperature'] = self.temperature
