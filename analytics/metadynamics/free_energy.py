@@ -408,6 +408,40 @@ class FreeEnergySurface(FreeEnergyShape):
 
         return data
 
+    def set_as_symmetric(self, symmetry_rule: str = 'y=x'):
+        """
+        Function to make the free energy surface symmetric according to some line of symmetry. Currently only 'y=x' is
+        supported
+        :param symmetry_rule: Along which axis to make the FES symmetric
+        :return:
+        """
+        if symmetry_rule == 'y=x':
+            x = self._data.pivot(index=[self.cvs[0]], columns=[self.cvs[1]], values=['energy']).index.to_list()
+            y = [i[1] for i in self._data.pivot(index=self.cvs[0], columns=self.cvs[1], values=['energy']).columns.to_list()]
+            v = self._data.pivot(index=self.cvs[0], columns=self.cvs[1], values=['energy']).to_numpy()
+            v_sym = (v + v.T)/2
+            err = np.absolute(v - v_sym)
+
+            data = (pd
+                    .DataFrame(v_sym, index=x, columns=y)
+                    .reset_index()
+                    .rename(columns={'index': self.cvs[0]})
+                    .melt(id_vars=self.cvs[0], var_name=self.cvs[1], value_name='energy')
+                    )
+
+            err = (pd
+                   .DataFrame(err, index=x, columns=y)
+                   .reset_index()
+                   .rename(columns={'index': self.cvs[0]})
+                   .melt(id_vars=self.cvs[0], var_name=self.cvs[1], value_name='symmetry_error')
+                   )
+
+            self._data = data.merge(err)
+        else:
+            raise ValueError("That symmetry hasn't been built in yet.")
+
+        return self
+
 
 class FreeEnergySpace:
 
