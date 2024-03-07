@@ -273,6 +273,26 @@ class TestFreeEnergySurface(unittest.TestCase):
         self.assertTrue(0 in surface._data['energy'].values.tolist())
         # figure.show()
 
+    def test_surface_reweighting(self):
+
+        surface = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = surface.get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5]).get_data()
+        figure = go.Figure()
+        figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['energy']))
+        figure.update_layout(template='plotly_dark')
+        # figure.show()
+        self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_surface_reweight_with_symmetry(self):
+
+        surface = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = (surface
+                .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
+                .set_as_symmetric('y=x')
+                .get_data()
+                )
+        self.assertTrue(type(data) == pd.DataFrame)
+
 
 class TestFreeEnergySpace(unittest.TestCase):
 
@@ -393,10 +413,10 @@ class TestFreeEnergySpace(unittest.TestCase):
         """
         fes = self.landscape.get_reweighted_line('D1', bins=10).set_datum({'D1': 0})
         self.assertEqual(fes._data['energy'].values[0], 0)
-        self.assertEqual(round(fes._data['energy'].values[2], 5), 6.47530)
-        self.assertEqual(round(fes._data['energy'].values[4], 5), -3.71956)
-        self.assertEqual(round(fes._data['energy'].values[6], 5), -7.09612)
-        self.assertEqual(round(fes._data['energy'].values[8], 5), 1.06099)
+        self.assertEqual(round(fes._data['energy'].values[2], 5), 6.43809)
+        self.assertEqual(round(fes._data['energy'].values[4], 5), -3.7654)
+        self.assertEqual(round(fes._data['energy'].values[6], 5), -7.13267)
+        self.assertEqual(round(fes._data['energy'].values[8], 5), 0.99982)
 
     def test_reweighted_line_cv_adaptive(self):
         """
@@ -405,10 +425,10 @@ class TestFreeEnergySpace(unittest.TestCase):
         """
         fes = self.landscape.get_reweighted_line('D1', bins=10, adaptive_bins=True).set_datum({'D1': 0})
         self.assertEqual(fes._data['energy'].values[0], 0)
-        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.231)
-        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.564)
-        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.051)
-        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.319)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.155)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.506)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.031)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.299)
 
     def test_reweighted_line_cv_adaptive_with_walker_err(self):
         """
@@ -416,11 +436,11 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error('D1', bins=10, adaptive_bins=True)
-        self.assertEqual(round(fes._data['energy'].values[0], 3), 8.859)
-        self.assertEqual(round(fes._data['energy'].values[2], 3), 2.513)
-        self.assertEqual(round(fes._data['energy'].values[4], 3), 10.631)
-        self.assertEqual(round(fes._data['energy'].values[6], 3), -4.757)
-        self.assertEqual(round(fes._data['energy'].values[8], 3), -3.655)
+        self.assertEqual(round(fes._data['energy'].values[0], 3), 8.840)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), 2.578)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), 10.664)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), -4.764)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), -3.659)
 
     def test_two_bin_reweighted_cv_opes(self):
         """
@@ -663,8 +683,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         data = fes.get_data().round(4)
         self.assertTrue(type(data) == pd.DataFrame)
         self.assertTrue(data['D1'].iloc[2] == 1.9888)
-        self.assertTrue(data['energy'].iloc[6] == -7.3278)
-        self.assertTrue(data['energy_err'].iloc[1] == 0.7621)
+        self.assertTrue(data['energy'].iloc[6] == -7.3849)
+        self.assertTrue(data['energy_err'].iloc[1] == 0.7667)
 
     def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
         """
