@@ -11,6 +11,7 @@ analytics/core/coordinate_transformer.py
 analytics/core/universe.py
 analytics/metadynamics/__init__.py
 analytics/metadynamics/free_energy.py
+analytics/metadynamics/path_analysis.py
 analytics/quantum_chemistry/__init__.py
 analytics/quantum_chemistry/gaussian.py
 cli_tools/__init__.py
