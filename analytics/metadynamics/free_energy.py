@@ -4,6 +4,7 @@ import numpy as np
 import os
 import plotly.graph_objects as go
 import plotly.express as px
+from pandas import DataFrame
 from visualisation.themes import custom_dark_template
 from analytics.laws_and_constants import boltzmann_energy_to_population, Kb, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
@@ -156,7 +157,7 @@ class FreeEnergyShape:
         return cls(data, **kwargs)
 
     @staticmethod
-    def _get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
+    def get_nearest_value(data: pd.DataFrame, ref_coordinate: dict[str, float | int], val_col: str) -> float:
         """
         Function to read a dataframe and get the value in val_col in the row where ref_col is closest to value using a
         pythagorean distance
@@ -211,11 +212,11 @@ class FreeEnergyShape:
                 raise ValueError("The keys for the datum dictionary need to be cvs!")
 
         if type(datum[self.cvs[0]]) == float or type(datum[self.cvs[0]]) == int:
-            adjust_value = self._get_nearest_value(self._data, datum, 'energy')
+            adjust_value = self.get_nearest_value(self._data, datum, 'energy')
             self._data['energy'] = self._data['energy'] - adjust_value
             if self._time_data is not None:
                 for _, v in self._time_data.items():
-                    adjust_value = self._get_nearest_value(v, datum, 'energy')
+                    adjust_value = self.get_nearest_value(v, datum, 'energy')
                     v['energy'] = v['energy'] - adjust_value
         elif type(datum[self.cvs[0]]) == tuple:
             adjust_value = self._get_mean_in_range(self._data, self.cvs[0], 'energy', datum[self.cvs[0]])
@@ -441,6 +442,37 @@ class FreeEnergySurface(FreeEnergyShape):
             raise ValueError("That symmetry hasn't been built in yet.")
 
         return self
+
+    def get_mean_force(self) -> pd.DataFrame:
+        """
+        Function to get the mean force from the free energy surface
+        :return: Dataframe of the mean force
+        """
+        cv1 = self.cvs[0]
+        cv2 = self.cvs[1]
+        x = self._data.pivot(index=[cv1], columns=[cv2], values=['energy']).index.to_list()
+        y = [i[1] for i in self._data.pivot(index=[cv1], columns=[cv2], values=['energy']).columns.to_list()]
+        v = self._data.pivot(index=[cv1], columns=[cv2], values=['energy']).to_numpy()
+
+        force = [-f for f in np.gradient(v, x, y)]
+
+        grad1 = (pd
+                 .DataFrame(force[0], index=x, columns=y)
+                 .reset_index()
+                 .rename(columns={'index': cv1})
+                 .melt(id_vars=[cv1], var_name=cv2, value_name=f'{cv1}_grad')
+                 )
+
+        grad2 = (pd
+                 .DataFrame(force[1], index=x, columns=y)
+                 .reset_index()
+                 .rename(columns={'index': cv1})
+                 .melt(id_vars=[cv1], var_name=cv2, value_name=f'{cv2}_grad')
+                 )
+
+        force = grad1.merge(grad2)
+
+        return force
 
 
 class FreeEnergySpace:

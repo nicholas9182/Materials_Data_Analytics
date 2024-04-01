@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
 import plumed as pl
+import matplotlib.pyplot as plt
 from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
 tracemalloc.start()
 
@@ -285,13 +286,49 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_surface_reweight_with_symmetry(self):
 
-        surface = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
-        data = (surface
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = (space
                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
                 .set_as_symmetric('y=x')
                 .get_data()
                 )
+        figure = go.Figure()
+        figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['energy']))
+        figure.update_layout(template='plotly_dark')
+        # figure.show()
         self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_surface_reweight_with_symmetry_err(self):
+
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = (space
+                .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
+                .set_as_symmetric('y=x')
+                .get_data()
+                )
+        figure = go.Figure()
+        figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['symmetry_error']))
+        figure.update_layout(template='plotly_dark')
+        # figure.show()
+        self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_get_forces(self):
+
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+
+        force = (space
+                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
+                 .set_as_symmetric('y=x')
+                 .get_mean_force()
+                 .assign(CM2_grad=lambda x: x['CM2_grad']/30)
+                 .assign(CM3_grad=lambda x: x['CM3_grad']/30)
+                 )
+
+        plt.figure(figsize=(10, 6))
+        plt.quiver(force['CM2'], force['CM3'], force['CM2_grad'], force['CM3_grad'], scale=5)
+
+        # plt.show()
+        self.assertTrue(type(force) == pd.DataFrame)
 
 
 class TestFreeEnergySpace(unittest.TestCase):
