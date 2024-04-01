@@ -1,0 +1,10 @@
+#include "../OBT.ff/forcefield.itp"
+#include "ND4.itp"
+
+[ system ]
+g20 in water
+
+[ molecules ]
+ND4		2
+NA		2
+SOL              2916

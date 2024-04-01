@@ -736,21 +736,19 @@ class TestFreeEnergySpace(unittest.TestCase):
 
 class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
 
-    hills = [
-        "../test_trajectories/ndi_bias_exchange/HILLS.0",
-        "../test_trajectories/ndi_bias_exchange/HILLS.1",
-        "../test_trajectories/ndi_bias_exchange/HILLS.2",
-        "../test_trajectories/ndi_bias_exchange/HILLS.3"
-    ]
+    hills = ['../test_trajectories/ndi_bias_exchange/HILLS.0',
+             '../test_trajectories/ndi_bias_exchange/HILLS.1',
+             '../test_trajectories/ndi_bias_exchange/HILLS.2',
+             '../test_trajectories/ndi_bias_exchange/HILLS.3']
 
-    landscape = FreeEnergySpace(hills)
+    landscape = FreeEnergySpace.from_standard_directory('../test_trajectories/ndi_bias_exchange/', hills_file=hills)
 
     def test_attributes(self):
         self.assertTrue(self.landscape.cvs == ['D1', 'CM1', 'CM2', 'CM3'])
         self.assertTrue(self.landscape.dt == 0.0004)
-        self.assertTrue(self.landscape.max_time == 0.1)
-        self.assertTrue(self.landscape.n_timesteps == 250)
-        self.assertTrue(self.landscape.opes is None)
+        self.assertTrue(self.landscape.max_time == 0.0596)
+        self.assertTrue(self.landscape.n_timesteps == 149)
+        self.assertTrue(self.landscape.opes is False)
         self.assertTrue(self.landscape.temperature == 298)
 
     def test_get_hills_figures(self):
@@ -770,3 +768,8 @@ class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
         figures = self.landscape.get_hills_figures(height_power=0.5)
         self.assertTrue(self.landscape._biasexchange is True)
         self.assertEqual(len(figures), 4)
+
+    def test_get_CM1_data(self):
+        data = self.landscape.lines['CM1'].get_data()
+        self.assertTrue(type(data) == pd.DataFrame)
+
