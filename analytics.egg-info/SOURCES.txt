@@ -23,6 +23,7 @@ test/__init__.py
 test/test_coordinate_transformer.py
 test/test_free_energy.py
 test/test_gaussian.py
+test/test_path.py
 test/test_universe.py
 visualisation/__init__.py
 visualisation/themes.py
