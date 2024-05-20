@@ -1,6 +1,7 @@
 import unittest
 import tracemalloc
 import pandas as pd
+import plotly.express as px
 import numpy as np
 from analytics.quantum_chemistry.gaussian import GaussianParser
 tracemalloc.start()
@@ -257,3 +258,28 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(data['g_corr'].iloc[0] == 3342.10134)
         self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)
         self.assertTrue(data['g_elec_therm'].iloc[0] == -18887783.57055)
+
+
+class TestGaussianParserRestart(unittest.TestCase):
+
+    bbl_log = GaussianParser("../test_trajectories/bbl/step5_raman_restart.log")
+
+    def test_is_parser(self):
+        self.assertTrue(type(self.bbl_log) == GaussianParser)
+
+    def test_is_restart(self):
+        self.assertTrue(self.bbl_log.restart is True)
+
+    def test_raman(self):
+        self.assertTrue(self.bbl_log.raman is True)
+
+    def test_get_thermochemistry(self):
+        data = self.bbl_log.get_thermo_chemistry()
+        self.assertTrue(type(data) == pd.DataFrame)
+        self.assertTrue(data['g_corr'].iloc[0] == 3348.02710)
+        self.assertTrue(data['e_elec_zp'].iloc[0] == -18490865.10668)
+        self.assertTrue(data['g_elec_therm'].iloc[0] == -18491265.62408)
+
+    def test_get_raman_frequencies(self):
+        data = self.bbl_log.get_raman_spectra()
+        # px.line(data, x='wavenumber', y='intensity', template='plotly_dark').show()

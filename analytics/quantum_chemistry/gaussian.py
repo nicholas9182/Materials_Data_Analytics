@@ -55,6 +55,19 @@ class GaussianParser:
             self._heavyatoms = None
             self._heavyatomcount = None
 
+        if " The wavefunction is stable under the perturbations considered.\n" in self._lines:
+            self._stable = "stable"
+        elif " The wavefunction has an internal instability.\n" in self._lines:
+            self._stable = "internal instability"
+        elif " The wavefunction has an RHF -> UHF instability.\n" in self._lines:
+            self._stable = "RHF instability"
+        else:
+            self._stable = "untested"
+
+    @property
+    def stable(self):
+        return self._stable
+
     @property
     def restart(self):
         return self._restart

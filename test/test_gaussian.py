@@ -283,3 +283,27 @@ class TestGaussianParserRestart(unittest.TestCase):
     def test_get_raman_frequencies(self):
         data = self.bbl_log.get_raman_spectra()
         # px.line(data, x='wavenumber', y='intensity', template='plotly_dark').show()
+
+
+class TestGaussianInstabilities(unittest.TestCase):
+
+    stable_log = GaussianParser("../test_trajectories/bbl/step2.log")
+    not_tested_log = GaussianParser("../test_trajectories/bbl/step3.log")
+    rhf_unstable = GaussianParser("../test_trajectories/bbl/rhf_instability.log")
+    internal_log = GaussianParser("../test_trajectories/bbl/internal_instability.log")
+
+    def test_stable(self):
+        report = self.stable_log.stable
+        self.assertTrue(report == 'stable')
+
+    def test_not_tested(self):
+        report = self.not_tested_log.stable
+        self.assertTrue(report == 'untested')
+
+    def test_rhf(self):
+        report = self.rhf_unstable.stable
+        self.assertTrue(report == 'RHF instability')
+
+    def test_internal(self):
+        report = self.internal_log.stable
+        self.assertTrue(report == 'internal instability')
