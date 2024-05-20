@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
 import plumed as pl
+import matplotlib.pyplot as plt
 from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
 tracemalloc.start()
 
@@ -285,13 +286,49 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_surface_reweight_with_symmetry(self):
 
-        surface = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
-        data = (surface
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = (space
                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
                 .set_as_symmetric('y=x')
                 .get_data()
                 )
+        figure = go.Figure()
+        figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['energy']))
+        figure.update_layout(template='plotly_dark')
+        # figure.show()
         self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_surface_reweight_with_symmetry_err(self):
+
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+        data = (space
+                .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
+                .set_as_symmetric('y=x')
+                .get_data()
+                )
+        figure = go.Figure()
+        figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['symmetry_error']))
+        figure.update_layout(template='plotly_dark')
+        # figure.show()
+        self.assertTrue(type(data) == pd.DataFrame)
+
+    def test_get_forces(self):
+
+        space = FreeEnergySpace.from_standard_directory("../test_trajectories/ndi_na_binding/")
+
+        force = (space
+                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
+                 .set_as_symmetric('y=x')
+                 .get_mean_force()
+                 .assign(CM2_grad=lambda x: x['CM2_grad']/30)
+                 .assign(CM3_grad=lambda x: x['CM3_grad']/30)
+                 )
+
+        plt.figure(figsize=(10, 6))
+        plt.quiver(force['CM2'], force['CM3'], force['CM2_grad'], force['CM3_grad'], scale=5)
+
+        # plt.show()
+        self.assertTrue(type(force) == pd.DataFrame)
 
 
 class TestFreeEnergySpace(unittest.TestCase):
@@ -699,21 +736,19 @@ class TestFreeEnergySpace(unittest.TestCase):
 
 class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
 
-    hills = [
-        "../test_trajectories/ndi_bias_exchange/HILLS.0",
-        "../test_trajectories/ndi_bias_exchange/HILLS.1",
-        "../test_trajectories/ndi_bias_exchange/HILLS.2",
-        "../test_trajectories/ndi_bias_exchange/HILLS.3"
-    ]
+    hills = ['../test_trajectories/ndi_bias_exchange/HILLS.0',
+             '../test_trajectories/ndi_bias_exchange/HILLS.1',
+             '../test_trajectories/ndi_bias_exchange/HILLS.2',
+             '../test_trajectories/ndi_bias_exchange/HILLS.3']
 
-    landscape = FreeEnergySpace(hills)
+    landscape = FreeEnergySpace.from_standard_directory('../test_trajectories/ndi_bias_exchange/', hills_file=hills)
 
     def test_attributes(self):
         self.assertTrue(self.landscape.cvs == ['D1', 'CM1', 'CM2', 'CM3'])
         self.assertTrue(self.landscape.dt == 0.0004)
-        self.assertTrue(self.landscape.max_time == 0.1)
-        self.assertTrue(self.landscape.n_timesteps == 250)
-        self.assertTrue(self.landscape.opes is None)
+        self.assertTrue(self.landscape.max_time == 0.0596)
+        self.assertTrue(self.landscape.n_timesteps == 149)
+        self.assertTrue(self.landscape.opes is False)
         self.assertTrue(self.landscape.temperature == 298)
 
     def test_get_hills_figures(self):
@@ -733,3 +768,8 @@ class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
         figures = self.landscape.get_hills_figures(height_power=0.5)
         self.assertTrue(self.landscape._biasexchange is True)
         self.assertEqual(len(figures), 4)
+
+    def test_get_CM1_data(self):
+        data = self.landscape.lines['CM1'].get_data()
+        self.assertTrue(type(data) == pd.DataFrame)
+
