@@ -14,9 +14,8 @@ class GaussianParser:
 
         self._log_file = log_file
         self._lines = [line for line in open(log_file, 'r')]
-        self._keywords = [k for k in self._lines if '#p ' in k][0].split()[1:]
-        self._raman = True if len([line.split("--")[1].split()
-                                   for line in self._lines if "Frequencies --" in line]) > 0 else False
+        self._keywords = self._get_keywords()
+        self._raman = True if len([i for i in self.keywords if 'raman' in i]) > 0 else False
         self._opt = True if 'opt' in self._keywords else False
         self._restart = True if 'Restart' in self._keywords or 'restart' in self._keywords else False
         self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
@@ -54,6 +53,39 @@ class GaussianParser:
             self._atoms = None
             self._heavyatoms = None
             self._heavyatomcount = None
+
+        if " The wavefunction is stable under the perturbations considered.\n" in self._lines:
+            self._stable = "stable"
+        elif " The wavefunction has an internal instability.\n" in self._lines:
+            self._stable = "internal instability"
+        elif " The wavefunction has an RHF -> UHF instability.\n" in self._lines:
+            self._stable = "RHF instability"
+        else:
+            self._stable = "untested"
+
+    def _get_keywords(self):
+        """
+        Function to extract the keywords from self._lines
+        :return:
+        """
+        star_value = [i for i in self._lines if "****" in i][0]
+        index = self._lines.index(star_value)
+        temp_lines = self._lines[index+4:index+20]
+        dash_value = [i for i in temp_lines if "--------" in i][0]
+        index = temp_lines.index(dash_value)
+        temp_lines = temp_lines[index+1:]
+        index = temp_lines.index(dash_value)
+        keyword_lines = temp_lines[0:index]
+        keywords_str = ''
+        for i in keyword_lines:
+            keywords_str = keywords_str + i[1:-1]
+        keywords = [i for i in keywords_str.split()][1:]
+        return keywords
+
+
+    @property
+    def stable(self):
+        return self._stable
 
     @property
     def restart(self):

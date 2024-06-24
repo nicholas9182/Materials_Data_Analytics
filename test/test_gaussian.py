@@ -14,6 +14,12 @@ class TestGaussianParser(unittest.TestCase):
     pedot_log = GaussianParser("../test_trajectories/pedot_raman/step1.log")
     bbl_log = GaussianParser("../test_trajectories/bbl/step3.log")
     raman_log = GaussianParser("../test_trajectories/bbl/raman.log")
+    bbl_spe_log = GaussianParser("../test_trajectories/bbl/step_37.log")
+    bbl_step6_log = GaussianParser("../test_trajectories/bbl/step6.log")
+
+    def test_multiline_keyword_parsing(self):
+        result = self.bbl_step6_log.keywords
+        self.assertTrue(result == ['scrf=(smd,solvent=water)', 'uwB97XD/6-311(d,p)', 'Geom=AllCheck', 'guess=read', 'stable'])
 
     def test_get_bonds_from_log(self):
         result = self.bbl_log.get_bonds_from_log()
