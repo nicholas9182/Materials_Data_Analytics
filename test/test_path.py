@@ -33,7 +33,7 @@ class TestPath(unittest.TestCase):
         cvs = ['CM2', 'CM3']
 
         surface = (FreeEnergySpace
-                   .from_standard_directory("../test_trajectories/ndi_na_binding/")
+                   .from_standard_directory("./test_trajectories/ndi_na_binding/")
                    .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
                    .set_as_symmetric('y=x')
                    )
@@ -42,4 +42,4 @@ class TestPath(unittest.TestCase):
 
         forces = path._get_surface_forces(index=5)
 
-        self.assertTrue(type(forces) == pd.DataFrame)
+        self.assertTrue(type(forces) == np.ndarray)
