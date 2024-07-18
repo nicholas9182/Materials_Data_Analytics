@@ -83,7 +83,7 @@ class MicroKineticModel():
 
 
 class OxygenReductionModel(MicroKineticModel):
-
+    
     """
     Class for microkinetic modelling of oxygen reduction reaction in an aqueous electrolyte
     """
@@ -141,3 +141,14 @@ class OxygenReductionModel(MicroKineticModel):
         postfactor = (2 - self._x) * pka_H2O2 + (self._x * self._pH)
         potential_formal_O2_HXO2 = potential_standard_O2_H2O2 - prefactor*postfactor
         return potential_formal_O2_HXO2
+    
+
+class ECpD(OxygenReductionModel):
+
+    """
+    Class to model a reaction which proceeds via an ECpD reaction process in aquoeous electrolytes, for example in Ana's paper 1
+    """
+
+    def __init__(self, pH: float, rotation_rate: float, bulk_concentration: float,  temperature: float = 298) -> None:
+        super().__init__(pH = pH, rotation_rate = rotation_rate, bulk_concentration = bulk_concentration, temperature = temperature)
+    
