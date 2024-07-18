@@ -80,4 +80,64 @@ class MicroKineticModel():
         :param diff_layer_thickness: the diffusion layer thickness
         """
         return diff_rate/diff_layer_thickness
+
+
+class OxygenReductionModel(MicroKineticModel):
+
+    """
+    Class for microkinetic modelling of oxygen reduction reaction in an aqueous electrolyte
+    """
+
+    def __init__(self, pH: float, rotation_rate: float, bulk_concentration: float,  temperature: float = 298) -> None:
+        """
+        Initiation function to read in the general properties of an ORR microkinetic model
+        """
+        super().__init__(pH = pH, rotation_rate = rotation_rate, bulk_concentration = bulk_concentration, temperature = temperature)
+        self._x = self._calculate_x()
+        self._potential_formal_O2_HXO2 = self._calculate_potential_formal_O2_HXO2()
+        self._diffusion_layer_thickness = self._calculate_diffusion_layer_thickness(diff_rate=diff_rate_O2, viscosity=viscosity_aq)
+        self._mass_transfer_coefficient = self._calculate_mass_transfer_coefficient(diff_rate=diff_rate_O2, diff_layer_thickness=self._diffusion_layer_thickness)
+        
+        if self._pH < 4.88:
+            raise ValueError("Your pH is below the pKa of HO2")
+
+    @property
+    def potential_formal_O2_HXO2(self):
+        return round(self._potential_formal_O2_HXO2, 3)
     
+    @property
+    def x(self):
+        return self._x
+    
+    @property
+    def diffusion_layer_thickness(self):
+        return round(self._diffusion_layer_thickness, 5)
+    
+    @property
+    def mass_transfer_coefficient(self):
+        return round(self._mass_transfer_coefficient, 5)
+
+    def _calculate_x(self) -> int:
+        """
+        Function to determine x in the reaction 2 O2- + xH20 -> HxO2^(x-2) + xOH-.  Depends on the pH and the pka of H2O2 and HO2
+        :return x: integer value  
+        """
+        if self._pH > pka_H2O2 and self._pH < 15:
+            x = 1
+        elif self._pH > pka_HO2 and self._pH < pka_H2O2:
+            x = 2
+        elif self._pH < pka_H2O2 and self._pH > 0:
+            x = 0
+        else: 
+            raise ValueError("Check your pH value")
+        
+        return x
+    
+    def _calculate_potential_formal_O2_HXO2(self):
+        """
+        Function to calculate the formal reduction potential of O2 to HXO2, with x depending on pH
+        """
+        prefactor = (2.303 * R * self._temperature)/(2 * F)
+        postfactor = (2 - self._x) * pka_H2O2 + (self._x * self._pH)
+        potential_formal_O2_HXO2 = potential_standard_O2_H2O2 - prefactor*postfactor
+        return potential_formal_O2_HXO2
