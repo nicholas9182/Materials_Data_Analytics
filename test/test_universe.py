@@ -20,7 +20,7 @@ class TestUniverse(unittest.TestCase):
         testing if the attributes work as expected
         :return:
         """
-        landscape = FreeEnergySpace("../test_trajectories/ndi_na_binding/HILLS")
+        landscape = FreeEnergySpace("./test_trajectories/ndi_na_binding/HILLS")
         my_universe = Universe(fes=landscape)
         self.assertTrue(my_universe._fes == [landscape])
 
