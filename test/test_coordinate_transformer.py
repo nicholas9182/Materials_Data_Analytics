@@ -1,5 +1,4 @@
 import unittest
-import tracemalloc
 import pandas as pd
 from analytics.core.coordinate_transformer import CoordinateTransformer
 

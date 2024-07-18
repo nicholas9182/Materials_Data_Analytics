@@ -44,7 +44,7 @@ class MetaTrajectory:
         opes = True if 'opes.bias' in col_names else False
 
         # TODO: Check that opes.bias is the right bias to use for reweighting!
-        colvar = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        colvar = (pd.read_table(file, sep='\s+', comment="#", names=col_names, dtype=np.float64)
                   .rename(columns={'metad.bias': 'bias', 'metad.rct': 'reweight_factor', 'metad.rbias':
                                    'reweight_bias', 'opes.bias': 'reweight_bias', 'opes.rct': 'reweight_factor',
                                    'opes.zed': 'zed', 'opes.neff': 'neff', 'opes.nker': 'nker'})
@@ -290,7 +290,7 @@ class FreeEnergyLine(FreeEnergyShape):
         col_names = col_file.readline().strip().split(" ")[2:]
         cv = col_names[0]
         col_file.close()
-        data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        data = pd.read_table(file, sep='\s+', comment="#", names=col_names, dtype=np.float64)
         if "file.free" in col_names:
             data = data.rename(columns={'file.free': 'energy', 'der_'+cv: 'delta_e'})
         else:
@@ -401,7 +401,7 @@ class FreeEnergySurface(FreeEnergyShape):
         col_file.close()
         drop_cols = [c for c in col_names if 'der_' in c]
 
-        data = (pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        data = (pd.read_table(file, sep='\s+', comment="#", names=col_names, dtype=np.float64)
                 .drop(columns=drop_cols)
                 .rename(columns={'file.free': 'energy'})
                 .pipe(boltzmann_energy_to_population, temperature=temperature, x_col=col_names[0])
@@ -633,7 +633,7 @@ class FreeEnergySpace:
         col_names = col_file.readline().strip().split(" ")[2:]
         col_file.close()
         sigmas = [col for col in col_names if col.split("_")[0] == 'sigma']
-        data = pd.read_table(file, delim_whitespace=True, comment="#", names=col_names, dtype=np.float64)
+        data = pd.read_table(file, sep='\s+', comment="#", names=col_names, dtype=np.float64)
         sigmas = {s.split("_")[1]: data.loc[0, s] for s in sigmas}
 
         data = (data

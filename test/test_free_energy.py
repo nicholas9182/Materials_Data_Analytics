@@ -19,8 +19,7 @@ class TestMetaTrajectory(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_na_binding/COLVAR.0"
         cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias',
-                                                           'reweight_factor', 'weight'])
+        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
         self.assertTrue(cv_traj._opes is False)
@@ -32,8 +31,7 @@ class TestMetaTrajectory(unittest.TestCase):
         """
         file = "../test_trajectories/ndi_single_opes/COLVAR.0"
         cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias',
-                                                           'reweight_factor', 'zed', 'neff', 'nker', 'weight'])
+        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias','reweight_factor', 'zed', 'neff', 'nker', 'weight'])
         self.assertEqual(cv_traj.walker, 0)
         self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
         self.assertTrue(cv_traj._opes is True)
@@ -87,10 +85,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "../test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder)
-                         for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
-
         compare = pd.DataFrame(pl.read_as_pandas("../test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
         energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
         my_diff = line._time_data[20].loc[10, 'energy'] - line._time_data[20].loc[20, 'energy']
