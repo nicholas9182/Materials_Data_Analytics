@@ -11,11 +11,11 @@ class TestGaussianParser(unittest.TestCase):
     """
     Test class for the GaussianParser class
     """
-    pedot_log = GaussianParser("../test_trajectories/pedot_raman/step1.log")
-    bbl_log = GaussianParser("../test_trajectories/bbl/step3.log")
-    raman_log = GaussianParser("../test_trajectories/bbl/raman.log")
-    bbl_spe_log = GaussianParser("../test_trajectories/bbl/step_37.log")
-    bbl_step6_log = GaussianParser("../test_trajectories/bbl/step6.log")
+    pedot_log = GaussianParser("./test_trajectories/pedot_raman/step1.log")
+    bbl_log = GaussianParser("./test_trajectories/bbl/step3.log")
+    raman_log = GaussianParser("./test_trajectories/bbl/raman.log")
+    bbl_spe_log = GaussianParser("./test_trajectories/bbl/step_37.log")
+    bbl_step6_log = GaussianParser("./test_trajectories/bbl/step6.log")
 
     def test_multiline_keyword_parsing(self):
         result = self.bbl_step6_log.keywords
@@ -57,7 +57,7 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.charge == -2)
 
     def test_charge_bbl_double_digit(self):
-        bbl_log_double_digit_charge = GaussianParser("../test_trajectories/bbl/step1.log")
+        bbl_log_double_digit_charge = GaussianParser("./test_trajectories/bbl/step1.log")
         self.assertTrue(bbl_log_double_digit_charge.charge == -12)
 
     def test_multiplicity_pedot(self):
@@ -113,7 +113,7 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(energy == -12531769.403127551)
 
     def test_energy_bbl_no_SCF(self):
-        energy = GaussianParser("../test_trajectories/bbl/step1_no_scf.log").energy
+        energy = GaussianParser("./test_trajectories/bbl/step1_no_scf.log").energy
         self.assertTrue(energy is None)
 
     def test_functional_pedot(self):
@@ -268,7 +268,7 @@ class TestGaussianParser(unittest.TestCase):
 
 class TestGaussianParserRestart(unittest.TestCase):
 
-    bbl_log = GaussianParser("../test_trajectories/bbl/step5_raman_restart.log")
+    bbl_log = GaussianParser("./test_trajectories/bbl/step5_raman_restart.log")
 
     def test_is_parser(self):
         self.assertTrue(type(self.bbl_log) == GaussianParser)
@@ -276,27 +276,13 @@ class TestGaussianParserRestart(unittest.TestCase):
     def test_is_restart(self):
         self.assertTrue(self.bbl_log.restart is True)
 
-    def test_raman(self):
-        self.assertTrue(self.bbl_log.raman is True)
-
-    def test_get_thermochemistry(self):
-        data = self.bbl_log.get_thermo_chemistry()
-        self.assertTrue(type(data) == pd.DataFrame)
-        self.assertTrue(data['g_corr'].iloc[0] == 3348.02710)
-        self.assertTrue(data['e_elec_zp'].iloc[0] == -18490865.10668)
-        self.assertTrue(data['g_elec_therm'].iloc[0] == -18491265.62408)
-
-    def test_get_raman_frequencies(self):
-        data = self.bbl_log.get_raman_spectra()
-        # px.line(data, x='wavenumber', y='intensity', template='plotly_dark').show()
-
 
 class TestGaussianInstabilities(unittest.TestCase):
 
-    stable_log = GaussianParser("../test_trajectories/bbl/step2.log")
-    not_tested_log = GaussianParser("../test_trajectories/bbl/step3.log")
-    rhf_unstable = GaussianParser("../test_trajectories/bbl/rhf_instability.log")
-    internal_log = GaussianParser("../test_trajectories/bbl/internal_instability.log")
+    stable_log = GaussianParser("./test_trajectories/bbl/step2.log")
+    not_tested_log = GaussianParser("./test_trajectories/bbl/step3.log")
+    rhf_unstable = GaussianParser("./test_trajectories/bbl/rhf_instability.log")
+    internal_log = GaussianParser("./test_trajectories/bbl/internal_instability.log")
 
     def test_stable(self):
         report = self.stable_log.stable

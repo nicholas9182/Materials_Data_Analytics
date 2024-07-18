@@ -9,4 +9,4 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true
-}
+} 
