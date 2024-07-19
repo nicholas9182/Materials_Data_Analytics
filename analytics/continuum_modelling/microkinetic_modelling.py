@@ -1,9 +1,66 @@
 import pandas as pd
 import numpy as np
 from analytics.laws_and_constants import R, F, pka_H2O2, pka_HO2, potential_formal_O2_supO2, potential_standard_O2_H2O2, diff_rate_O2, viscosity_aq
+from analytics.materials.electrolytes import Electrolyte
+from analytics.materials.polymers import Polymer
 
 
 class MicroKineticModel():
+    """
+    Top class for a microkinetic model with general functions and attributes that apply to all microkinetic models
+    """
+    def __init__(self, electrolyte: Electrolyte, polymer: Polymer, rotation_rate: float, temperature: float) -> None:
+        self._electrolyte = electrolyte
+        self._polymer = polymer
+        self._rotation_rate = rotation_rate
+        self._temperature = temperature
+        self._f = F / (R * self._temperature)
+        self._check_tempertures()
+
+    def _check_tempertures(self):
+        electrolyte_temp = self._electrolyte.temperature
+        polymer_temp = self._polymer.temperature
+        if electrolyte_temp != polymer_temp:
+            raise ValueError("Electrolyte and polymer temperatures are not the same")
+
+    @property
+    def temperature(self):
+        return self._temperature
+    
+    @property
+    def rotation_rate(self):
+        return self._rotation_rate
+    
+    @property
+    def f(self):
+        return round(self._f)
+    
+    @property
+    def electrolyte(self):
+        return self._electrolyte
+    
+    @property
+    def polymer(self):
+        return self._polymer
+    
+    @property
+    def pH(self):
+        return self._electrolyte.pH
+    
+    def _calculate_rate_constant(self, E1: float, E2: float, n1: int = 1, n2: int = 1) -> float:
+        """
+        Function to calculate a rate constant from two formal reduction potentials of species
+        :param E1: the formal reduction potential of species 1
+        :param E2: the formal reduction potential of species 2
+        :param n1: stoichiometric number of species 1
+        :param n2: stoichiometric number of species 2 
+        :return rate_constant: the rate_constant of the reaction
+        """
+        rate_constant = np.exp(self._f*(n2*E2 - n1*E1))
+        return rate_constant
+
+
+class MicroKineticModel2():
 
     """
     Microkinetic model containing high level functions which apply to all microkinetic modelling
@@ -82,7 +139,7 @@ class MicroKineticModel():
         return diff_rate/diff_layer_thickness
 
 
-class OxygenReductionModel(MicroKineticModel):
+class OxygenReductionModel2(MicroKineticModel2):
     
     """
     Class for microkinetic modelling of oxygen reduction reaction in an aqueous electrolyte
@@ -143,7 +200,7 @@ class OxygenReductionModel(MicroKineticModel):
         return potential_formal_O2_HXO2
     
 
-class ECpD(OxygenReductionModel):
+class ECpD2(OxygenReductionModel2):
 
     """
     Class to model a reaction which proceeds via an ECpD reaction process in aquoeous electrolytes, for example in Ana's paper 1

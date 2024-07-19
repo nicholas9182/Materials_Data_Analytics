@@ -1,11 +1,12 @@
 import unittest
 import tracemalloc
-from analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel, OxygenReductionModel
+from analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel2, OxygenReductionModel2
 
-class TestMicrokinetic(unittest.TestCase):
 
-    top_model = MicroKineticModel(pH=7, rotation_rate=1600, bulk_concentration=0.008, temperature=298)
-    orr_model = OxygenReductionModel(pH=14.2, rotation_rate=1600, bulk_concentration=0.008, temperature=298)
+class TestMicrokinetic2(unittest.TestCase):
+
+    top_model = MicroKineticModel2(pH=7, rotation_rate=1600, bulk_concentration=0.008, temperature=298)
+    orr_model = OxygenReductionModel2(pH=14.2, rotation_rate=1600, bulk_concentration=0.008, temperature=298)
 
     def test_top_model_attributes(self):
         self.assertTrue(self.top_model.pH == 7)
