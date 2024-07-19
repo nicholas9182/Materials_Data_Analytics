@@ -1,23 +1,23 @@
 from analytics.materials.solvents import Solvent
-from analytics.materials.ions import Ion
+from analytics.materials.ions import Ion, Cation, Anion
+from analytics.materials.solutes import Solute
 
 
 class Electrolyte():
     """
     Master class for an electrolyte
     """
-    def __init__(self, solvent: Solvent, cation: Ion, anion: Ion, pH: float = None, temperature: float = 298) -> None:
+    def __init__(self, solvent: Solvent, cation: Cation, anion: Anion, solutes: list[Solute] = None, pH: float = None, temperature: float = 298) -> None:
         self._pH = pH
-        self._temperature = temperature
-
-        if cation.charge <= 0:
-            raise ValueError('Your cation needs to have a positive charge!')
-        if anion.charge >= 0:
-            raise ValueError('Your anion needs to have a negative charge!')
-        
+        self._temperature = temperature        
         self._cation = cation
         self._anion = anion
         self._solvent = solvent
+        self._solutes = solutes
+
+    @property
+    def solutes(self):
+        return self._solutes
 
     @property
     def pH(self):

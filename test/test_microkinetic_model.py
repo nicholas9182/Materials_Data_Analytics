@@ -21,3 +21,5 @@ class TestMicrokinetic(unittest.TestCase):
         self.assertTrue(self.orr_model.diffusion_layer_thickness == 0.00154)
         self.assertTrue(self.orr_model.mass_transfer_coefficient == 0.01233)
         self.assertTrue(self.orr_model.potential_formal_O2_HXO2 == -0.071)
+
+        
