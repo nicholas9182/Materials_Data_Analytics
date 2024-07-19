@@ -94,3 +94,56 @@ class TestSolute(unittest.TestCase):
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
 
+
+class TestElectrolyte(unittest.TestCase):
+
+    cation = Cation(charge=1, name='Sodium')
+    anion = Anion(charge=-1, name='Chloride')
+    solute = Solute(name='Oxygen')
+    solvent = Solvent(name='Water')
+    electrolyte = Electrolyte(solvent=solvent, cation=cation, anion=anion, pH=7, solute=solute,
+                              temperature=298, concentrations={cation: 0.001, anion: 0.001, solute: 0.001})
+
+    def test_electrolyte_pH(self):
+        self.assertTrue(self.electrolyte.pH == 7)
+        self.assertTrue(self.electrolyte.temperature == 298)
+        self.assertTrue(self.electrolyte.solvent.name == 'Water')
+        self.assertTrue(self.electrolyte.cation.name == 'Sodium')
+        self.assertTrue(self.electrolyte.anion.name == 'Chloride')
+        self.assertTrue(self.electrolyte.solute.name == 'Oxygen')
+
+    def test_electrolyte_concentrations(self):
+        self.assertTrue(self.electrolyte._concentrations == {self.cation: 0.001, self.anion: 0.001, self.solute: 0.001})
+
+
+class TestPolymer(unittest.TestCase):
+
+    def test_ntype_name(self):
+        ntype = NType(name='BBL')
+        self.assertTrue(ntype.name == 'BBL')
+        self.assertTrue(ntype._name == 'bbl')
+
+    def test_ntype_name_2(self):
+        ntype = NType(name='bbl')
+        self.assertTrue(ntype.name == 'BBL')
+        self.assertTrue(ntype._name == 'bbl')
+
+    def test_ptype_name(self):
+        ptype = PType(name='PEDOT')
+        self.assertTrue(ptype.name == 'PEDOT')
+        self.assertTrue(ptype._name == 'pedot')
+
+    def test_ptype_name_2(self):
+        ptype = PType(name='pedot')
+        self.assertTrue(ptype.name == 'PEDOT')
+        self.assertTrue(ptype._name == 'pedot')
+
+    def test_generic_polymer(self):
+        polymer = Polymer(name='P3HT')
+        self.assertTrue(polymer.name == 'P3HT')
+        self.assertTrue(polymer._name == 'p3ht')
+
+    def test_generic_polymer_2(self):
+        polymer = Polymer(name='p3ht')
+        self.assertTrue(polymer.name == 'P3HT')
+        self.assertTrue(polymer._name == 'p3ht')

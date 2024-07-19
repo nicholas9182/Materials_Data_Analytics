@@ -3,9 +3,14 @@ from analytics.materials.material_lists import common_solvents
 
 class Solvent():
 
-    def __init__(self, name: str = None) -> None:
+    def __init__(self, name: str = None, pH: float = None) -> None:
         self._name = self._get_solvent_from_list(name)[0]
         self._formula = self._get_solvent_from_list(name)[1]
+        self._pH = pH
+
+    @property
+    def pH(self):
+        return self._pH
 
     @property
     def name(self):
