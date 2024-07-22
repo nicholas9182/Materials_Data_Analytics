@@ -1,10 +1,36 @@
 from analytics.materials.material_lists import common_solutes
 
+
 class Solute():
 
-    def __init__(self, name: str = None) -> None:
+    def __init__(self, name: str = None, 
+                 formal_reduction_potential: float = None, 
+                 standard_reduction_potential: float = None,
+                 formal_oxidation_potential: float = None,
+                 standard_oxidation_potential: float = None) -> None:
+        
         self._name = self._get_solute_from_list(name)[0]
         self._formula = self._get_solute_from_list(name)[1]
+        self._formal_reduction_potential = formal_reduction_potential
+        self._standard_reduction_potential = standard_reduction_potential
+        self._formal_reduction_potential = formal_oxidation_potential
+        self._standard_reduction_potential = standard_oxidation_potential
+
+    @property
+    def standard_oxidation_potential(self) -> float:
+        return self._standard_oxidation_potential
+    
+    @property
+    def formal_oxidation_potential(self) -> float:
+        return self._formal_oxidation_potential
+
+    @property
+    def formal_reduction_potential(self) -> float:
+        return self._formal_reduction_potential
+    
+    @property
+    def standard_reduction_potential(self) -> float:
+        return self._standard_reduction_potential
 
     @property
     def name(self) -> str:

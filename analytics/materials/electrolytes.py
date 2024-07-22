@@ -11,15 +11,43 @@ class Electrolyte():
     :param anion: the anion in the electrolyte
     :param concentrations: the concentrations of the ions and solutes in the electrolyte, given as a dictionary. concentrations in mol/dm^3
     :param solutes: the solutes in the electrolyte
+    :return: an electrolyte object
     """
     def __init__(self, solvent: Solvent, cation: Cation | list[Cation], anion: Anion | list[Anion], concentrations: dict[Cation|Anion|Solute, float], 
                  solute: Solute | list[Solute] = None, pH: float = None, temperature: float = 298) -> None:
         self._pH = pH
         self._temperature = temperature        
-        self._cation = [cation] if type(cation) == Cation else cation
-        self._anion = [anion] if type(anion) == Anion else anion
-        self._solvent = solvent
-        self._solute = [solute] if type(solute) == Solute else solute
+        
+        if type(cation) == Cation: 
+            self._cation = [cation]
+        elif type(cation) == list:
+            for c in cation:
+                if type(c) != Cation:
+                    raise ValueError('Cation must be a Cation object')
+            self._cation = cation
+        else:
+            raise ValueError('Cation must be a Cation object')
+        
+        if type(anion) == Anion:
+            self._anion = [anion]
+        elif type(anion) == list:
+            for a in anion:
+                if type(a) != Anion:
+                    raise ValueError('Anion must be an Anion object')
+            self._anion = anion
+        else:
+            raise ValueError('Anion must be an Anion object')
+        
+        if type(solvent) == Solvent:
+            self._solvent = solvent
+        else:
+            raise ValueError('Solvent must be a Solvent object')
+
+        if type(solute) == Solute or type(solute) == list[Solute]:
+            self._solute = [solute]
+        else:
+            raise ValueError('Solute must be a Solute object')
+
         self._concentrations = concentrations
         self._check_concentration_entries(concentrations)
 
@@ -30,6 +58,10 @@ class Electrolyte():
         for c in concentrations.keys():
             if c not in self._cation and c not in self._anion and c not in self._solute:
                 raise ValueError(f'{c} is not in the electrolyte')
+            
+    @property
+    def concentrations(self):
+        return self._concentrations
 
     @property
     def solute(self):
