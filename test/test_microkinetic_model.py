@@ -2,7 +2,7 @@ import unittest
 import tracemalloc
 from analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel
 from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.solutes import Solute
+from analytics.materials.solutes import Solute, MolecularOxygen
 from analytics.materials.ions import Cation, Anion
 from analytics.materials.solvents import Solvent
 from analytics.materials.polymers import NType
@@ -14,7 +14,7 @@ class TestMicrokinetic(unittest.TestCase):
     na_cation = Cation(name='Na+')
     cl_anion = Anion(name='Cl-')
     water_solvent = Solvent('water')
-    oxygen_solute = Solute('O2')
+    oxygen_solute = MolecularOxygen()
 
     my_electrolye = Electrolyte(solvent=water_solvent, 
                                 cation=na_cation, 
@@ -59,7 +59,7 @@ class TestOrrModel(unittest.TestCase):
     na_cation = Cation(name='Na+')
     cl_anion = Anion(name='Cl-')
     water_solvent = Solvent('water')
-    oxygen_solute = Solute('O2')
+    oxygen_solute = MolecularOxygen()
 
     my_electrolye = Electrolyte(solvent=water_solvent, 
                                 cation=na_cation, 

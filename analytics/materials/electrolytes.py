@@ -1,6 +1,6 @@
 from analytics.materials.solvents import Solvent
 from analytics.materials.ions import Ion, Cation, Anion
-from analytics.materials.solutes import Solute
+from analytics.materials.solutes import Solute, MolecularOxygen
 
 
 class Electrolyte():
@@ -53,7 +53,7 @@ class Electrolyte():
         else:
             raise ValueError('Solvent must be a Solvent object')
 
-        if type(solute) == Solute or type(solute) == list[Solute]:
+        if type(solute) == Solute or type(solute) == list[Solute] or type(solute) == MolecularOxygen or type(solute) == list[MolecularOxygen]:
             self._solute = [solute]
         else:
             raise ValueError('Solute must be a Solute object')
