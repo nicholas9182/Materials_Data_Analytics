@@ -15,6 +15,7 @@ class Electrolyte():
     """
     def __init__(self, solvent: Solvent, cation: Cation | list[Cation], anion: Anion | list[Anion], concentrations: dict[Cation|Anion|Solute, float], 
                  solute: Solute | list[Solute] = None, pH: float = None, temperature: float = 298) -> None:
+        
         self._pH = pH
         self._temperature = temperature        
         
@@ -96,3 +97,5 @@ class Electrolyte():
         else:
             return self._anion
 
+    def __str__(self) -> str:
+        return f'{self._solvent} with {self._cation} and {self._anion}'
