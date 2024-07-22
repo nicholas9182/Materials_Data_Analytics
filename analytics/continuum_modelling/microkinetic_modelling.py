@@ -1,20 +1,22 @@
 import pandas as pd
 import numpy as np
-from analytics.laws_and_constants import R, F, pka_H2O2, pka_HO2, potential_formal_O2_supO2, potential_standard_O2_H2O2, diff_rate_O2, viscosity_aq
+from analytics.laws_and_constants import R, F
 from analytics.materials.electrolytes import Electrolyte
 from analytics.materials.polymers import Polymer
+from analytics.materials.solutes import Solute
 
 
 class MicroKineticModel():
     """
     Top class for a microkinetic model with general functions and attributes that apply to all microkinetic models
     """
-    def __init__(self, electrolyte: Electrolyte, polymer: Polymer, rotation_rate: float, temperature: float = 298) -> None:
+    def __init__(self, electrolyte: Electrolyte, polymer: Polymer, rotation_rate: float, temperature: float = 298, pH: float = None) -> None:
         self._electrolyte = electrolyte
         self._polymer = polymer
         self._rotation_rate = rotation_rate
         self._temperature = temperature
         self._f = F / (R * self._temperature)
+        self._pH = pH if pH is not None else self._electrolyte.pH
         self._check_tempertures()
 
     def _check_tempertures(self):
@@ -59,6 +61,10 @@ class MicroKineticModel():
     def solvent(self):
         return self.electrolyte.solvent
     
+    @property
+    def solute(self):
+        return self.electrolyte.solute
+    
     def _calculate_rate_constant(self, E1: float, E2: float, n1: int = 1, n2: int = 1) -> float:
         """
         Function to calculate a rate constant from two formal reduction potentials of species
@@ -84,7 +90,7 @@ class MicroKineticModel():
         elif forward is False:
             alpha = 1-beta
         else: 
-            return ValueError("Forward needs to be boolean!")
+            raise ValueError("Forward needs to be boolean!")
 
         return rate_constant_zero_overvoltage * np.exp(alpha * self._f * (E - E1))
     
@@ -111,77 +117,47 @@ class OxygenReductionModel(MicroKineticModel):
     Class for microkinetic modelling of oxygen reduction reaction in an aqueous electrolyte
     """
 
-    def __init__(self, electrolyte: Electrolyte, polymer: Polymer, rotation_rate: float, temperature: float = 298) -> None:
+    def __init__(self, electrolyte: Electrolyte, polymer: Polymer, rotation_rate: float, temperature: float = 298, pH: float = 7) -> None:
         """
         Initiation function to read in the general properties of an ORR microkinetic model
         """
-        super().__init__(electrolyte = electrolyte, polymer = polymer, rotation_rate = rotation_rate, temperature = temperature)
+        super().__init__(electrolyte = electrolyte, polymer = polymer, rotation_rate = rotation_rate, temperature = temperature, pH = pH)
 
         if self.solvent.name != 'Water':
             raise ValueError("This model is only for aqueous electrolytes")
         if self.solute.name != 'Oxygen':
             raise ValueError("This model is only for oxygen reduction, you need oxygen as a solute")
-
-
-
-
-
-#         self._x = self._calculate_x()
-#         self._potential_formal_O2_HXO2 = self._calculate_potential_formal_O2_HXO2()
-#         self._diffusion_layer_thickness = self._calculate_diffusion_layer_thickness(diff_rate=diff_rate_O2, viscosity=viscosity_aq)
-#         self._mass_transfer_coefficient = self._calculate_mass_transfer_coefficient(diff_rate=diff_rate_O2, diff_layer_thickness=self._diffusion_layer_thickness)
         
-#         if self._pH < 4.88:
-#             raise ValueError("Your pH is below the pKa of HO2")
+        self._h202 = Solute('H2O2')
+        self._ho2 = Solute('HO2')
+        self._x = self._calculate_x()
 
-#     @property
-#     def potential_formal_O2_HXO2(self):
-#         return round(self._potential_formal_O2_HXO2, 3)
-    
-#     @property
-#     def x(self):
-#         return self._x
-    
-#     @property
-#     def diffusion_layer_thickness(self):
-#         return round(self._diffusion_layer_thickness, 5)
-    
-#     @property
-#     def mass_transfer_coefficient(self):
-#         return round(self._mass_transfer_coefficient, 5)
+    def _calculate_x(self) -> int:
+        """
+        Function to determine x in the reaction 2 O2- + xH20 -> HxO2^(x-2) + xOH-.  Depends on the pH and the pka of H2O2 and HO2
+        :return x: integer value  
+        """
 
-#     def _calculate_x(self) -> int:
-#         """
-#         Function to determine x in the reaction 2 O2- + xH20 -> HxO2^(x-2) + xOH-.  Depends on the pH and the pka of H2O2 and HO2
-#         :return x: integer value  
-#         """
-#         if self._pH > pka_H2O2 and self._pH < 15:
-#             x = 1
-#         elif self._pH > pka_HO2 and self._pH < pka_H2O2:
-#             x = 2
-#         elif self._pH < pka_H2O2 and self._pH > 0:
-#             x = 0
-#         else: 
-#             raise ValueError("Check your pH value")
+        if self._pH > self._h202.pka and self._pH < 15:
+            x = 1
+        elif self._pH > self._ho2.pka and self._pH < self._h202.pka:
+            x = 2
+        elif self._pH < self._h202.pka and self._pH > -1:
+            x = 0
+        else: 
+            raise ValueError("Check your pH value")
         
-#         return x
+        return x
     
-#     def _calculate_potential_formal_O2_HXO2(self):
-#         """
-#         Function to calculate the formal reduction potential of O2 to HXO2, with x depending on pH
-#         """
-#         prefactor = (2.303 * R * self._temperature)/(2 * F)
-#         postfactor = (2 - self._x) * pka_H2O2 + (self._x * self._pH)
-#         potential_formal_O2_HXO2 = potential_standard_O2_H2O2 - prefactor*postfactor
-#         return potential_formal_O2_HXO2
+    @property
+    def x(self):
+        return self._x
     
-
-# class ECpD2(OxygenReductionModel):
-
-#     """
-#     Class to model a reaction which proceeds via an ECpD reaction process in aquoeous electrolytes, for example in Ana's paper 1
-#     """
-
-#     def __init__(self, pH: float, rotation_rate: float, bulk_concentration: float,  temperature: float = 298) -> None:
-#         super().__init__(pH = pH, rotation_rate = rotation_rate, bulk_concentration = bulk_concentration, temperature = temperature)
+    @property
+    def h202(self):
+        return self._h202
     
+    @property
+    def ho2(self):
+        return self._ho2
+

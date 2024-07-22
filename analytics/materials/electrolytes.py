@@ -13,8 +13,17 @@ class Electrolyte():
     :param solutes: the solutes in the electrolyte
     :return: an electrolyte object
     """
-    def __init__(self, solvent: Solvent, cation: Cation | list[Cation], anion: Anion | list[Anion], concentrations: dict[Cation|Anion|Solute, float], 
-                 solute: Solute | list[Solute] = None, pH: float = None, temperature: float = 298) -> None:
+    def __init__(self, 
+                 solvent: Solvent, 
+                 cation: Cation | list[Cation], 
+                 anion: Anion | list[Anion], 
+                 concentrations: dict[Cation|Anion|Solute, float], 
+                 solute: Solute | list[Solute] = None, 
+                 pH: float = None, 
+                 temperature: float = 298, 
+                 viscosity: float = None, 
+                 diffusivities: dict[Cation|Anion|Solute, float] = None
+                 ) -> None:
         
         self._pH = pH
         self._temperature = temperature        
@@ -51,6 +60,18 @@ class Electrolyte():
 
         self._concentrations = concentrations
         self._check_concentration_entries(concentrations)
+        self._viscosity = viscosity
+        self._diffusivities = diffusivities
+        if diffusivities is not None: 
+            self._check_diffusion_entries(diffusivities)
+
+    def _check_diffusion_entries(self, diffusivities: dict[Cation|Anion|Solute, float]):
+        """
+        Function to reformat the diffusivities dictionary so the keys are lowercase names
+        """
+        for d in diffusivities.keys():
+            if d not in self._cation and d not in self._anion and d not in self._solute:
+                raise ValueError(f'{d} is not in the electrolyte')
 
     def _check_concentration_entries(self, concentrations: dict[Cation|Anion|Solute, float]):
         """

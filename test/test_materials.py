@@ -104,6 +104,8 @@ class TestSolute(unittest.TestCase):
         generic_solute = Solute(name='O2')
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
+        self.assertTrue(generic_solute.formal_reduction_potentials == {"O2_superoxide": -0.160})
+        self.assertTrue(generic_solute.standard_reduction_potentials == {"H202": 0.695})
 
     def test_solute_name_2(self):
         generic_solute = Solute(name='Oxygen')
@@ -114,6 +116,14 @@ class TestSolute(unittest.TestCase):
         generic_solute = Solute(name='o2')
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
+
+    def test_h202_pka(self):
+        generic_solute = Solute(name='H2O2')
+        self.assertTrue(generic_solute.pka == 11.75)
+
+    def test_ho2_pka(self):
+        generic_solute = Solute(name='HO2')
+        self.assertTrue(generic_solute.pka == 4.88)
 
 
 class TestElectrolyte(unittest.TestCase):

@@ -6,15 +6,8 @@ Kb = 0.008314463  # in kJ/mol
 R = 8.314         # (J)/(K mol)
 F = 96485.332     # (J)/(V mol)
 
-# pKa values
-pka_HO2 = 4.88 
-pka_H2O2 = 11.7
-
 #standard reduction potentials vs SHE
 potential_standard_O2_H2O2 = 0.695
-
-# formal_reduction_potentials vs SHE
-potential_formal_O2_supO2 = -0.16 
 
 # diffusion rates
 diff_rate_O2  = 1.9e-5 # cm2/s
