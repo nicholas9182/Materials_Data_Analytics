@@ -1,16 +1,18 @@
 from analytics.materials.material_lists import common_solvents
 from analytics.materials.material_lists import solvent_phs
+from analytics.materials.solutes import Solute
 
 
 class Solvent():
 
     def __init__(self, name: str = None) -> None:
+
         self._name = self._get_solvent_from_list(name)[0] if name is not None else None
         self._formula = self._get_solvent_from_list(name)[1] if name is not None else None
-        self._pH = solvent_phs[self._name] if self._name is not None else None
+        self._pH = solvent_phs[self._name] if self._name is not None else None 
 
     @classmethod
-    def from_custom_inputs(cls, name: str, formula: str, pH: float):
+    def from_custom_inputs(cls, name: str = None, formula: str = None, pH: float = None):
         """
         Class method to create an instance of Solvent with custom inputs
         """
@@ -52,4 +54,5 @@ class Solvent():
     
     def __str__(self) -> str:
         return f'{self.name} solvent, {self.formula}'
+    
     

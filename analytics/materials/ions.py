@@ -20,7 +20,7 @@ class Ion():
             raise ValueError(f'Charge not found for {self._formula}')
         
     @classmethod
-    def from_custom_inputs(cls, name: str, formula: str, charge: int):
+    def from_custom_inputs(cls, name: str = None, formula: str = None, charge: int = None):
         """
         Class method to create an instance of Ion with custom inputs
         """

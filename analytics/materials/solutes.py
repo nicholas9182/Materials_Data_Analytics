@@ -1,44 +1,62 @@
 from analytics.materials.material_lists import common_solutes
+from analytics.materials.material_lists import solute_formal_reduction_potentials
+from analytics.materials.material_lists import solute_pkas
+from analytics.materials.material_lists import solute_standard_reduction_potentials
 
 
 class Solute():
 
-    def __init__(self, name: str = None, 
-                 formal_reduction_potential: float = None, 
-                 standard_reduction_potential: float = None,
-                 formal_oxidation_potential: float = None,
-                 standard_oxidation_potential: float = None) -> None:
+    def __init__(self, name: str = None) -> None:
         
-        self._name = self._get_solute_from_list(name)[0]
-        self._formula = self._get_solute_from_list(name)[1]
-        self._formal_reduction_potential = formal_reduction_potential
-        self._standard_reduction_potential = standard_reduction_potential
-        self._formal_reduction_potential = formal_oxidation_potential
-        self._standard_reduction_potential = standard_oxidation_potential
+        self._name = self._get_solute_from_list(name)[0] if name is not None else None
+        self._formula = self._get_solute_from_list(name)[1] if name is not None else None
 
-    @property
-    def standard_oxidation_potential(self) -> float:
-        return self._standard_oxidation_potential
+        if self._name is not None and self._formula in solute_formal_reduction_potentials.keys():
+            self._formal_reduction_potentials = solute_formal_reduction_potentials[self._formula]
+        else:
+            self._formal_reduction_potentials = None
+
+        if self._name is not None and self._formula in solute_standard_reduction_potentials.keys():
+            self._standard_reduction_potentials = solute_standard_reduction_potentials[self._formula]
+        else:
+            self._standard_reduction_potentials = None
+
+        if self._name is not None and self._formula in solute_pkas.keys():
+            self._pka = solute_pkas[self._formula]
+        else:
+            self._pka = None
+
+    @classmethod
+    def from_custom_inputs(cls, name: str = None, formula: str = None, formal_reduction_potential: dict[str, float] = None, pka: float = None):
+        """
+        Class method to create an instance of Solute with custom inputs
+        """
+        solute = cls()
+        solute._name = name
+        solute._formula = formula
+        solute._formal_reduction_potential = formal_reduction_potential
+        solute._pka = pka
+        return solute
     
     @property
-    def formal_oxidation_potential(self) -> float:
-        return self._formal_oxidation_potential
-
-    @property
-    def formal_reduction_potential(self) -> float:
-        return self._formal_reduction_potential
+    def standard_reduction_potentials(self) -> dict[str, float]:
+        return self._standard_reduction_potentials
     
     @property
-    def standard_reduction_potential(self) -> float:
-        return self._standard_reduction_potential
+    def pka(self) -> float:
+        return self._pka
 
     @property
-    def name(self) -> str:
-        return self._name.capitalize()
-
+    def formal_reduction_potentials(self) -> dict[str, float]:
+        return self._formal_reduction_potentials
+    
     @property
     def formula(self) -> str:
         return self._formula.upper()
+    
+    @property
+    def name(self) -> str:
+        return self._name.capitalize()
 
     @staticmethod
     def _get_solute_from_list(name: str) -> tuple:
@@ -60,4 +78,4 @@ class Solute():
     
     def __str__(self) -> str:
         return f'{self.name} solute, {self.formula}'
-        
+
