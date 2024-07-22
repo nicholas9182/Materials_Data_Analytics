@@ -4,7 +4,7 @@ from analytics.materials.electrolytes import Electrolyte
 from analytics.materials.ions import Ion, Cation, Anion
 from analytics.materials.polymers import Polymer, NType, PType
 from analytics.materials.solvents import Solvent
-from analytics.materials.solutes import Solute
+from analytics.materials.solutes import MolecularOxygen, Solute
 
 
 class TestSolvent(unittest.TestCase):
@@ -101,19 +101,19 @@ class TestAnion(unittest.TestCase):
 class TestSolute(unittest.TestCase):
     
     def test_solute_name(self):
-        generic_solute = Solute(name='O2')
+        generic_solute = MolecularOxygen()
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
         self.assertTrue(generic_solute.formal_reduction_potentials == {"O2_superoxide": -0.160})
         self.assertTrue(generic_solute.standard_reduction_potentials == {"H202": 0.695})
 
     def test_solute_name_2(self):
-        generic_solute = Solute(name='Oxygen')
+        generic_solute = MolecularOxygen()
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
 
     def test_solute_name_3(self):
-        generic_solute = Solute(name='o2')
+        generic_solute = MolecularOxygen()
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
 
@@ -131,10 +131,12 @@ class TestElectrolyte(unittest.TestCase):
     def test_electrolyte_pH(self):
         cation = Cation(name='Sodium')
         anion = Anion(name='Chloride')
-        solute = Solute(name='Oxygen')
+        solute = MolecularOxygen()
         solvent = Solvent(name='Water')
+
         electrolyte = Electrolyte(solvent=solvent, cation=cation, anion=anion, pH=7, solute=solute, 
                                   temperature=298, concentrations={cation: 0.001, anion: 0.001, solute: 0.001})
+        
         self.assertTrue(electrolyte.pH == 7)
         self.assertTrue(electrolyte.temperature == 298)
         self.assertTrue(electrolyte.solvent.name == 'Water')
@@ -150,7 +152,7 @@ class TestElectrolyte(unittest.TestCase):
         cation2 = Cation(name='Potassium')
         anion1 = Anion(name='Chloride')
         anion2 = Anion(name='Bromide')
-        solute = Solute(name='Oxygen')
+        solute = MolecularOxygen()
         solvent = Solvent(name='Water')
         electrolyte = Electrolyte(solvent=solvent, cation=[cation1, cation2], anion=[anion1, anion2], pH=7, solute=solute,
                                     temperature=298, concentrations={cation1: 0.001, cation2: 0.001, anion1: 0.001, anion2: 0.001, solute: 0.001})

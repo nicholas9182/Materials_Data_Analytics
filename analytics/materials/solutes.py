@@ -1,7 +1,6 @@
 from analytics.materials.material_lists import common_solutes
-from analytics.materials.material_lists import solute_formal_reduction_potentials
 from analytics.materials.material_lists import solute_pkas
-from analytics.materials.material_lists import solute_standard_reduction_potentials
+from analytics.laws_and_constants import R, F
 
 
 class Solute():
@@ -10,16 +9,6 @@ class Solute():
         
         self._name = self._get_solute_from_list(name)[0] if name is not None else None
         self._formula = self._get_solute_from_list(name)[1] if name is not None else None
-
-        if self._name is not None and self._formula in solute_formal_reduction_potentials.keys():
-            self._formal_reduction_potentials = solute_formal_reduction_potentials[self._formula]
-        else:
-            self._formal_reduction_potentials = None
-
-        if self._name is not None and self._formula in solute_standard_reduction_potentials.keys():
-            self._standard_reduction_potentials = solute_standard_reduction_potentials[self._formula]
-        else:
-            self._standard_reduction_potentials = None
 
         if self._name is not None and self._formula in solute_pkas.keys():
             self._pka = solute_pkas[self._formula]
@@ -37,10 +26,6 @@ class Solute():
         solute._formal_reduction_potential = formal_reduction_potential
         solute._pka = pka
         return solute
-    
-    @property
-    def standard_reduction_potentials(self) -> dict[str, float]:
-        return self._standard_reduction_potentials
     
     @property
     def pka(self) -> float:
@@ -76,6 +61,38 @@ class Solute():
 
         return solute_name, solute_formula
     
+    def __str__(self) -> str:
+        return f'{self.name} solute, {self.formula}'
+
+
+class MolecularOxygen(Solute):
+
+    def __init__(self) -> None:
+        super().__init__(name='O2')
+        self._formal_reduction_potentials = {"O2_superoxide": -0.160}
+        self._standard_reduction_potentials = {"H202": 0.695}
+
+    def _calculate_potential_formal_O2_HXO2(self, T: float, x: int, pH: float):
+        """
+        Function to calculate the formal reduction potential of O2 to HXO2, with x depending on pH
+        """
+        prefactor = (2.303 * R * T)/(2 * F)
+        postfactor = (2 - x) * Solute('H202').pka + (x * pH)
+        potential_formal_O2_HXO2 = self._formal_reduction_potentials['H202'] - prefactor*postfactor
+        return potential_formal_O2_HXO2
+
+    @property
+    def standard_reduction_potentials(self) -> dict[str, float]:
+        return self._standard_reduction_potentials
+
+    @property
+    def formal_reduction_potentials(self) -> dict[str, float]:
+        return self._formal_reduction_potentials
+    
+    @property
+    def standard_reduction_potentials(self) -> dict[str, float]:
+        return self._standard_reduction_potentials
+
     def __str__(self) -> str:
         return f'{self.name} solute, {self.formula}'
 

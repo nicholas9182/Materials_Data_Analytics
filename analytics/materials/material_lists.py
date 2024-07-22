@@ -51,16 +51,6 @@ common_solutes = {
     "hydro_peroxide": "ho2"
 }
 
-# vs SHE
-solute_formal_reduction_potentials = {
-    "o2": {"O2_superoxide": -0.160}
-}
-
-# vs SHE
-solute_standard_reduction_potentials = {
-    "o2": {"H202": 0.695}
-}
-
 solute_pkas = {
     "h2o2": 11.75,
     "ho2": 4.88
