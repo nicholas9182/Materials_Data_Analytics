@@ -10,6 +10,16 @@ common_solvents = {
     "dimethylformamide": "c3h7no"
 }
 
+solvent_phs = {
+    "water": 7.0,
+    "methanol": 7.0,
+    "ethanol": 7.0,
+    "acetone": 7.0,
+    "acetonitrile": 7.0,
+    "dimethylsulfoxide": 7.0,
+    "dimethylformamide": 7.0
+}
+
 common_cations = {
     "sodium": "na+",
     "potassium": "k+",

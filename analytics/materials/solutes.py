@@ -57,4 +57,7 @@ class Solute():
             raise ValueError(f'Solute not found in common_solutes list, {common_solutes.keys()}')
 
         return solute_name, solute_formula
+    
+    def __str__(self) -> str:
+        return f'{self.name} solute, {self.formula}'
         

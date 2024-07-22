@@ -7,15 +7,28 @@ class Ion():
     Master class for ions
     """
     def __init__(self, name: str = None) -> None:
-        self._name = self._get_ion_from_list(name)[0]
-        self._formula = self._get_ion_from_list(name)[1]
+        self._name = self._get_ion_from_list(name)[0] if name is not None else None
+        self._formula = self._get_ion_from_list(name)[1] if name is not None else None
 
         if self._formula in cation_charges.keys():
             self._charge = cation_charges[self._formula]
         elif self._formula in anion_charges.keys():
             self._charge = anion_charges[self._formula]
+        elif self._formula is None:
+            self._charge = None
         else:
             raise ValueError(f'Charge not found for {self._formula}')
+        
+    @classmethod
+    def from_custom_inputs(cls, name: str, formula: str, charge: int):
+        """
+        Class method to create an instance of Ion with custom inputs
+        """
+        ion = cls()
+        ion._name = name
+        ion._formula = formula
+        ion._charge = charge
+        return ion
 
     @property
     def formula(self):
@@ -52,6 +65,9 @@ class Ion():
             raise ValueError(f'Ion not found in common_cations or common_anions list, {common_cations.keys()}')
         
         return ion_name, ion_formula
+    
+    def __str__(self) -> str:
+        return f'{self.name} ion, {self.formula}'
     
 
 class Cation(Ion):

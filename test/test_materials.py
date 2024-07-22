@@ -15,6 +15,7 @@ class TestSolvent(unittest.TestCase):
         generic_solvent = Solvent(name='Water')
         self.assertTrue(generic_solvent.name == 'Water')
         self.assertTrue(generic_solvent.formula == 'H2O')
+        self.assertTrue(generic_solvent.pH == 7)
 
     def test_solvent_formula(self):
         generic_solvent = Solvent(name='Water')
@@ -25,6 +26,12 @@ class TestSolvent(unittest.TestCase):
         generic_solvent = Solvent(name='H2O')
         self.assertTrue(generic_solvent.name == 'Water')
         self.assertTrue(generic_solvent.formula == 'H2O')
+
+    def test_custom_solvent(self):
+        custom_solvent = Solvent.from_custom_inputs(name='Some_solvent', formula='SS', pH=7.5)
+        self.assertTrue(custom_solvent.name == 'Some_solvent')
+        self.assertTrue(custom_solvent.formula == 'SS')
+        self.assertTrue(custom_solvent.pH == 7.5)
 
 
 class TestCation(unittest.TestCase):
@@ -54,6 +61,12 @@ class TestCation(unittest.TestCase):
     def test_default_charge_2(self):
         generic_cation = Cation(name='NA+')
         self.assertTrue(generic_cation.charge == 1)
+
+    def test_cation_custom(self):
+        custom_cation = Cation.from_custom_inputs(name='some_cation', formula='SC+', charge=1.5)
+        self.assertTrue(custom_cation.name == 'Some_cation')
+        self.assertTrue(custom_cation.formula == 'SC+')
+        self.assertTrue(custom_cation.charge == 1.5)
 
 
 class TestAnion(unittest.TestCase):
