@@ -30,50 +30,58 @@ class TestSolvent(unittest.TestCase):
 class TestCation(unittest.TestCase):
 
     def test_cation_name(self):
-        generic_cation = Cation(charge=1, name='NA+')
+        generic_cation = Cation(name='NA+')
         self.assertTrue(generic_cation.name == 'Sodium')
         self.assertTrue(generic_cation.formula == 'NA+')
         self.assertTrue(generic_cation.charge == 1)
 
     def test_cation_name_2(self):
-        generic_cation = Cation(charge=1, name='Sodium')
+        generic_cation = Cation(name='Sodium')
         self.assertTrue(generic_cation.name == 'Sodium')
         self.assertTrue(generic_cation.formula == 'NA+')
         self.assertTrue(generic_cation.charge == 1)
-    
-    def test_cation_charge_positive(self):
-        with self.assertRaises(ValueError):
-            Cation(charge=-1, name='Sodium')
         
     def test_cation_charge_name_3(self):
-        generic_cation = Cation(charge=1, name='na+')
+        generic_cation = Cation(name='na+')
         self.assertTrue(generic_cation.name == 'Sodium')
         self.assertTrue(generic_cation.formula == 'NA+')
+        self.assertTrue(generic_cation.charge == 1)
+
+    def test_default_charge(self):
+        generic_cation = Cation(name='Sodium')
+        self.assertTrue(generic_cation.charge == 1)
+
+    def test_default_charge_2(self):
+        generic_cation = Cation(name='NA+')
         self.assertTrue(generic_cation.charge == 1)
 
 
 class TestAnion(unittest.TestCase):
 
     def test_anion_name(self):
-        generic_anion = Anion(charge=-1, name='Cl-')
+        generic_anion = Anion(name='Cl-')
         self.assertTrue(generic_anion.name == 'Chloride')
         self.assertTrue(generic_anion.formula == 'CL-')
         self.assertTrue(generic_anion.charge == -1)
 
     def test_anion_name_2(self):
-        generic_anion = Anion(charge=-1, name='Chloride')
+        generic_anion = Anion(name='Chloride')
         self.assertTrue(generic_anion.name == 'Chloride')
         self.assertTrue(generic_anion.formula == 'CL-')
         self.assertTrue(generic_anion.charge == -1)
-    
-    def test_anion_charge_positive(self):
-        with self.assertRaises(ValueError):
-            Anion(charge=1, name='Chloride')
         
     def test_anion_charge_name_3(self):
-        generic_anion = Anion(charge=-1, name='cl-')
+        generic_anion = Anion(name='cl-')
         self.assertTrue(generic_anion.name == 'Chloride')
         self.assertTrue(generic_anion.formula == 'CL-')
+        self.assertTrue(generic_anion.charge == -1)
+
+    def test_default_charge(self):
+        generic_anion = Anion(name='Chloride')
+        self.assertTrue(generic_anion.charge == -1)
+
+    def test_default_charge_2(self):
+        generic_anion = Anion(name='CL-')
         self.assertTrue(generic_anion.charge == -1)
 
 
@@ -97,23 +105,43 @@ class TestSolute(unittest.TestCase):
 
 class TestElectrolyte(unittest.TestCase):
 
-    cation = Cation(charge=1, name='Sodium')
-    anion = Anion(charge=-1, name='Chloride')
-    solute = Solute(name='Oxygen')
-    solvent = Solvent(name='Water')
-    electrolyte = Electrolyte(solvent=solvent, cation=cation, anion=anion, pH=7, solute=solute,
-                              temperature=298, concentrations={cation: 0.001, anion: 0.001, solute: 0.001})
-
     def test_electrolyte_pH(self):
-        self.assertTrue(self.electrolyte.pH == 7)
-        self.assertTrue(self.electrolyte.temperature == 298)
-        self.assertTrue(self.electrolyte.solvent.name == 'Water')
-        self.assertTrue(self.electrolyte.cation.name == 'Sodium')
-        self.assertTrue(self.electrolyte.anion.name == 'Chloride')
-        self.assertTrue(self.electrolyte.solute.name == 'Oxygen')
+        cation = Cation(name='Sodium')
+        anion = Anion(name='Chloride')
+        solute = Solute(name='Oxygen')
+        solvent = Solvent(name='Water')
+        electrolyte = Electrolyte(solvent=solvent, cation=cation, anion=anion, pH=7, solute=solute, 
+                                  temperature=298, concentrations={cation: 0.001, anion: 0.001, solute: 0.001})
+        self.assertTrue(electrolyte.pH == 7)
+        self.assertTrue(electrolyte.temperature == 298)
+        self.assertTrue(electrolyte.solvent.name == 'Water')
+        self.assertTrue(electrolyte.cation.name == 'Sodium')
+        self.assertTrue(electrolyte.anion.name == 'Chloride')
+        self.assertTrue(electrolyte.solute.name == 'Oxygen')
+        self.assertTrue(electrolyte._concentrations == {cation: 0.001, anion: 0.001, solute: 0.001})
+        self.assertTrue(type(electrolyte._cation == list[Cation]))
+        self.assertTrue(type(electrolyte._anion == list[Anion]))
 
-    def test_electrolyte_concentrations(self):
-        self.assertTrue(self.electrolyte._concentrations == {self.cation: 0.001, self.anion: 0.001, self.solute: 0.001})
+    def test_electrolyte_multiple_ions(self):
+        cation1 = Cation(name='Sodium')
+        cation2 = Cation(name='Potassium')
+        anion1 = Anion(name='Chloride')
+        anion2 = Anion(name='Bromide')
+        solute = Solute(name='Oxygen')
+        solvent = Solvent(name='Water')
+        electrolyte = Electrolyte(solvent=solvent, cation=[cation1, cation2], anion=[anion1, anion2], pH=7, solute=solute,
+                                    temperature=298, concentrations={cation1: 0.001, cation2: 0.001, anion1: 0.001, anion2: 0.001, solute: 0.001})
+        self.assertTrue(electrolyte.pH == 7)
+        self.assertTrue(electrolyte.temperature == 298)
+        self.assertTrue(electrolyte.solvent.name == 'Water')
+        self.assertTrue(electrolyte.cation[0].name == 'Sodium')
+        self.assertTrue(electrolyte.cation[1].name == 'Potassium')
+        self.assertTrue(electrolyte.anion[0].name == 'Chloride')
+        self.assertTrue(electrolyte.anion[1].name == 'Bromide')
+        self.assertTrue(electrolyte.solute.name == 'Oxygen')
+        self.assertTrue(electrolyte._concentrations == {cation1: 0.001, cation2: 0.001, anion1: 0.001, anion2: 0.001, solute: 0.001})
+        self.assertTrue(type(electrolyte._cation == list[Cation]))
+        self.assertTrue(type(electrolyte._anion == list[Anion]))
 
 
 class TestPolymer(unittest.TestCase):
@@ -147,3 +175,4 @@ class TestPolymer(unittest.TestCase):
         polymer = Polymer(name='p3ht')
         self.assertTrue(polymer.name == 'P3HT')
         self.assertTrue(polymer._name == 'p3ht')
+        

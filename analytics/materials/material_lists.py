@@ -1,43 +1,66 @@
 
+
 common_solvents = {
-    "water": "H2O".lower(),
-    "ethanol": "C2H5OH".lower(),
-    "acetone": "C3H6O".lower(),
-    "methanol": "CH3OH".lower(),
-    "toluene": "C7H8".lower(),
-    "hexane": "C6H14".lower(),
-    "diethyl ether": "C4H10O".lower(),
-    "chloroform": "CHCl3".lower(),
-    "dichloromethane": "CH2Cl2".lower(),
-    "acetonitrile": "CH3CN".lower()
+    "water": "h2o",
+    "methanol": "ch3oh",
+    "ethanol": "c2h5oh",
+    "acetone": "c3h6o",
+    "acetonitrile": "c2h3n",
+    "dimethylsulfoxide": "c2h6os",
+    "dimethylformamide": "c3h7no"
 }
 
 common_cations = {
-    "sodium": "Na+".lower(),
-    "potassium": "K+".lower(),
-    "lithium": "Li+".lower(),
-    "ammonium": "NH4+".lower(),
-    "magnesium": "Mg2+".lower(),
-    "calcium": "Ca2+".lower(),
-    "zinc": "Zn2+".lower(),
-    "copper": "Cu2+".lower(),
-    "iron": "Fe2+".lower(),
-    "aluminium": "Al3+".lower()   
+    "sodium": "na+",
+    "potassium": "k+",
+    "lithium": "li+",
+    "ammonium": "nh4+",
+    "magnesium": "mg2+",
+    "calcium": "ca2+",
+    "zinc": "zn2+",
+    "copper": "cu2+",
+    "iron": "fe2+",
+    "aluminium": "al3+"
 }
 
 common_anions = {
-    "chloride": "Cl-".lower(),
-    "bromide": "Br-".lower(),
-    "iodide": "I-".lower(),
-    "fluoride": "F-".lower(),
-    "hydroxide": "OH-".lower(),
-    "nitrate": "NO3-".lower(),
-    "sulfate": "SO4-2".lower(),
-    "carbonate": "CO3-2".lower(),
-    "phosphate": "PO4-3".lower()
+    "chloride": "cl-",
+    "bromide": "br-",
+    "iodide": "i-",
+    "fluoride": "f-",
+    "hydroxide": "oh-",
+    "nitrate": "no3-",
+    "sulfate": "so4-2",
+    "carbonate": "co3-2",
+    "phosphate": "po4-3"
 }
 
 common_solutes = {
-    "oxygen": "O2".lower(),
-    "hydrogen": "H2".lower()
+    "oxygen": "o2",
+    "hydrogen": "h2"
+}
+
+cation_charges = {
+    "na+": 1,
+    "k+": 1,
+    "li+": 1,
+    "nh4+": 1,
+    "mg2+": 2,
+    "ca2+": 2,
+    "zn2+": 2,
+    "cu2+": 2,
+    "fe2+": 2,
+    "al3+": 3 
+}
+
+anion_charges = {
+    "cl-": -1,
+    "br-": -1,
+    "i-": -1,
+    "f-": -1,
+    "oh-": -1,
+    "no3-": -1,
+    "so4-2": -2,
+    "co3-2": -2,
+    "po4-3": -3
 }

@@ -1,14 +1,21 @@
 from analytics.materials.material_lists import common_cations, common_anions
+from analytics.materials.material_lists import cation_charges, anion_charges
 
 
 class Ion():
     """
     Master class for ions
     """
-    def __init__(self, charge: int, name: str = None) -> None:
-        self._charge = charge
+    def __init__(self, name: str = None) -> None:
         self._name = self._get_ion_from_list(name)[0]
         self._formula = self._get_ion_from_list(name)[1]
+
+        if self._formula in cation_charges.keys():
+            self._charge = cation_charges[self._formula]
+        elif self._formula in anion_charges.keys():
+            self._charge = anion_charges[self._formula]
+        else:
+            raise ValueError(f'Charge not found for {self._formula}')
 
     @property
     def formula(self):
@@ -51,19 +58,14 @@ class Cation(Ion):
     """
     Class for cations  
     """
-    def __init__(self, charge: int,  name: str = None) -> None:
-        super().__init__(charge=charge, name=name)
-        if charge <= 0:
-            raise ValueError('Cation charge must be positive')
-
+    def __init__(self, name: str = None) -> None:
+        super().__init__(name=name)
+        
 
 class Anion(Ion):
     """
     Class for anions
     """
-    def __init__(self, charge: int, name: str = None) -> None:
-        super().__init__(charge=charge, name=name)
-        if charge >= 0:
-            raise ValueError('Anion charge must be negative')
-
-  
+    def __init__(self, name: str = None) -> None:      
+        super().__init__(name=name)
+        
