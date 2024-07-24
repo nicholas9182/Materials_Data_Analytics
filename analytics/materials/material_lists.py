@@ -52,7 +52,7 @@ common_solutes = {
 }
 
 solute_pkas = {
-    "h2o2": 11.75,
+    "h2o2": 11.7,
     "ho2": 4.88
 }
 

@@ -28,6 +28,7 @@ class Electrolyte():
         self._pH = pH
         self._temperature = temperature        
         
+        # check that all the cations entered are Cation class
         if type(cation) == Cation: 
             self._cation = [cation]
         elif type(cation) == list:
@@ -38,6 +39,7 @@ class Electrolyte():
         else:
             raise ValueError('Cation must be a Cation object')
         
+        # check that all the anions entered are Anion class
         if type(anion) == Anion:
             self._anion = [anion]
         elif type(anion) == list:
@@ -48,13 +50,20 @@ class Electrolyte():
         else:
             raise ValueError('Anion must be an Anion object')
         
+        # check that the solvent entered is a Solvent class
         if type(solvent) == Solvent:
             self._solvent = solvent
         else:
             raise ValueError('Solvent must be a Solvent object')
-
-        if type(solute) == Solute or type(solute) == list[Solute] or type(solute) == MolecularOxygen or type(solute) == list[MolecularOxygen]:
+        
+        # check that the solute entered is a Solute class
+        if type(solute) == Solute or type(solute) == MolecularOxygen:
             self._solute = [solute]
+        elif type(solute) == list or type(solute) == list[MolecularOxygen]:
+            for s in solute:
+                if type(s) != Solute and type(s) != MolecularOxygen:
+                    raise ValueError('Solute must be a Solute object')
+            self._solute = solute
         else:
             raise ValueError('Solute must be a Solute object')
 

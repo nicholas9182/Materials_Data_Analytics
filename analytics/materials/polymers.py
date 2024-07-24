@@ -33,3 +33,7 @@ class PType(Polymer):
         super().__init__(name=name)
         self._formal_oxidation_potential = formal_oxidation_potential
 
+    @property
+    def formal_oxidation_potential(self):
+        return self._formal_oxidation_potential
+
