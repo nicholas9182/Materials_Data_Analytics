@@ -50,11 +50,11 @@ class Solute():
         can be either the chemistry or the common name
         """
         name = name.lower()
-        if name in common_solutes.keys():
-            solute_name = name
+        if name.lower() in common_solutes.keys():
+            solute_name = name.lower()
             solute_formula = common_solutes[name]
-        elif name in common_solutes.values():
-            solute_name = list(common_solutes.keys())[list(common_solutes.values()).index(name)]
+        elif name.lower() in common_solutes.values():
+            solute_name = list(common_solutes.keys())[list(common_solutes.values()).index(name.lower())]
             solute_formula = name
         else:
             raise ValueError(f'Solute not found in common_solutes list, {common_solutes.keys()}')
@@ -70,15 +70,15 @@ class MolecularOxygen(Solute):
     def __init__(self) -> None:
         super().__init__(name='O2')
         self._formal_reduction_potentials = {"O2_superoxide": -0.160}
-        self._standard_reduction_potentials = {"H202": 0.695}
+        self._standard_reduction_potentials = {"h2o2": 0.695}
 
-    def _calculate_potential_formal_O2_HXO2(self, T: float, x: int, pH: float):
+    def calculate_formal_potential_O2_HXO2(self, T: float, x: int, pH: float):
         """
         Function to calculate the formal reduction potential of O2 to HXO2, with x depending on pH
         """
         prefactor = (2.303 * R * T)/(2 * F)
-        postfactor = (2 - x) * Solute('H202').pka + (x * pH)
-        potential_formal_O2_HXO2 = self._formal_reduction_potentials['H202'] - prefactor*postfactor
+        postfactor = (2 - x) * Solute(name='H2O2').pka + (x * pH)
+        potential_formal_O2_HXO2 = self._standard_reduction_potentials['h2o2'] - prefactor*postfactor
         return potential_formal_O2_HXO2
 
     @property

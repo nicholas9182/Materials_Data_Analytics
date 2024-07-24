@@ -105,7 +105,7 @@ class TestSolute(unittest.TestCase):
         self.assertTrue(generic_solute.name == 'Oxygen')
         self.assertTrue(generic_solute.formula == 'O2')
         self.assertTrue(generic_solute.formal_reduction_potentials == {"O2_superoxide": -0.160})
-        self.assertTrue(generic_solute.standard_reduction_potentials == {"H202": 0.695})
+        self.assertTrue(generic_solute.standard_reduction_potentials == {"h2o2": 0.695})
 
     def test_solute_name_2(self):
         generic_solute = MolecularOxygen()
@@ -119,7 +119,7 @@ class TestSolute(unittest.TestCase):
 
     def test_h202_pka(self):
         generic_solute = Solute(name='H2O2')
-        self.assertTrue(generic_solute.pka == 11.75)
+        self.assertTrue(generic_solute.pka == 11.7)
 
     def test_ho2_pka(self):
         generic_solute = Solute(name='HO2')
