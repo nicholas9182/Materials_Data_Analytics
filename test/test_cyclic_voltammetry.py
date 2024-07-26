@@ -68,3 +68,17 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
         # px.line(data, x='potential', y='current', color='cycle', markers=True).show()
         self.assertTrue(1 not in data['cycle'].values)
+
+    def test_show_plots(self):
+
+        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte, keep_cycle_1=True)
+        # cv.show_current_potential()
+        # cv.show_current_time()
+        # cv.show_potential_time()
+        self.assertTrue(type(cv.data == pd.DataFrame))
+
+    def test_redox_direction(self):
+
+        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+        data = cv.data
+        # px.line(data, x='time', y='current', color='redox', facet_col = 'cycle', markers=True, hover_data=['time']).show()
