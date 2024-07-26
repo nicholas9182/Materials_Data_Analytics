@@ -208,5 +208,5 @@ class TestECpDModel(unittest.TestCase):
         my_ECpD_model = ECpD(electrolyte=self.my_electrolye, polymer=my_polymer, rotation_rate=1600)
 
         e_sweep = my_ECpD_model.get_e_sweep(E_max=1, E_min=-1, E_n=100, k01=np.exp(-5.906), beta=0.4999, kf2=np.exp(1.0807), kf3=np.exp(4.688))
-        px.line(e_sweep, x='potential', y='CS02_superoxide').show()
+        # px.line(e_sweep, x='potential', y='CS02_superoxide').show()
         self.assertTrue(type(e_sweep) == pd.DataFrame)
