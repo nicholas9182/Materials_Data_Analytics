@@ -15,17 +15,70 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
                  cycle: Union[list, pd.Series, np.array] = None,
                  time: Union[list, pd.Series, np.array] = None,
                  electrolyte: Electrolyte = None,
-                 metadata: dict = None
+                 metadata: dict = None,
+                 keep_cycle_1: bool = False
                  ) -> None:
         
         super().__init__(electrolyte, metadata=metadata)
 
-        if potential is not None and current is not None and cycle is not None and time is not None:
-            if len(potential) != len(current) or len(potential) != len(cycle) or len(potential) != len(time):
-                raise ValueError('The length of the potential, current, cycle and time arrays must be the same')
+        self._keep_cycle_1 = keep_cycle_1
+
+        self._data = pd.DataFrame()
+
+        if len(self._data) != 0:
             self._data = pd.DataFrame({'potential': potential, 'current': current, 'cycle': cycle, 'time': time})
-        else:
-            self._data = pd.DataFrame()
+            self._wrangle_data()
+
+    def _wrangle_data(self):
+        """
+        Function to clean the data
+        """
+        self._data = self._data.dropna()
+
+        if self._keep_cycle_1 is False:
+            self._data = self._data.query('cycle != 1')
+
+        self._remake_cycle_numbers()
+
+        if 'cycle' in self._data.columns:
+            self._data['cycle'] = self._data['cycle'].astype(int).sort_values()
+
+        if 'time' in self._data.columns:
+            self._data['time'] = self._data['time'].astype(float).sort_values()
+
+        return self
+
+    
+    def _remake_cycle_numbers(self):
+        """
+        Function to remake the cycle numbers so that one cycle is from peak to peak
+        """
+
+        self._data = (self._data
+                      .groupby(['cycle'], group_keys=False)
+                      .apply(lambda df: df.assign(
+                          _peak_potential = lambda x: x['potential'].max(),
+                          _trough_potential = lambda x: x['potential'].min()
+                          ))
+                      )
+        
+        new_cycle_num_list = []
+        cycle = -0.1
+        for index, row in self._data.iterrows():
+            if row['potential'] == row['_peak_potential'] or row['potential'] == row['_trough_potential']:
+                cycle += 1
+            new_cycle_num_list.append(cycle)
+
+        self._data = (self._data
+                      .assign(cycle = new_cycle_num_list)
+                      .assign(cycle = lambda x: x['cycle'].div(2).round(0).astype(int))
+                      .drop(columns=['_peak_potential', '_trough_potential'])
+                      .groupby(['cycle'], group_keys=False)
+                      .apply(lambda df: df.assign(redox = lambda x: ['reduction' if i < 0 else 'oxidation' for i in x['potential'].diff()]))
+                      .query('cycle != cycle.min() and cycle != cycle.max()')
+                      )
+
+        return self
 
     @property
     def data(self, with_metadata = True) -> pd.DataFrame:
@@ -39,13 +92,12 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         return data
 
     @classmethod
-    def from_benelogic(cls, path: str, electrolyte: Electrolyte = None):
+    def from_benelogic(cls, path: str, electrolyte: Electrolyte = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from a Benelogic file
         """
-        cv = cls(electrolyte=electrolyte)
         data = pd.read_table(path, sep='\s+', names=['potential', 'current', 'cycle', 'time'], skiprows=1)
-        cv._data = data
+        cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], cycle=data['cycle'], time=data['time'], **kwargs)
         return cv
     
     def drop_cycles(self, cycles: list[int]):
@@ -55,13 +107,33 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         self._data = self._data.query('cycle not in @cycles')
         return self
     
-    def make_plot(self, **kwargs):
+    def show_current_potential(self, **kwargs):
         """
         Function to plot the cyclic voltammogram
         """
 
         px.line(self.data, x='potential', y='current', color='cycle', markers=True, 
                 labels={'potential': 'Potential [V]', 'current': 'Current [A]'}, **kwargs).show()
+        
+        return self
+    
+    def show_current_time(self, **kwargs):
+        """
+        Function to plot the current vs time
+        """
+
+        px.line(self.data, x='time', y='current', color='cycle', markers=True, 
+                labels={'time': 'Time [s]', 'current': 'Current [A]'}, **kwargs).show()
+        
+        return self
+    
+    def show_potential_time(self, **kwargs):
+        """
+        Function to plot the potential vs time
+        """
+
+        px.line(self.data, x='time', y='potential', color='cycle', markers=True, 
+                labels={'time': 'Time [s]', 'potential': 'Potential [V]'}, **kwargs).show()
         
         return self
 
