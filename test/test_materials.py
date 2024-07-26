@@ -200,4 +200,14 @@ class TestPolymer(unittest.TestCase):
         polymer = Polymer(name='p3ht')
         self.assertTrue(polymer.name == 'P3HT')
         self.assertTrue(polymer._name == 'p3ht')
+
+    def test_reduction_setter(self):
+        BBL = NType(name='BBL', formal_reduction_potential=0.5)
+        BBL.formal_reduction_potential = 0.6
+        self.assertTrue(BBL.formal_reduction_potential == 0.6)
+
+    def test_oxidation_setter(self):
+        PEDOT = PType(name='PEDOT', formal_oxidation_potential=0.5)
+        PEDOT.formal_oxidation_potential = 0.6
+        self.assertTrue(PEDOT.formal_oxidation_potential == 0.6)
         

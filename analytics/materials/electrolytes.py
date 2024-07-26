@@ -57,7 +57,7 @@ class Electrolyte():
             raise ValueError('Solvent must be a Solvent object')
         
         # check that the solute entered is a Solute class
-        if type(solute) == Solute or type(solute) == MolecularOxygen:
+        if type(solute) == Solute or type(solute) == MolecularOxygen or solute == None:
             self._solute = [solute]
         elif type(solute) == list or type(solute) == list[MolecularOxygen]:
             for s in solute:

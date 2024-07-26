@@ -24,6 +24,10 @@ class NType(Polymer):
     def formal_reduction_potential(self):
         return self._formal_reduction_potential
     
+    @formal_reduction_potential.setter
+    def formal_reduction_potential(self, value):
+        self._formal_reduction_potential = value
+    
 
 class PType(Polymer):
     """
@@ -36,4 +40,8 @@ class PType(Polymer):
     @property
     def formal_oxidation_potential(self):
         return self._formal_oxidation_potential
+    
+    @formal_oxidation_potential.setter
+    def formal_oxidation_potential(self, value):
+        self._formal_oxidation_potential = value
 
