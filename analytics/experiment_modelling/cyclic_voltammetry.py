@@ -25,7 +25,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
 
         self._data = pd.DataFrame()
 
-        if len(self._data) != 0:
+        if len(potential) and len(current) and len(cycle) and len(time) != 0:
             self._data = pd.DataFrame({'potential': potential, 'current': current, 'cycle': cycle, 'time': time})
             self._wrangle_data()
 

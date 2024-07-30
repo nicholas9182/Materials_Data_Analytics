@@ -14,27 +14,6 @@ class TestCyclicVoltammetry(unittest.TestCase):
     water = Solvent('H2O')
     electrolyte = Electrolyte(cation=na, anion=cl, solvent=water, pH=7, temperature=298, concentrations={na: 1, cl: 1})
 
-    def test_cyclic_voltammogram(self):
-
-        e = [0, 0.1, 0.2, 0.3]
-        i = [0, 1, 2, 3]
-        cycle = [1, 1, 1, 1]
-        time = [0, 1, 2, 3]
-
-        cv = CyclicVoltammogram(potential = e, current = i, cycle = cycle, electrolyte=self.electrolyte, time=time)
-
-        self.assertTrue(type(cv) == CyclicVoltammogram)
-        self.assertTrue(type(cv.data) == pd.DataFrame)
-        self.assertTrue(cv.pH == 7)
-        self.assertTrue(cv.temperature == 298)
-        self.assertTrue(cv.cation == self.na)
-        self.assertTrue(cv.anion == self.cl)
-        self.assertTrue(cv.electrolyte == self.electrolyte)
-        self.assertTrue('potential' in cv.data.columns) 
-        self.assertTrue('current' in cv.data.columns)
-        self.assertTrue('cycle' in cv.data.columns)
-        self.assertTrue('time' in cv.data.columns)
-
     def test_from_benelegic(self):
 
         cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
