@@ -14,12 +14,12 @@ class MicroKineticModel():
     """
     def __init__(self, 
                  electrolyte: Electrolyte, 
-                 polymer: Polymer, 
+                 polymer: Polymer | list[Polymer], 
                  rotation_rate: float
                  ) -> None:
 
         self._electrolyte = electrolyte
-        self._polymer = polymer
+        self._polymer = polymer if type(polymer) == list else [polymer]
         self._rotation_rate = rotation_rate
         self._pH = self.electrolyte._pH
         self._temperature = self.electrolyte._temperature
@@ -54,7 +54,7 @@ class MicroKineticModel():
     
     @property
     def polymer(self):
-        return self._polymer
+        return self._polymer if len(self._polymer) > 1 else self._polymer[0]
     
     @property
     def pH(self):
@@ -208,9 +208,11 @@ class ECpD(OxygenReductionModel):
 
     def calculate_k2(self) -> float:
         """
-        Function to calculate the equilibrium constant for the Cp step of the reaction pathway
+        Function to calculate the equilibrium constant for the Cp step of the reaction pathway. 
+        Assumes the polymer with the most positive formal reduction potential is the one that is reduced
         """
-        E1 = self._polymer._formal_reduction_potential
+        reduction_potentials = [i._formal_reduction_potential for i in self._polymer]
+        E1 = max(reduction_potentials)
         E2 = self.o2._formal_reduction_potentials['O2_superoxide']
 
         return self._calculate_rate_constant(E1 = E1, E2 = E2, n1 = 1, n2 = 1)
@@ -227,12 +229,14 @@ class ECpD(OxygenReductionModel):
     def calculate_ksf1(self, E: float, k01: float, beta: float) -> float:
         """
         Function to calculate the electrochemical rate constant for the forward reaction of the first step
+        Assumes the polymer with the most positive formal reduction potential is the one that is reduced
         :param E: the applied potential
         :param k01: the rate constant at zero overvoltage
         :param beta: the symmetry coefficient
         :return ksf1: the electrochemical rate constant for the forward reaction of the first step
         """
-        E1 = self._polymer.formal_reduction_potential
+        reduction_potentials = [i._formal_reduction_potential for i in self._polymer]
+        E1 = max(reduction_potentials)
         return self._calculate_electrochemical_rate_coefficient(E1 = E1, E = E, beta = beta, rate_constant_zero_overvoltage = k01, forward = True)
 
     def calculate_ksb1(self, E: float ,k01: float, beta: float) -> float:
@@ -243,7 +247,8 @@ class ECpD(OxygenReductionModel):
         :param beta: the symmetry coefficient
         :return ksb1: the electrochemical rate constant for the backward reaction of the first step
         """
-        E1 = self._polymer.formal_reduction_potential
+        reduction_potentials = [i._formal_reduction_potential for i in self._polymer]
+        E1 = max(reduction_potentials)
         return self._calculate_electrochemical_rate_coefficient(E1 = E1, E = E, beta = beta, rate_constant_zero_overvoltage = k01, forward = False)
     
     def calculate_v1(self, E: float, k01: float, beta: float, thetaN: float, thetaP: float) -> float:
