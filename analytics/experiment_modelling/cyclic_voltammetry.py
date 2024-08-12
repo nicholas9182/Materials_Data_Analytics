@@ -46,8 +46,19 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         if 'time' in self._data.columns:
             self._data['time'] = self._data['time'].astype(float).sort_values()
 
-        return self
+        self._data = self._data.groupby(['cycle'], group_keys=False).apply(lambda df: df.pipe(self._add_endpoints))
 
+        return self
+    
+    @staticmethod
+    def _add_endpoints(df):
+        first_redox = df['redox'].iloc[0]
+        last_redox = df['redox'].iloc[-1]
+        last_index = df.query('redox == @first_redox').index[-1]
+        first_chunk = df.query('redox == @first_redox')
+        second_chunk = df.query('redox == @first_redox and index == @last_index').assign(redox = last_redox)
+        third_chunk = df.query('redox == @last_redox') 
+        return pd.concat([first_chunk, second_chunk, third_chunk])
     
     def _remake_cycle_numbers(self):
         """
@@ -75,7 +86,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
                       .drop(columns=['_peak_potential', '_trough_potential'])
                       .groupby(['cycle'], group_keys=False)
                       .apply(lambda df: df.assign(redox = lambda x: ['reduction' if i < 0 else 'oxidation' for i in x['potential'].diff()]))
-                      .query('cycle != cycle.min() and cycle != cycle.max()')
+                      .query('index > index.min()+5')
                       )
 
         return self
@@ -111,8 +122,8 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         """
         Function to plot the cyclic voltammogram
         """
-
-        px.line(self.data, x='potential', y='current', color='cycle', markers=True, 
+        data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['redox'])
+        px.line(data, x='potential', y='current', color='cycle_direction', markers=True, 
                 labels={'potential': 'Potential [V]', 'current': 'Current [A]'}, **kwargs).show()
         
         return self
@@ -121,8 +132,8 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         """
         Function to plot the current vs time
         """
-
-        px.line(self.data, x='time', y='current', color='cycle', markers=True, 
+        data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['redox'])
+        px.line(data, x='time', y='current', color='cycle_direction', markers=True, 
                 labels={'time': 'Time [s]', 'current': 'Current [A]'}, **kwargs).show()
         
         return self
@@ -131,8 +142,8 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         """
         Function to plot the potential vs time
         """
-
-        px.line(self.data, x='time', y='potential', color='cycle', markers=True, 
+        data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['redox'])
+        px.line(data, x='time', y='potential', color='cycle_direction', markers=True, 
                 labels={'time': 'Time [s]', 'potential': 'Potential [V]'}, **kwargs).show()
         
         return self

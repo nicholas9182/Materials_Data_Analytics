@@ -52,7 +52,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
         cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte, keep_cycle_1=True)
         # cv.show_current_potential()
-        # cv.show_current_time()
+        cv.show_current_time()
         # cv.show_potential_time()
         self.assertTrue(type(cv.data == pd.DataFrame))
 

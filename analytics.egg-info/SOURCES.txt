@@ -11,6 +11,9 @@ analytics/continuum_modelling/microkinetic_modelling.py
 analytics/core/__init__.py
 analytics/core/coordinate_transformer.py
 analytics/core/universe.py
+analytics/experiment_modelling/__init__.py
+analytics/experiment_modelling/core.py
+analytics/experiment_modelling/cyclic_voltammetry.py
 analytics/materials/__init__.py
 analytics/materials/electrolytes.py
 analytics/materials/ions.py
@@ -30,6 +33,7 @@ cli_tools/get_polymer_contacts.py
 cli_tools/plot_hills.py
 test/__init__.py
 test/test_coordinate_transformer.py
+test/test_cyclic_voltammetry.py
 test/test_free_energy.py
 test/test_gaussian.py
 test/test_materials.py

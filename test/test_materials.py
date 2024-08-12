@@ -144,6 +144,7 @@ class TestElectrolyte(unittest.TestCase):
         self.assertTrue(electrolyte.anion.name == 'Chloride')
         self.assertTrue(electrolyte.solute.name == 'Oxygen')
         self.assertTrue(electrolyte._concentrations == {cation: 0.001, anion: 0.001, solute: 0.001})
+        self.assertTrue(electrolyte.concentrations == {"Sodium": 0.001, "Chloride": 0.001, "Oxygen": 0.001})
         self.assertTrue(type(electrolyte._cation == list[Cation]))
         self.assertTrue(type(electrolyte._anion == list[Anion]))
 
