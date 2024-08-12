@@ -16,7 +16,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_from_benelegic(self):
 
-        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
 
         self.assertTrue(type(cv) == CyclicVoltammogram)
         self.assertTrue(type(cv.data) == pd.DataFrame)
@@ -32,7 +32,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_plot_1(self):
 
-        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
         data = cv.data
         #px.line(data, x='potential', y='current', color='cycle', markers=True).show()
         self.assertTrue(type(cv.data == pd.DataFrame))
@@ -40,7 +40,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
     def test_drop_cycles(self):
 
         data = (CyclicVoltammogram
-                .from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+                .from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
                 .drop_cycles(cycles=[1])
                 .data
                 )
@@ -50,7 +50,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_show_plots(self):
 
-        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte, keep_cycle_1=True)
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
         # cv.show_current_potential()
         # cv.show_current_time()
         # cv.show_potential_time()
@@ -58,14 +58,20 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_redox_direction(self):
 
-        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
         data = cv.data
         # px.line(data, x='time', y='current', color='redox', facet_col = 'cycle', markers=True, hover_data=['time']).show()
 
     def test_get_charge_passed(self):
 
-        cv = CyclicVoltammogram.from_benelogic(path = 'test_trajectories/cyclic_voltammetry/benelogic1.txt', electrolyte = self.electrolyte)
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
         integrals = cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4983, 0.0040, 2.5017, 0.0039, 2.5035, 0.0039])
+        self.assertTrue(charges == [2.4893, 0.0040, 2.4983, 0.0040, 2.5017, 0.0039, 2.5035, 0.0039])
+
+    def test_show_charge_passed(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
+        # cv.show_charge_passed()
+        self.assertTrue(type(cv.data == pd.DataFrame))
