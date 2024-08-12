@@ -21,6 +21,16 @@ class Experiment():
         for k in value.keys():
             self._metadata[k] = value[k]
 
+    @staticmethod
+    def get_root(x1, x2, y1, y2):
+        """
+        Function to get the root of the line given by two points
+        """
+        slope = (y2 - y1) / (x2 - x1)
+        intercept = y1 - slope * x1
+        root = -intercept / slope
+        return root
+
 
 class ElectrochemicalExperiment(Experiment):
 

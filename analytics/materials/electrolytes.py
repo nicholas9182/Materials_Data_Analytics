@@ -92,7 +92,10 @@ class Electrolyte():
             
     @property
     def concentrations(self):
-        return self._concentrations
+        """
+        return the concentrations of the ions and solutes in the electrolyte with the names of the ions and solutes 
+        """
+        return {k.name:v for (k, v) in self._concentrations.items()}
 
     @property
     def solute(self):
@@ -128,4 +131,4 @@ class Electrolyte():
             return self._anion
 
     def __str__(self) -> str:
-        return f'{self._solvent} with {self._cation} and {self._anion}'
+        return f'{self._solvent.__str__} with {self._cation.__str__} and {self._anion.__str__}'
