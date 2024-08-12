@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import Union
 import plotly.express as px
+import scipy.integrate as integrate
 
 
 class CyclicVoltammogram(ElectrochemicalExperiment):
@@ -46,7 +47,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         if 'time' in self._data.columns:
             self._data['time'] = self._data['time'].astype(float).sort_values()
 
-        self._data = self._data.groupby(['cycle'], group_keys=False).apply(lambda df: df.pipe(self._add_endpoints))
+        self._data = self._data.groupby(['cycle'], group_keys=False).apply(lambda df: df.pipe(self._add_endpoints)).reset_index(drop=True)
 
         return self
     
@@ -163,3 +164,92 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
     @property
     def anion(self) -> Anion:
         return self.electrolyte.anion
+    
+    def _integrate_curves(self, data: pd.DataFrame, redox: str, valence: str):
+        """
+        Function to add a point to the current and time arrays to calculate the integral
+        """
+
+        if valence == 'positive':
+            current_data = data.query('current > 0')
+        elif valence == 'negative':
+            current_data = data.query('current < 0')
+        else:
+            raise ValueError('Valence must be either positive or negative')
+        
+        if redox == 'oxidation':
+            int_current = current_data.query('redox == "oxidation"')['current'].to_numpy()
+            int_time = current_data.query('redox == "oxidation"')['time'].to_numpy()
+        elif redox == 'reduction':
+            int_current = current_data.query('redox == "reduction"')['current'].to_numpy()
+            int_time = current_data.query('redox == "reduction"')['time'].to_numpy()
+        else:
+            raise ValueError('Redox must be either oxidation or reduction')
+        
+        if redox == 'oxidation' and valence == 'negative':
+            max_index = data.query('redox == "oxidation" and current < 0').index.max() + 1
+            y1 = int_current[-1]
+            x1 = int_time[-1]
+            y2 = data.query('index == @max_index')['current'].iloc[0]
+            x2 = data.query('index == @max_index')['time'].iloc[0]
+            root = self.get_root(x1, x2, y1, y2)
+            int_current = np.append(int_current, 0)
+            int_time = np.append(int_time, root)
+
+        elif redox == 'oxidation' and valence == 'positive':
+            min_index = data.query('redox == "oxidation" and current > 0').index.min() - 1
+            y1 = int_current[0]
+            x1 = int_time[0]
+            y2 = data.query('index == @min_index')['current'].iloc[0]
+            x2 = data.query('index == @min_index')['time'].iloc[0]
+            root = self.get_root(x1, x2, y1, y2)
+            int_current = np.append(0, int_current)
+            int_time = np.append(root, int_time)
+
+        elif redox == 'reduction' and valence == 'negative':
+            min_index = data.query('redox == "reduction" and current < 0').index.min() - 1
+            y1 = int_current[0]
+            x1 = int_time[0]
+            y2 = data.query('index == @min_index')['current'].iloc[0]
+            x2 = data.query('index == @min_index')['time'].iloc[0]
+            root = self.get_root(x1, x2, y1, y2)
+            int_current = np.append(0, int_current)
+            int_time = np.append(root, int_time)
+
+        elif redox == 'reduction' and valence == 'positive':
+            max_index = data.query('redox == "reduction" and current > 0').index.max() + 1
+            y1 = int_current[-1]
+            x1 = int_time[-1]
+            y2 = data.query('index == @max_index')['current'].iloc[0]
+            x2 = data.query('index == @max_index')['time'].iloc[0] 
+            root = self.get_root(x1, x2, y1, y2)
+            int_current = np.append(int_current, 0)
+            int_time = np.append(int_time, root)
+
+        integral = integrate.simpson(int_current, int_time)
+
+        return integral
+
+
+    def get_charge_passed(self):
+        """
+        Function to get the integrals of the current
+        """
+
+        max_cycle = self._data['cycle'].max()   
+        data = self._data.query('cycle != 0 and cycle != @max_cycle').copy()
+
+        integrals = (data
+                     .groupby(['cycle', 'redox'], group_keys=False)
+                     .apply(lambda df: (df
+                                        .assign(anodic_charge = lambda x: self._integrate_curves(x, redox=x['redox'].iloc[0], valence='positive'))
+                                        .assign(cathodic_charge = lambda x: self._integrate_curves(x, redox=x['redox'].iloc[0], valence='negative'))
+                                        ))
+                     .drop(columns=['potential', 'time', 'current'])
+                     .drop_duplicates()
+                     .reset_index(drop=True)
+                     )
+        
+        return integrals
+
+
