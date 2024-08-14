@@ -163,8 +163,14 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         """
         Function to make a CyclicVoltammogram object from a biologic file
         """
-        data = pd.read_table(path, sep='\s+', names=['potential', 'current', 'cycle', 'time'], skiprows=1)
+        data = (pd
+                .read_table(path, sep='\s+')
+                .rename({'Ewe/V': 'potential', '<I>/mA': 'current', 'time/s': 'time'}, axis=1)
+                .drop(columns=['number'])
+                )
+
         cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], cycle=data['cycle'], time=data['time'], **kwargs)
+        
         return cv
     
     def drop_cycles(self, cycles: list[int]) -> pd.DataFrame:
