@@ -42,29 +42,16 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
                 .dropna()
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
-                .pipe(self._remake_cycle_numbers)
                 .pipe(self._determine_direction)
+                .pipe(self._make_segments)
                 .pipe(self._add_endpoints)
+                .pipe(self._make_cycles)
                 .pipe(self._check_types)
                 .sort_values(by=['time', 'segment'])
                 .reset_index(drop=True)
                 )
         
         return data
-    
-    def _check_types(self, data) -> pd.DataFrame:
-        """
-        Function to check the data types in the data columns
-        :param data: pd.DataFrame with columns potential, current, cycle, time
-        """
-        return (data
-                .assign(cycle = lambda x: x['cycle'].astype(int))
-                .assign(time = lambda x: x['time'].astype(float))
-                .assign(potential = lambda x: x['potential'].astype(float))
-                .assign(current = lambda x: x['current'].astype(float))
-                .assign(segment = lambda x: x['segment'].astype(int))
-                .assign(direction = lambda x: x['direction'].astype(str))
-                )
     
     def _determine_direction(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -87,8 +74,10 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         for i in range(1, len(directions)-1):
             if directions[i] != directions[i-1] and directions[i] != directions[i+1]:
                 directions[i] = directions[i-1]
+
+        data = data.assign(direction = directions)
             
-        return data.assign(direction = directions)
+        return data
     
     def _add_endpoints(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -110,31 +99,51 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
 
         return data
     
+    def _make_cycles(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Function to find the cycles of the cyclic voltammogram
+        """
+        cycle = 0
+        new_data = []
+        for group_name, group_df in data.groupby('segment'):
+            if group_name % 2 == 1:
+                cycle += 1
+            group_df['cycle'] = cycle
+            new_data.append(group_df)
+
+        data = pd.concat(new_data, ignore_index=True)
+
+        return data
+    
+    def _check_types(self, data) -> pd.DataFrame:
+        """
+        Function to check the data types in the data columns
+        :param data: pd.DataFrame with columns potential, current, cycle, time
+        """
+        return (data
+                .assign(cycle = lambda x: x['cycle'].astype(int))
+                .assign(time = lambda x: x['time'].astype(float))
+                .assign(potential = lambda x: x['potential'].astype(float))
+                .assign(current = lambda x: x['current'].astype(float))
+                .assign(segment = lambda x: x['segment'].astype(int))
+                .assign(direction = lambda x: x['direction'].astype(str))
+                )
+    
     @staticmethod
-    def _remake_cycle_numbers(data) -> pd.DataFrame:
+    def _make_segments(data) -> pd.DataFrame:
         """
-        Function to remake the cycle numbers so that one cycle is from peak to peak
+        Function to find the segments of the cyclic voltammogram
         """
-        data = (data
-                .groupby(['cycle'], group_keys=False)
-                .apply(lambda df: (df
-                                   .assign(_peak_index = lambda x: x.query('potential == potential.max()')['potential'].index[-1]+1)
-                                   .assign(_trough_index = lambda x: x.query('potential == potential.min()')['potential'].index[-1]+1)
-                                   ))
-                )
-        
-        segment = 0
-        segment_list = []
+        segments = [0]
         for index, row in data.iterrows():
-            if index == row['_peak_index'] or index == row['_trough_index']:
-                segment += 1
-            segment_list.append(segment)
-        
-        data = (data
-                .assign(segment = segment_list)
-                .assign(cycle = lambda x: x['segment'].add(0.1).div(2).round(0).astype(int))
-                .drop(columns=['_peak_index', '_trough_index'])
-                )
+            if index == 0:
+                continue
+            elif row['direction'] != data['direction'].iloc[index-1]:
+                segments.append(segments[-1] + 1)
+            elif row['direction'] == data['direction'].iloc[index-1]:
+                segments.append(segments[-1])
+
+        data = data.assign(segment = segments)
 
         return data
 
