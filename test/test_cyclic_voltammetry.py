@@ -14,7 +14,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
     water = Solvent('H2O')
     electrolyte = Electrolyte(cation=na, anion=cl, solvent=water, pH=7, temperature=298, concentrations={na: 1, cl: 1})
 
-    def test_from_benelegic(self):
+    def test_from_biologic(self):
 
         cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
 
@@ -48,9 +48,17 @@ class TestCyclicVoltammetry(unittest.TestCase):
         # px.line(data, x='potential', y='current', color='cycle', markers=True).show()
         self.assertTrue(1 not in data['cycle'].values)
 
-    def test_show_plots(self):
+    def test_show_plots_biologic1(self):
 
         cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
+        # cv.show_current_potential()
+        # cv.show_current_time()
+        # cv.show_potential_time()
+        self.assertTrue(type(cv.data == pd.DataFrame))
+
+    def test_show_plots_biologic2(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic2.txt', electrolyte = self.electrolyte)
         # cv.show_current_potential()
         # cv.show_current_time()
         # cv.show_potential_time()
@@ -68,7 +76,15 @@ class TestCyclicVoltammetry(unittest.TestCase):
         integrals = cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4893, 0.0040, 2.4983, 0.0040, 2.5017, 0.0039, 2.5035, 0.0039])
+        self.assertTrue(charges == [0.004, 2.4893, 0.0040, 2.4983, 0.0040, 2.5017, 0.0039, 2.5035, 0.0039])
+
+    def test_get_charge_passed_biologic2(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic2.txt', electrolyte = self.electrolyte)
+        integrals = cv.get_charge_passed()
+        charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
+        self.assertTrue(type(integrals) == pd.DataFrame)
+        self.assertTrue(charges == [0.0042, 3.7438, 0.0048, 3.7424, 0.0049, 3.7397, 0.0048, 3.7381, 0.0048])
 
     def test_show_charge_passed(self):
 
