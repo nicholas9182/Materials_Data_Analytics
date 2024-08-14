@@ -22,76 +22,118 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         super().__init__(electrolyte, metadata=metadata)
 
         self._data = pd.DataFrame()
-        self._max_cycle = max(cycle)
 
         if len(potential) and len(current) and len(cycle) and len(time) != 0:
             self._data = (pd
                           .DataFrame({'potential': potential, 'current': current, 'cycle': cycle, 'time': time})
                           .pipe(self._wrangle_data)
                           )
+        
+        self._max_cycle = self._data['cycle'].max()
+        self._max_segment = self._data['segment'].max()
 
-    def _wrangle_data(self, data):
+    def _wrangle_data(self, data) -> pd.DataFrame:
         """
-        Function to clean the data
+        Function to wrangle the data
+        :param data: pd.DataFrame with columns potential, current, cycle, time
         """
         data = (data
+                .query('index > 5')
                 .dropna()
+                .reset_index(drop=True)
+                .sort_values(by=['time'])
                 .pipe(self._remake_cycle_numbers)
-                .assign(cycle = lambda x: x['cycle'].astype(int))
-                .assign(time = lambda x: x['time'].astype(float))
-                .assign(potential = lambda x: x['potential'].astype(float))
-                .assign(current = lambda x: x['current'].astype(float))
-                .sort_values(by=['cycle', 'time'])
-                .groupby(['cycle'], group_keys=False)
-                .apply(lambda df: df.pipe(self._add_endpoints, df['cycle'].iloc[0]))
+                .pipe(self._determine_direction)
+                .pipe(self._add_endpoints)
+                .pipe(self._check_types)
+                .sort_values(by=['time', 'segment'])
                 .reset_index(drop=True)
                 )
         
         return data
     
-    def _add_endpoints(self, df, cycle):
+    def _check_types(self, data) -> pd.DataFrame:
+        """
+        Function to check the data types in the data columns
+        :param data: pd.DataFrame with columns potential, current, cycle, time
+        """
+        return (data
+                .assign(cycle = lambda x: x['cycle'].astype(int))
+                .assign(time = lambda x: x['time'].astype(float))
+                .assign(potential = lambda x: x['potential'].astype(float))
+                .assign(current = lambda x: x['current'].astype(float))
+                .assign(segment = lambda x: x['segment'].astype(int))
+                .assign(direction = lambda x: x['direction'].astype(str))
+                )
+    
+    def _determine_direction(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Function to determine the direction of the cycle (either oxidation or reduction)
+        :param data: pd.DataFrame with potential and time
+        """
+        potential = data['potential']
+        potential_shifted = potential.shift(1)
+        dv = potential - potential_shifted
+        directions = ['oxidation'] if dv[1] > 0 else ['reduction']
+
+        for i in range(1, len(dv)):
+            if dv[i] > 0:
+                directions.append('oxidation')
+            elif dv[i] < 0:
+                directions.append('reduction')
+            elif dv[i] == 0:
+                directions.append(directions[i-1])
+        
+        for i in range(1, len(directions)-1):
+            if directions[i] != directions[i-1] and directions[i] != directions[i+1]:
+                directions[i] = directions[i-1]
+            
+        return data.assign(direction = directions)
+    
+    def _add_endpoints(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Function to double up data points at the end of the cycles so that each cycle is complete when filtered by direction
         """
-        if cycle != self._max_cycle:
-            first_redox = df['direction'].iloc[0]
-            last_redox = df['direction'].iloc[-1]
-            last_index = df.query('direction == @first_redox').index[-1]
-            first_chunk = df.query('direction == @first_redox')
-            second_chunk = df.query('direction == @first_redox and index == @last_index').assign(direction = last_redox)
-            third_chunk = df.query('direction == @last_redox') 
-            return pd.concat([first_chunk, second_chunk, third_chunk])
-        else:
-            return df
+        for s in range(1, data['segment'].max()+1):
+            prev_seg_num = s - 1
+            prev_time = data.query('segment == @prev_seg_num')['time'].iloc[-1]
+            prev_current = data.query('segment == @prev_seg_num')['current'].iloc[-1]
+            prev_potential = data.query('segment == @prev_seg_num')['potential'].iloc[-1]
+
+            new_row = (data
+                    .query('segment == @s')
+                    .query('time == time.min()')
+                    .assign(time = prev_time, current = prev_current, potential = prev_potential)
+                    )
+            
+            data = pd.concat([data, new_row], ignore_index=True).sort_values(by=['time'])
+
+        return data
     
     @staticmethod
-    def _remake_cycle_numbers(data):
+    def _remake_cycle_numbers(data) -> pd.DataFrame:
         """
         Function to remake the cycle numbers so that one cycle is from peak to peak
         """
         data = (data
                 .groupby(['cycle'], group_keys=False)
-                .apply(lambda df: df.assign(
-                    _peak_potential = lambda x: x['potential'].max(),
-                    _trough_potential = lambda x: x['potential'].min()
-                    ))
+                .apply(lambda df: (df
+                                   .assign(_peak_index = lambda x: x.query('potential == potential.max()')['potential'].index[-1]+1)
+                                   .assign(_trough_index = lambda x: x.query('potential == potential.min()')['potential'].index[-1]+1)
+                                   ))
                 )
         
-        new_cycle_num_list = []
-        cycle = -0.1
-
+        segment = 0
+        segment_list = []
         for index, row in data.iterrows():
-            if row['potential'] == row['_peak_potential'] or row['potential'] == row['_trough_potential']:
-                cycle += 1
-            new_cycle_num_list.append(cycle)
-
+            if index == row['_peak_index'] or index == row['_trough_index']:
+                segment += 1
+            segment_list.append(segment)
+        
         data = (data
-                .assign(cycle = new_cycle_num_list)
-                .assign(cycle = lambda x: x['cycle'].div(2).round(0).astype(int))
-                .drop(columns=['_peak_potential', '_trough_potential'])
-                .groupby(['cycle'], group_keys=False)
-                .apply(lambda df: df.assign(direction = lambda x: ['reduction' if i < 0 else 'oxidation' for i in x['potential'].diff()]))
-                .query('index > index.min()+5')
+                .assign(segment = segment_list)
+                .assign(cycle = lambda x: x['segment'].add(0.1).div(2).round(0).astype(int))
+                .drop(columns=['_peak_index', '_trough_index'])
                 )
 
         return data
@@ -116,7 +158,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], cycle=data['cycle'], time=data['time'], **kwargs)
         return cv
     
-    def drop_cycles(self, cycles: list[int]):
+    def drop_cycles(self, cycles: list[int]) -> pd.DataFrame:
         """
         Function to remove cycles from the data
         """
@@ -169,7 +211,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
     def anion(self) -> Anion:
         return self.electrolyte.anion
     
-    def _integrate_curves(self, data: pd.DataFrame, direction: str, valence: str):
+    def _integrate_curves(self, data: pd.DataFrame, direction: str, valence: str) -> float:
         """
         Function to add a point to the current and time arrays to calculate the integral
         """
@@ -235,14 +277,14 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         return integral
 
 
-    def get_charge_passed(self):
+    def get_charge_passed(self) -> pd.DataFrame:
         """
         Function to get the integrals of the current
         """ 
-        data = self._data.query('cycle != 0 and cycle != @self._max_cycle').copy()
+        data = self._data.query('segment != 0 and segment != @self._max_segment').copy()
 
         integrals = (data
-                     .groupby(['cycle', 'direction'], group_keys=False)
+                     .groupby(['segment'], group_keys=False)
                      .apply(lambda df: (df
                                         .assign(anodic_charge = lambda x: self._integrate_curves(x, direction=x['direction'].iloc[0], valence='positive'))
                                         .assign(cathodic_charge = lambda x: self._integrate_curves(x, direction=x['direction'].iloc[0], valence='negative'))
