@@ -41,7 +41,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
         data = (CyclicVoltammogram
                 .from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
-                .drop_cycles(cycles=[1])
+                .drop_cycles(drop=[1])
                 .data
                 )
 
@@ -117,6 +117,14 @@ class TestCyclicVoltammetry(unittest.TestCase):
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
         self.assertTrue(charges == [48.3689, 5232.7224, 112.5849])
+
+    def test_get_charge_passed_biologic4_av_segments(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
+        integrals = cv.get_charge_passed(average_segments=True)
+        charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
+        self.assertTrue(type(integrals) == pd.DataFrame)
+        self.assertTrue(charges == [0.004, 2.4982])
 
     def test_show_charge_passed(self):
 

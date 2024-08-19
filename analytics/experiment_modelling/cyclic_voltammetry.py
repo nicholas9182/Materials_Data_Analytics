@@ -1,4 +1,4 @@
-from analytics.experiment_modelling.core import ElectrochemicalExperiment
+from analytics.experiment_modelling.core import ElectrochemicalMeasurement
 from analytics.materials.electrolytes import Electrolyte
 from analytics.materials.ions import Cation, Anion
 import pandas as pd
@@ -8,12 +8,11 @@ import plotly.express as px
 import scipy.integrate as integrate
 
 
-class CyclicVoltammogram(ElectrochemicalExperiment):
+class CyclicVoltammogram(ElectrochemicalMeasurement):
 
     def __init__(self,  
                  potential: Union[list, pd.Series, np.array] = None,
                  current: Union[list, pd.Series, np.array] = None,
-                 cycle: Union[list, pd.Series, np.array] = None,
                  time: Union[list, pd.Series, np.array] = None,
                  electrolyte: Electrolyte = None,
                  metadata: dict = None
@@ -23,9 +22,9 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
 
         self._data = pd.DataFrame()
 
-        if len(potential) and len(current) and len(cycle) and len(time) != 0:
+        if len(potential) and len(current) and len(time) != 0:
             self._data = (pd
-                          .DataFrame({'potential': potential, 'current': current, 'cycle': cycle, 'time': time})
+                          .DataFrame({'potential': potential, 'current': current, 'time': time})
                           .pipe(self._wrangle_data)
                           )
         
@@ -164,20 +163,31 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         Function to make a CyclicVoltammogram object from a biologic file
         """
         data = (pd
-                .read_table(path, sep='\s+')
+                .read_table(path, sep='\t')
                 .rename({'Ewe/V': 'potential', '<I>/mA': 'current', 'time/s': 'time'}, axis=1)
-                .drop(columns=['number'])
+                .filter(['potential', 'current', 'time'])
                 )
 
-        cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], cycle=data['cycle'], time=data['time'], **kwargs)
+        cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
         
         return cv
     
-    def drop_cycles(self, cycles: list[int]) -> pd.DataFrame:
+    def drop_cycles(self, drop: list[int] | int = None, keep: list[int] | int = None) -> pd.DataFrame:
         """
-        Function to remove cycles from the data
+        Function to edit which cycles are being considered
         """
-        self._data = self._data.query('cycle not in @cycles')
+        if type(drop) == int:
+            drop = [int]
+
+        if type(keep) == int:
+            keep = [keep]
+
+        if drop is not None:
+            self._data = self._data.query('cycle not in @drop')
+
+        if keep is not None:
+            self._data = self._data.query('cycle in @keep')
+
         return self
     
     def show_current_potential(self, **kwargs):
@@ -292,7 +302,7 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
         return integral
 
 
-    def get_charge_passed(self) -> pd.DataFrame:
+    def get_charge_passed(self, average_segments = False) -> pd.DataFrame:
         """
         Function to get the integrals of the current
         """ 
@@ -308,6 +318,19 @@ class CyclicVoltammogram(ElectrochemicalExperiment):
                      .drop_duplicates()
                      .reset_index(drop=True)
                      )
+        
+        if average_segments is True:
+            integrals = (integrals
+                         .groupby(['direction'], group_keys = False)
+                         .apply(lambda df: (df
+                                            .assign(anodic_charge_err = lambda x: x['anodic_charge'].std()/np.sqrt(x['anodic_charge'].count()))
+                                            .assign(cathodic_charge_err = lambda x: x['cathodic_charge'].std()/np.sqrt(x['cathodic_charge'].count()))
+                                            .assign(anodic_charge = lambda x: x['anodic_charge'].mean())
+                                            .assign(cathodic_charge = lambda x: x['cathodic_charge'].mean())
+                                            ))
+                         .filter(['direction', 'anodic_charge', 'anodic_charge_err', 'cathodic_charge', 'cathodic_charge_err'])
+                         .drop_duplicates()
+                         )
         
         return integrals
     

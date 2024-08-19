@@ -1,6 +1,6 @@
 from analytics.materials.electrolytes import Electrolyte
 
-class Experiment():
+class Measurement():
 
     def __init__(self, metadata: dict = None) -> None:
         self._metadata = metadata if metadata is not None else {}
@@ -32,7 +32,7 @@ class Experiment():
         return root
 
 
-class ElectrochemicalExperiment(Experiment):
+class ElectrochemicalMeasurement(Measurement):
 
     def __init__(self, electrolyte: Electrolyte = None, metadata: dict = None) -> None:
         super().__init__(metadata=metadata)
@@ -43,7 +43,7 @@ class ElectrochemicalExperiment(Experiment):
         return self._electrolyte
 
 
-class ScatteringExperiment(Experiment):
+class ScatteringMeasurement(Measurement):
 
     def __init__(self, metadata: dict = None) -> None:
         super().__init__(metadata=metadata)
