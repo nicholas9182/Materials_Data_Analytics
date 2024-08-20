@@ -140,3 +140,10 @@ class TestCyclicVoltammetry(unittest.TestCase):
         # cv.show_current_time()
         # cv.show_potential_time()
         self.assertTrue(type(cv.data == pd.DataFrame))
+
+    def test_make_cv_with_metadata(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', metadata = {'scan_rate': 5, 'instrument': 'Biologic'})
+        data = cv.data
+        self.assertTrue('scan_rate' in data.columns)
+        self.assertTrue('instrument' in data.columns)
