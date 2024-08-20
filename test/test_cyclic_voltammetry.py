@@ -131,3 +131,12 @@ class TestCyclicVoltammetry(unittest.TestCase):
         cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
         # cv.show_charge_passed()
         self.assertTrue(type(cv.data == pd.DataFrame))
+
+    def test_from_aftermath(self):
+
+        cv = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath1.csv', scan_rate=5)
+
+        # cv.show_current_potential()
+        # cv.show_current_time()
+        # cv.show_potential_time()
+        self.assertTrue(type(cv.data == pd.DataFrame))
