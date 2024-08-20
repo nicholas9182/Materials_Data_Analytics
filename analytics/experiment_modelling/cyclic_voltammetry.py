@@ -147,13 +147,13 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return data
 
     @property
-    def data(self, with_metadata = True) -> pd.DataFrame:
+    def data(self) -> pd.DataFrame:
         
-        data = self._data
+        data = self._data.copy()
+        metadata = self.metadata
 
-        if with_metadata:
-            for k in self.metadata.keys():
-                data = data.assign(k = self.metadata[k])
+        for k in metadata.keys():
+            data[k] = self.metadata[k]
 
         return data
 
