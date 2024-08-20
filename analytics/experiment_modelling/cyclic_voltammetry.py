@@ -158,7 +158,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return data
 
     @classmethod
-    def from_biologic(cls, path: str, electrolyte: Electrolyte = None, **kwargs):
+    def from_biologic(cls, path: str, **kwargs):
         """
         Function to make a CyclicVoltammogram object from a biologic file
         """
@@ -168,8 +168,35 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .filter(['potential', 'current', 'time'])
                 )
 
-        cv = cls(electrolyte=electrolyte, potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
+        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
         
+        return cv
+    
+    @classmethod
+    def from_aftermath(cls, path: str, scan_rate: float, **kwargs):
+        """
+        Function to make a CyclicVoltammogram object from an AfterMath file
+        """
+
+        data = (pd
+                .read_table(path, sep=",")
+                .rename({'Potential (V)': 'potential', 'Current (A)': 'current'}, axis=1)
+                .filter(['potential', 'current'])
+                .assign(current = lambda x: x['current']/1000)
+                )
+        
+        dv = (pd
+              .DataFrame({'dv': data['potential'] - data['potential'].shift(1)})
+              .query('index > 0')
+              .abs()
+              .mean()
+              .iloc[0]
+              )
+        
+        time = [(i*dv)/(scan_rate/1000) for i in range(0, len(data))]
+        
+        cv = cls(potential=data['potential'], current=data['current'], time=time, **kwargs)
+
         return cv
     
     def drop_cycles(self, drop: list[int] | int = None, keep: list[int] | int = None) -> pd.DataFrame:
