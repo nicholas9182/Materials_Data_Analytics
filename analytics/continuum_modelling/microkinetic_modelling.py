@@ -349,7 +349,7 @@ class ECpD(OxygenReductionModel):
                                                         CS02 = CS02, 
                                                         CS02_superoxide = CS02_superoxide)
 
-            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte.concentrations[self._o2] - CS02_superoxide)
+            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte._concentrations[self._o2] - CS02_superoxide)
             eq17 = 2*v3 - v2 + self.mass_transfer_coefficient * CS02_superoxide**2
             eq18 = v1 - v2
             eq19 = thetaN + thetaP - 1
