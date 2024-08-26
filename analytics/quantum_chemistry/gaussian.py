@@ -15,7 +15,10 @@ class GaussianParser:
         self._log_file = log_file
 
         if type(log_file) == str or (type(log_file) == list and len(log_file) == 1):
-            self._lines = [line for line in open(log_file, 'r')]
+            if type(log_file) == str:
+                self._lines = [line for line in open(log_file, 'r')]
+            elif len(log_file) == 1:
+                self._lines = [line for line in open(log_file[0], 'r')]
             self._restart = False
         elif type(log_file) == list:
             lines = []
