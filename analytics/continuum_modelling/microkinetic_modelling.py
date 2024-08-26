@@ -361,6 +361,44 @@ class ECpD(OxygenReductionModel):
 
         return {'thetaN': solution[0], 'thetaP': solution[1], 'CS02': solution[2], 'CS02_superoxide': solution[3]}
     
+    def solve_parameters2(self, E: float, k01: float, kf2: float, kf3: float, beta: float):
+        """
+        Function to solve for the parameters of the ECpD model
+        :param k01: the rate constant of the first step
+        :param kf2: the rate constant of the second step
+        :param kf3: the rate constant of the third step
+        :param thetaN: the coverage of the polymer in its neutral state
+        :param thetaP: the coverage of the polymer in its polaron state
+        :param CS02: the concentration of O2 at the surface
+        :param CS02_superoxide: the concentration of O2 in the superoxide state at the surface
+        """
+        def equations(vars):
+
+            thetaN, thetaP, CS02, CS02_superoxide = vars
+            
+            v1, v2, v3 = self._calculate_rate_equations(vars = vars, 
+                                                        E = E, 
+                                                        k01 = k01, 
+                                                        beta = beta, 
+                                                        kf2 = kf2, 
+                                                        kf3 = kf3, 
+                                                        thetaN = thetaN, 
+                                                        thetaP = thetaP, 
+                                                        CS02 = CS02, 
+                                                        CS02_superoxide = CS02_superoxide)
+
+            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte._concentrations[self._o2] - CS02_superoxide)
+            eq17 = 2*v3 - v2 + self.mass_transfer_coefficient * CS02_superoxide**2
+            eq18 = v1 - v2
+            eq19 = thetaN + thetaP - 1
+
+            return eq16, eq17, eq18, eq19
+        
+        guess = [0.5, 0.5, 0, 0]
+        solution = fsolve(equations, guess)
+
+        return {'thetaN': solution[0], 'thetaP': solution[1], 'CS02': solution[2], 'CS02_superoxide': solution[3]}
+    
     def get_e_sweep(self, E_min: float, E_max: float, E_n: 20, k01: float, kf2: float, kf3: float, beta: float):
         """
         Function to get the parameters of the ECpD model for a range of potentials
@@ -375,7 +413,7 @@ class ECpD(OxygenReductionModel):
         data = (pd
                 .DataFrame({'potential': np.linspace(E_min, E_max, E_n)})
                 .assign(
-                    params = lambda x: [self.solve_parameters(E = E, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta) for E in x['potential']],
+                    params = lambda x: [self.solve_parameters2(E = E, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta) for E in x['potential']],
                     thetaN = lambda x: [i['thetaN'] for i in x['params']],
                     thetaP = lambda x: [i['thetaP'] for i in x['params']],
                     CS02 = lambda x: [i['CS02'] for i in x['params']],
