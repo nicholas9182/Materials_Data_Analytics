@@ -39,9 +39,9 @@ class TestMicrokinetic(unittest.TestCase):
         self.assertTrue(self.my_electrolye.cation.formula == 'NA+')
         self.assertTrue(self.my_electrolye.anion.formula == 'CL-')
         self.assertTrue(self.my_electrolye.solvent.formula == 'H2O')
-        self.assertTrue(self.my_electrolye.concentrations[self.na_cation] == 0.1)
-        self.assertTrue(self.my_electrolye.concentrations[self.cl_anion] == 0.1)
-        self.assertTrue(self.my_electrolye.concentrations[self.oxygen_solute] == 0.00025)
+        self.assertTrue(self.my_electrolye._concentrations[self.na_cation] == 0.1)
+        self.assertTrue(self.my_electrolye._concentrations[self.cl_anion] == 0.1)
+        self.assertTrue(self.my_electrolye._concentrations[self.oxygen_solute] == 0.00025)
 
     def test_polymer(self):
         self.assertTrue(self.my_polymer.name == 'BBL')
@@ -200,13 +200,26 @@ class TestECpDModel(unittest.TestCase):
         my_ECpD_model = ECpD(electrolyte=self.my_electrolye, polymer=my_polymer, rotation_rate=1600)
 
         parameters = my_ECpD_model.solve_parameters(E=0.7, k01=np.exp(-5.906), beta=0.4999, kf2=np.exp(1.0807), kf3=np.exp(4.688))
+
+        self.assertTrue(type(parameters) == dict)
+
+    def test_solve_parameters2(self):
+
+        my_polymer = NType('BBL', formal_reduction_potential=-0.3159)
+        my_ECpD_model = ECpD(electrolyte=self.my_electrolye, polymer=my_polymer, rotation_rate=1600)
+
+        parameters = my_ECpD_model.solve_parameters2(E=0.7, k01=10**(-5.906), beta=0.4999, kf2=10**(1.0807), kf3=10**(4.688))
+
         self.assertTrue(type(parameters) == dict)
 
     def test_get_e_sweep(self):
 
         my_polymer = NType('BBL', formal_reduction_potential=-0.3159)
+
         my_ECpD_model = ECpD(electrolyte=self.my_electrolye, polymer=my_polymer, rotation_rate=1600)
 
-        e_sweep = my_ECpD_model.get_e_sweep(E_max=1, E_min=-1, E_n=100, k01=np.exp(-5.906), beta=0.4999, kf2=np.exp(1.0807), kf3=np.exp(4.688))
-        px.line(e_sweep, x='potential', y='CS02_superoxide').show()
+        e_sweep = my_ECpD_model.get_e_sweep(E_max=1, E_min=-1, E_n=100, k01=10**(-5.906), beta=0.4999, kf2=10**(1.0807), kf3=10**(4.688))
+
+        # px.line(e_sweep, x='potential', y='thetaP').show()
+
         self.assertTrue(type(e_sweep) == pd.DataFrame)
