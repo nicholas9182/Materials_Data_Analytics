@@ -10,23 +10,29 @@ class GaussianParser:
     Class to parse information from a gaussian log file
     """
 
-    def __init__(self, log_file: str):
+    def __init__(self, log_file: str | list[str]):
 
         self._log_file = log_file
-        self._lines = [line for line in open(log_file, 'r')]
+
+        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1):
+            self._lines = [line for line in open(log_file, 'r')]
+            self._restart = False
+        elif type(log_file) == list:
+            lines = []
+            for file in log_file:
+                lines = lines + [line for line in open(file, 'r')]
+            self._lines = lines
+            self._restart = True
+        else:
+            raise ValueError("The log file must be a path or a list of paths")
+        
         self._keywords = self._get_keywords()
         self._raman = True if len([i for i in self.keywords if 'raman' in i]) > 0 else False
         self._opt = True if 'opt' in self._keywords else False
-        self._restart = True if 'Restart' in self._keywords or 'restart' in self._keywords else False
         self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
         self._esp = True if len([r for r in self._lines if 'ESP charges:' in r]) > 0 else False
-
-        if self._restart is False:
-            self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
-            self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
-        else:
-            self._functional = None
-            self._basis = None
+        self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
+        self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
 
         if len([c for c in self._lines if 'Charge =' in c]) > 0:
             self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
@@ -35,7 +41,7 @@ class GaussianParser:
             self._charge = None
             self._multiplicity = None
 
-        if self._complete is True and self._restart is False:
+        if self._complete is True:
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
             self._mull_start = self._lines.index([k for k in self._lines if 'Mulliken charges' in k][0]) + 2
@@ -80,6 +86,10 @@ class GaussianParser:
         for i in keyword_lines:
             keywords_str = keywords_str + i[1:-1]
         keywords = [i for i in keywords_str.split()][1:]
+
+        if 'restart' in keywords or 'Restart' in keywords:
+            raise ValueError("This log file is a restart file and should be parsed with the previous log file")
+
         return keywords
 
 
