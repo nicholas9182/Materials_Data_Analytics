@@ -9,7 +9,11 @@ import scipy.integrate as integrate
 
 
 class CyclicVoltammogram(ElectrochemicalMeasurement):
-
+    """
+    A general class for the analysis of cyclic voltammograms.
+    Main contributors:
+    Nicholas Siemons
+    """
     def __init__(self,  
                  potential: Union[list, pd.Series, np.array] = None,
                  current: Union[list, pd.Series, np.array] = None,
@@ -217,34 +221,61 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         return self
     
-    def show_current_potential(self, **kwargs):
+    def get_current_potential_plot(self, **kwargs):
         """
         Function to plot the cyclic voltammogram
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
-        px.line(data, x='potential', y='current', color='cycle_direction', markers=True, 
-                labels={'potential': 'Potential [V]', 'current': 'Current [A]'}, **kwargs).show()
+
+        figure = px.line(data, x='potential', y='current', color='cycle_direction', markers=True, 
+                         labels={'potential': 'Potential [V]', 'current': 'Current [mA]'}, **kwargs)
         
+        return figure
+    
+    def show_current_potential(self, **kwargs):
+        """
+        Function to show the cyclic voltammogram
+        """
+        figure = self.get_current_potential_plot(**kwargs)
+        figure.show()
         return self
     
-    def show_current_time(self, **kwargs):
+    def get_current_time_plot(self, **kwargs):
         """
         Function to plot the current vs time
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
-        px.line(data, x='time', y='current', color='cycle_direction', markers=True, 
-                labels={'time': 'Time [s]', 'current': 'Current [A]'}, **kwargs).show()
+
+        figure = px.line(data, x='time', y='current', color='cycle_direction', markers=True, 
+                         labels={'time': 'Time [s]', 'current': 'Current [mA]'}, **kwargs)
         
+        return figure
+    
+    def show_current_time(self, **kwargs):
+        """
+        Function to show the current vs time plot
+        """
+        figure = self.get_current_time_plot(**kwargs)
+        figure.show()
         return self
     
-    def show_potential_time(self, **kwargs):
+    def get_potential_time_plot(self, **kwargs):
         """
         Function to plot the potential vs time
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
-        px.line(data, x='time', y='potential', color='cycle_direction', markers=True, 
-                labels={'time': 'Time [s]', 'potential': 'Potential [V]'}, **kwargs).show()
         
+        figure = px.line(data, x='time', y='potential', color='cycle_direction', markers=True, 
+                         labels={'time': 'Time [s]', 'potential': 'Potential [V]'}, **kwargs)
+        
+        return figure
+    
+    def show_potential_time(self, **kwargs):
+        """
+        Function to show the potential vs time plot
+        """
+        figure = self.get_potential_time_plot(**kwargs)
+        figure.show()
         return self
 
     @property
@@ -328,7 +359,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         return integral
 
-
     def get_charge_passed(self, average_segments = False) -> pd.DataFrame:
         """
         Function to get the integrals of the current
@@ -361,7 +391,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         return integrals
     
-    def show_charge_passed(self, **kwargs):
+    def get_charge_passed_plot(self, **kwargs):
         """
         Function to plot the charge passed
         """
@@ -370,6 +400,15 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                          .melt(value_vars=['anodic_charge', 'cathodic_charge'], id_vars=['cycle', 'direction'], var_name='type', value_name='charge')
                          )
 
-        px.bar(passed_charge, x='cycle', y='charge', color='type', barmode='group', facet_row='direction', **kwargs).show()
+        figure = px.bar(passed_charge, x='cycle', y='charge', color='type', barmode='group', facet_row='direction', labels={'charge': 'Charge [mC]'} ,**kwargs)
+        
+        return figure
+    
+    def show_charge_passed(self, **kwargs):
+        """
+        Function to show the charge passed
+        """
+        figure = self.get_charge_passed_plot(**kwargs)
+        figure.show()
         return self
 
