@@ -13,6 +13,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
     A general class for the analysis of cyclic voltammograms.
     Main contributors:
     Nicholas Siemons
+    Contributors:
     """
     def __init__(self,  
                  potential: Union[list, pd.Series, np.array] = None,
@@ -45,6 +46,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .dropna()
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
+                .pipe(self._find_current_roots)
                 .pipe(self._determine_direction)
                 .pipe(self._make_segments)
                 .pipe(self._add_endpoints)
@@ -55,6 +57,26 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 )
         
         return data
+    
+    def _find_current_roots(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Function to find the time and voltage points where the current passes through 0
+        """
+        raw_roots_indexes = (data
+                             .copy()
+                             .assign(sign_diff = lambda x: np.sign(x['current']).diff())
+                             .query('sign_diff != 0 and sign_diff.notna()')
+                             .index
+                             )
+        
+        for i in raw_roots_indexes:
+            data_interpolate = data.iloc[i-1:i+1]
+            time_root = self.get_root_linear_interpolation(data_interpolate['time'], data_interpolate['current'])
+            potential_root = self.get_root_linear_interpolation(data_interpolate['potential'], data_interpolate['current'])
+            new_row = pd.DataFrame({'potential': [potential_root], 'time': [time_root], 'current': [0]})     
+            data = pd.concat([data, new_row], ignore_index=True) 
+
+        return data.sort_values(by=['time']).reset_index(drop=True)
     
     def _determine_direction(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -300,60 +322,14 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
 
         if valence == 'positive':
-            current_data = data.query('current > 0')
+            current_data = data.query('current >= 0')
         elif valence == 'negative':
-            current_data = data.query('current < 0')
+            current_data = data.query('current <= 0')
         else:
             raise ValueError('Valence must be either positive or negative')
         
-        if direction == 'oxidation':
-            int_current = current_data.query('direction == "oxidation"')['current'].to_numpy()
-            int_time = current_data.query('direction == "oxidation"')['time'].to_numpy()
-        elif direction == 'reduction':
-            int_current = current_data.query('direction == "reduction"')['current'].to_numpy()
-            int_time = current_data.query('direction == "reduction"')['time'].to_numpy()
-        else:
-            raise ValueError('direction must be either oxidation or reduction')
-        
-        if direction == 'oxidation' and valence == 'negative':
-            max_index = data.query('direction == "oxidation" and current < 0').index.max() + 1
-            y1 = int_current[-1]
-            x1 = int_time[-1]
-            y2 = data.query('index == @max_index')['current'].iloc[0]
-            x2 = data.query('index == @max_index')['time'].iloc[0]
-            root = self.get_root(x1, x2, y1, y2)
-            int_current = np.append(int_current, 0)
-            int_time = np.append(int_time, root)
-
-        elif direction == 'oxidation' and valence == 'positive':
-            min_index = data.query('direction == "oxidation" and current > 0').index.min() - 1
-            y1 = int_current[0]
-            x1 = int_time[0]
-            y2 = data.query('index == @min_index')['current'].iloc[0]
-            x2 = data.query('index == @min_index')['time'].iloc[0]
-            root = self.get_root(x1, x2, y1, y2)
-            int_current = np.append(0, int_current)
-            int_time = np.append(root, int_time)
-
-        elif direction == 'reduction' and valence == 'negative':
-            min_index = data.query('direction == "reduction" and current < 0').index.min() - 1
-            y1 = int_current[0]
-            x1 = int_time[0]
-            y2 = data.query('index == @min_index')['current'].iloc[0]
-            x2 = data.query('index == @min_index')['time'].iloc[0]
-            root = self.get_root(x1, x2, y1, y2)
-            int_current = np.append(0, int_current)
-            int_time = np.append(root, int_time)
-
-        elif direction == 'reduction' and valence == 'positive':
-            max_index = data.query('direction == "reduction" and current > 0').index.max() + 1
-            y1 = int_current[-1]
-            x1 = int_time[-1]
-            y2 = data.query('index == @max_index')['current'].iloc[0]
-            x2 = data.query('index == @max_index')['time'].iloc[0] 
-            root = self.get_root(x1, x2, y1, y2)
-            int_current = np.append(int_current, 0)
-            int_time = np.append(int_time, root)
+        int_current = current_data.query('direction == @direction')['current'].to_numpy()
+        int_time = current_data.query('direction == @direction')['time'].to_numpy()
 
         integral = abs(integrate.simpson(int_current, int_time))
 
