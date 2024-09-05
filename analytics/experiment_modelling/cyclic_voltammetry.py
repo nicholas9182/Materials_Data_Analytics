@@ -184,12 +184,17 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return data
 
     @classmethod
-    def from_biologic(cls, path: str, **kwargs):
+    def from_biologic(cls, path: str = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from a biologic file
         """
-        data = (pd
-                .read_table(path, sep='\t')
+
+        if path is None and data is not None:
+            data = data
+        elif path is not None and data is None:
+            data = pd.read_table(path, sep='\t')
+
+        data = (data
                 .rename({'Ewe/V': 'potential', '<I>/mA': 'current', 'time/s': 'time'}, axis=1)
                 .filter(['potential', 'current', 'time'])
                 )
@@ -199,13 +204,17 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return cv
     
     @classmethod
-    def from_aftermath(cls, path: str, scan_rate: float, **kwargs):
+    def from_aftermath(cls, path: str = None, scan_rate: float = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from an AfterMath file
         """
 
-        data = (pd
-                .read_table(path, sep=",")
+        if path is None and data is not None:
+            data = data
+        elif path is not None and data is None:
+            data = pd.read_table(path, sep=",")
+
+        data = (data
                 .rename({'Potential (V)': 'potential', 'Current (A)': 'current'}, axis=1)
                 .filter(['potential', 'current'])
                 .assign(current = lambda x: x['current']/1000)

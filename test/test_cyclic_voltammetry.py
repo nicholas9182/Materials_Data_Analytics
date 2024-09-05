@@ -30,6 +30,23 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('cycle' in cv.data.columns)
         self.assertTrue('time' in cv.data.columns)
 
+    def test_from_biologic_dataframe(self):
+
+        data = pd.read_table('test_trajectories/cyclic_voltammetry/biologic1.txt', sep="\t")
+        cv = CyclicVoltammogram.from_biologic(data = data, electrolyte = self.electrolyte)
+
+        self.assertTrue(type(cv) == CyclicVoltammogram)
+        self.assertTrue(type(cv.data) == pd.DataFrame)
+        self.assertTrue(cv.pH == 7)
+        self.assertTrue(cv.temperature == 298)
+        self.assertTrue(cv.cation == self.na)
+        self.assertTrue(cv.anion == self.cl)
+        self.assertTrue(cv.electrolyte == self.electrolyte)
+        self.assertTrue('potential' in cv.data.columns) 
+        self.assertTrue('current' in cv.data.columns)
+        self.assertTrue('cycle' in cv.data.columns)
+        self.assertTrue('time' in cv.data.columns)
+
     def test_plot_1(self):
 
         cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte = self.electrolyte)
