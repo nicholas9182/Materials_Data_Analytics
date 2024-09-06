@@ -5,6 +5,8 @@ from analytics.materials.electrolytes import Electrolyte
 from analytics.materials.ions import Cation, Anion  
 from analytics.materials.solvents import Solvent
 import plotly.express as px
+import base64
+import mimetypes
 
 
 class TestCyclicVoltammetry(unittest.TestCase):
@@ -46,6 +48,30 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('current' in cv.data.columns)
         self.assertTrue('cycle' in cv.data.columns)
         self.assertTrue('time' in cv.data.columns)
+
+    def test_from_base64_biologic(self):
+            
+        mime_type = mimetypes.guess_type('test_trajectories/cyclic_voltammetry/biologic1.txt')[0]
+        if mime_type is None:
+            mime_type = 'text/plain'
+
+        with open('test_trajectories/cyclic_voltammetry/biologic1.txt', 'rb') as file:
+            file_content = file.read()
+            base64_data = base64.b64encode(file_content).decode('utf-8')
+            base64_data = f'data:{mime_type};base64,{base64_data}'
+            cv = CyclicVoltammogram.from_html_base64(file_contents = base64_data, electrolyte = self.electrolyte, source='biologic')
+            
+            self.assertTrue(type(cv) == CyclicVoltammogram)
+            self.assertTrue(type(cv.data) == pd.DataFrame)
+            self.assertTrue(cv.pH == 7)
+            self.assertTrue(cv.temperature == 298)
+            self.assertTrue(cv.cation == self.na)
+            self.assertTrue(cv.anion == self.cl)
+            self.assertTrue(cv.electrolyte == self.electrolyte)
+            self.assertTrue('potential' in cv.data.columns) 
+            self.assertTrue('current' in cv.data.columns)
+            self.assertTrue('cycle' in cv.data.columns)
+            self.assertTrue('time' in cv.data.columns)
 
     def test_plot_1(self):
 
@@ -157,6 +183,22 @@ class TestCyclicVoltammetry(unittest.TestCase):
         # cv.show_current_time()
         # cv.show_potential_time()
         self.assertTrue(type(cv.data == pd.DataFrame))
+
+    def test_from_base64_aftermath(self):
+            
+        mime_type = mimetypes.guess_type('test_trajectories/cyclic_voltammetry/aftermath1.csv')[0]
+        if mime_type is None:
+            mime_type = 'text/plain'
+
+        with open('test_trajectories/cyclic_voltammetry/aftermath1.csv', 'rb') as file:
+            file_content = file.read()
+            base64_data = base64.b64encode(file_content).decode('utf-8')
+            base64_data = f'data:{mime_type};base64,{base64_data}'
+            cv = CyclicVoltammogram.from_html_base64(file_contents = base64_data, electrolyte = self.electrolyte, source='aftermath', scan_rate=5)
+            # cv.show_current_potential()
+            # cv.show_current_time()
+            # cv.show_potential_time()
+            self.assertTrue(type(cv.data == pd.DataFrame))
 
     def test_make_cv_with_metadata(self):
 

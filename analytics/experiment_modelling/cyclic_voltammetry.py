@@ -6,6 +6,8 @@ import numpy as np
 from typing import Union
 import plotly.express as px
 import scipy.integrate as integrate
+import base64
+import io
 
 
 class CyclicVoltammogram(ElectrochemicalMeasurement):
@@ -184,6 +186,26 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return data
 
     @classmethod
+    def from_html_base64(cls, file_contents, source, scan_rate, **kwargs):
+        """
+        Function to make a CyclicVoltammogram object from an html file
+        """
+        content_type, content_string = file_contents.split(',')
+        decoded = base64.b64decode(content_string)
+        file_data = io.StringIO(decoded.decode('utf-8'))
+
+        if source == 'biologic':
+            data = pd.read_table(file_data, sep='\t')
+            cv = cls.from_biologic(data=data, **kwargs)
+        elif source == 'aftermath':
+            data = pd.read_table(file_data, sep=",")
+            cv = cls.from_aftermath(data=data, scan_rate=scan_rate, **kwargs)
+        else:
+            raise ValueError('The source must be either biologic or aftermath')
+        
+        return cv
+
+    @classmethod
     def from_biologic(cls, path: str = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from a biologic file
@@ -213,6 +235,9 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
             data = data
         elif path is not None and data is None:
             data = pd.read_table(path, sep=",")
+
+        if type(scan_rate) != float:
+            scan_rate = float(scan_rate)
 
         data = (data
                 .rename({'Potential (V)': 'potential', 'Current (A)': 'current'}, axis=1)
@@ -258,7 +283,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
 
-        figure = px.line(data, x='potential', y='current', color='cycle_direction', markers=True, 
+        figure = px.line(data, x='potential', y='current', color='cycle_direction', markers=True, title='Current vs Potential',
                          labels={'potential': 'Potential [V]', 'current': 'Current [mA]'}, **kwargs)
         
         return figure
@@ -277,7 +302,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
 
-        figure = px.line(data, x='time', y='current', color='cycle_direction', markers=True, 
+        figure = px.line(data, x='time', y='current', color='cycle_direction', markers=True, title='Current vs Time',
                          labels={'time': 'Time [s]', 'current': 'Current [mA]'}, **kwargs)
         
         return figure
@@ -296,7 +321,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
         
-        figure = px.line(data, x='time', y='potential', color='cycle_direction', markers=True, 
+        figure = px.line(data, x='time', y='potential', color='cycle_direction', markers=True, title='Potential vs Time',
                          labels={'time': 'Time [s]', 'potential': 'Potential [V]'}, **kwargs)
         
         return figure
@@ -385,7 +410,8 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                          .melt(value_vars=['anodic_charge', 'cathodic_charge'], id_vars=['cycle', 'direction'], var_name='type', value_name='charge')
                          )
 
-        figure = px.bar(passed_charge, x='cycle', y='charge', color='type', barmode='group', facet_row='direction', labels={'charge': 'Charge [mC]'} ,**kwargs)
+        figure = px.bar(passed_charge, x='cycle', y='charge', color='type', barmode='group', facet_row='direction', title='Charge Passed for Each Cycle',
+                        labels={'charge': 'Charge [mC]'} ,**kwargs)
         
         return figure
     
