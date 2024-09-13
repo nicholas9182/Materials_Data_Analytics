@@ -1,17 +1,17 @@
 from distutils.core import setup
 from setuptools import find_packages
-from _version import __version__  # noqa
 
 setup(
     name='Materials_Data_Analytics',
-    version=__version__,
+    version="6.1.3", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
-    author_email='nsiemons@stanford',
+    author_email='nsiemons@stanford.edu',
     url="https://github.com/nicholas9182/SalleoGroup/",
     packages=find_packages(),
     install_requires=[
-        "pandas >= 2.1.1",
+        "scipy >= 1.11.2",
+	"pandas >= 2.1.1",
         "plotly >= 5.17.0",
         "matplotlib >= 3.8.0",
         "typer >= 0.9.0",
@@ -20,7 +20,6 @@ setup(
         "torch >= 2.2.0",
         "dash >= 2.17.1",
         "networkx >= 3.1",
-        "scipy >= 1.11.2",
         "MDAnalysis >= 2.6.1"
     ],
     scripts=[
