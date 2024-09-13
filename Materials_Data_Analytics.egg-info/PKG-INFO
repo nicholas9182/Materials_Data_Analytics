@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: Materials-Data-Analytics
+Version: 6.0.2
+Summary: Data analysis package for materials characterisation at Stanford University
+Home-page: https://github.com/nicholas9182/SalleoGroup/
+Author: Material Science Stanford
+Author-email: nsiemons@stanford
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.4
