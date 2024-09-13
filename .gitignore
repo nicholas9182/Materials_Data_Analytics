@@ -3,3 +3,4 @@ build/
 scripts/
 *.egg-info/
 *.DS_Store
+dist/
