@@ -89,9 +89,9 @@ def display_cv_data(file_contents, source, scan_rate):
                 potential_vs_time_plot_element, charge_passed_table_element, charge_passed_plot_element)
     
     except Exception as e:
-        return [ds.html.Div(["An error occurred: ", str(e)]) for i in range(6)]
-        # return [ds.html.Div() for i in range(6)]
+        # return [ds.html.Div(["An error occurred: ", str(e)]) for i in range(6)]
+        return [ds.html.Div() for i in range(6)]
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8051, debug=False)
-    # app.run_server(debug=True)
+    # app.run_server(host='0.0.0.0', port=8051, debug=False)
+    app.run_server(debug=True)

@@ -186,7 +186,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return data
 
     @classmethod
-    def from_html_base64(cls, file_contents, source, scan_rate, **kwargs):
+    def from_html_base64(cls, file_contents, source, scan_rate = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from an html file
         """
