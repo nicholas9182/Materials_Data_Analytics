@@ -66,17 +66,19 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
         pattern = "FES*dat"
+
         all_fes_files = [file for folder, subdir, files in os.walk(folder)
                          for file in glob(os.path.join(folder, pattern))]
+        
         individual_files = [f.split("/")[-1] for f in all_fes_files]
         time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
         data_frames = [FreeEnergyLine._read_file(f) for f in all_fes_files]
         data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
         line = FreeEnergyLine(data)
 
-        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
-        energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
-        my_diff = line._time_data[20].loc[10, 'energy'] - line._time_data[20].loc[20, 'energy']
+        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
+        energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
+        my_diff = line._time_data[2].loc[1, 'energy'] - line._time_data[2].loc[2, 'energy']
         self.assertEqual(energy_diff, my_diff)
 
     def test_fes_read_with_time_data_from_plumed(self):
@@ -87,9 +89,9 @@ class TestFreeEnergyLine(unittest.TestCase):
         pattern = "FES*dat"
         all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
-        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES20.dat"))
-        energy_diff = compare.loc[10, 'projection'] - compare.loc[20, 'projection']
-        my_diff = line._time_data[20].loc[10, 'energy'] - line._time_data[20].loc[20, 'energy']
+        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
+        energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
+        my_diff = line._time_data[2].loc[1, 'energy'] - line._time_data[2].loc[2, 'energy']
         self.assertEqual(energy_diff, my_diff)
 
     def test_normalise_with_float(self):
@@ -231,7 +233,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
-        self.assertTrue(len(shape.trajectories) == 8)
+        self.assertTrue(len(shape.trajectories) == 2)
 
     def test_make_line_from_plumed_bias_exchange(self):
         """
@@ -333,21 +335,9 @@ class TestFreeEnergySpace(unittest.TestCase):
 
     traj0 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.0")
     traj1 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.1")
-    traj2 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.2")
-    traj3 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.3")
-    traj4 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.4")
-    traj5 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.5")
-    traj6 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.6")
-    traj7 = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR_REWEIGHT.7")
 
     landscape.add_metad_trajectory(traj0)
     landscape.add_metad_trajectory(traj1)
-    landscape.add_metad_trajectory(traj2)
-    landscape.add_metad_trajectory(traj3)
-    landscape.add_metad_trajectory(traj4)
-    landscape.add_metad_trajectory(traj5)
-    landscape.add_metad_trajectory(traj6)
-    landscape.add_metad_trajectory(traj7)
 
     landscape_opes = FreeEnergySpace("./test_trajectories/ndi_single_opes/Kernels.data")
     traj0_opes = MetaTrajectory("./test_trajectories/ndi_single_opes/COLVAR.0")
@@ -363,8 +353,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertTrue('time' in landscape._hills.columns.to_list())
         self.assertEqual(type(landscape), FreeEnergySpace)
         self.assertEqual(landscape.cvs, ['D1', 'CM1'])
-        self.assertEqual(landscape.n_walker, 8)
-        self.assertEqual(landscape.n_timesteps, 2979)
+        self.assertEqual(landscape.n_walker, 2)
+        self.assertEqual(landscape.n_timesteps, 50)
 
     def test_make_landscape_opes(self):
         """
@@ -377,17 +367,15 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertEqual(type(landscape), FreeEnergySpace)
         self.assertEqual(landscape.cvs, ['D1', 'CM1'])
         self.assertEqual(landscape.n_walker, 1)
-        self.assertEqual(landscape.n_timesteps, 1926)
+        self.assertEqual(landscape.n_timesteps, 40)
 
     def test_hills_plotter_default_values(self):
 
         figures = self.landscape.get_hills_figures()
         self.assertTrue(self.landscape._opes is False)
-        self.assertEqual(len(figures), 8)
+        self.assertEqual(len(figures), 2)
         self.assertTrue(figures[0]._validate)
         self.assertTrue(figures[1]._validate)
-        self.assertTrue(figures[2]._validate)
-        self.assertTrue(figures[3]._validate)
 
     def test_average_hills_figure(self):
 
@@ -436,8 +424,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7]).set_datum({'D1': 0})
-        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+        fes = self.landscape.get_reweighted_line('D1', bins=[6, 6.5, 7]).set_datum({'D1': 6})
+        self.assertEqual(fes._data[fes._data['D1'] == 6.25]['energy'].values[0], 0)
 
     def test_reweighted_line_cv(self):
         """
@@ -446,10 +434,10 @@ class TestFreeEnergySpace(unittest.TestCase):
         """
         fes = self.landscape.get_reweighted_line('D1', bins=10).set_datum({'D1': 0})
         self.assertEqual(fes._data['energy'].values[0], 0)
-        self.assertEqual(round(fes._data['energy'].values[2], 5), 6.43809)
-        self.assertEqual(round(fes._data['energy'].values[4], 5), -3.7654)
-        self.assertEqual(round(fes._data['energy'].values[6], 5), -7.13267)
-        self.assertEqual(round(fes._data['energy'].values[8], 5), 0.99982)
+        self.assertEqual(round(fes._data['energy'].values[2], 5), 0.88307)
+        self.assertEqual(round(fes._data['energy'].values[4], 5), 5.70183)
+        self.assertEqual(round(fes._data['energy'].values[6], 5), 11.0178)
+        self.assertEqual(round(fes._data['energy'].values[8], 5), 14.10185)
 
     def test_reweighted_line_cv_adaptive(self):
         """
@@ -458,10 +446,10 @@ class TestFreeEnergySpace(unittest.TestCase):
         """
         fes = self.landscape.get_reweighted_line('D1', bins=10, adaptive_bins=True).set_datum({'D1': 0})
         self.assertEqual(fes._data['energy'].values[0], 0)
-        self.assertEqual(round(fes._data['energy'].values[2], 3), -13.155)
-        self.assertEqual(round(fes._data['energy'].values[4], 3), -0.506)
-        self.assertEqual(round(fes._data['energy'].values[6], 3), -17.031)
-        self.assertEqual(round(fes._data['energy'].values[8], 3), -16.299)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), 0.435)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), 1.863)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), 7.596)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), 12.964)
 
     def test_reweighted_line_cv_adaptive_with_walker_err(self):
         """
@@ -469,11 +457,11 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error('D1', bins=10, adaptive_bins=True)
-        self.assertEqual(round(fes._data['energy'].values[0], 3), 8.840)
-        self.assertEqual(round(fes._data['energy'].values[2], 3), 2.578)
-        self.assertEqual(round(fes._data['energy'].values[4], 3), 10.664)
-        self.assertEqual(round(fes._data['energy'].values[6], 3), -4.764)
-        self.assertEqual(round(fes._data['energy'].values[8], 3), -3.659)
+        self.assertEqual(round(fes._data['energy'].values[0], 3), -6.535)
+        self.assertEqual(round(fes._data['energy'].values[2], 3), -6.659)
+        self.assertEqual(round(fes._data['energy'].values[4], 3), -4.764)
+        self.assertEqual(round(fes._data['energy'].values[6], 3), 0.668)
+        self.assertEqual(round(fes._data['energy'].values[8], 3), 6.001)
 
     def test_two_bin_reweighted_cv_opes(self):
         """
@@ -488,8 +476,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], conditions='D1 < 5').set_datum({'D1': 0})
-        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+        fes = self.landscape.get_reweighted_line('D1', bins=[6, 6.4, 7], conditions='D1 < 7').set_datum({'D1': 6})
+        self.assertEqual(fes._data[fes._data['D1'] == 6.2]['energy'].values[0], 0)
 
     def test_two_bin_reweighted_cv_opes_one_condition(self):
         """
@@ -506,18 +494,18 @@ class TestFreeEnergySpace(unittest.TestCase):
         """
         fes = (self
                .landscape
-               .get_reweighted_line('D1', bins=[0, 3, 7], conditions=['D1 < 5', 'D1 < 4'])
-               .set_datum({'D1': 0})
+               .get_reweighted_line('D1', bins=[6, 6.4, 7], conditions=['D1 < 7', 'D1 < 6.8'])
+               .set_datum({'D1': 6})
                )
-        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+        self.assertEqual(fes._data[fes._data['D1'] == 6.2]['energy'].values[0], 0)
 
     def test_two_bin_reweighted_cv_with_time_stamps(self):
         """
         Function to test that it is normalising properly when using two bins
         :return:
         """
-        fes = self.landscape.get_reweighted_line('D1', bins=[0, 3, 7], n_timestamps=5).set_datum({'D1': 0})
-        self.assertEqual(fes._data[fes._data['D1'] == 1.5]['energy'].values[0], 0)
+        fes = self.landscape.get_reweighted_line('D1', bins=[6, 6.4, 7], n_timestamps=5).set_datum({'D1': 6})
+        self.assertEqual(fes._data[fes._data['D1'] == 6.2]['energy'].values[0], 0)
         self.assertTrue(type(fes._time_data) == dict)
         self.assertTrue(type(fes._time_data[1]) == pd.DataFrame)
         self.assertTrue(type(fes._time_data[3]) == pd.DataFrame)
@@ -614,8 +602,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         here_dir = "./test_trajectories/ndi_na_binding/"
         shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
         self.assertTrue(type(shape) == FreeEnergySpace)
-        self.assertTrue(len(shape.trajectories) == 8)
-        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(len(shape.trajectories) == 2)
+        self.assertTrue(shape.n_walker == 2)
 
     def test_bulk_add_trajectories_alternate_constructor_temp_check(self):
         """
@@ -627,8 +615,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         line = shape.get_reweighted_line('D1', bins=80)
         self.assertTrue(type(line) == FreeEnergyLine)
         self.assertTrue(type(shape) == FreeEnergySpace)
-        self.assertTrue(len(shape.trajectories) == 8)
-        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(len(shape.trajectories) == 2)
+        self.assertTrue(shape.n_walker == 2)
 
     def test_bulk_add_trajectories_alternate_constructor_temp(self):
         """
@@ -638,8 +626,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         here_dir = "./test_trajectories/ndi_na_binding/"
         shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350)
         self.assertTrue(type(shape) == FreeEnergySpace)
-        self.assertTrue(len(shape.trajectories) == 8)
-        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(len(shape.trajectories) == 2)
+        self.assertTrue(shape.n_walker == 2)
         self.assertTrue(shape.trajectories[0].temperature == 350)
         self.assertTrue(shape.lines['D1'].temperature == 350)
         self.assertTrue(shape.surfaces[0].temperature == 350)
@@ -653,8 +641,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350,
                                                         metadata={'ion': 'Na'})
         self.assertTrue(type(shape) == FreeEnergySpace)
-        self.assertTrue(len(shape.trajectories) == 8)
-        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(len(shape.trajectories) == 2)
+        self.assertTrue(shape.n_walker == 2)
         self.assertTrue(shape.trajectories[0].temperature == 350)
         self.assertTrue(shape.lines['D1'].temperature == 350)
         self.assertTrue(shape.surfaces[0].temperature == 350)
@@ -683,8 +671,8 @@ class TestFreeEnergySpace(unittest.TestCase):
         Function to test that it weights correctly with errors when using two bins.
         :return:
         """
-        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[0, 4, 7]).set_datum({"D1": 0})
-        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+        fes = self.landscape.get_reweighted_line_with_walker_error("D1", bins=[6, 6.4, 7]).set_datum({"D1": 0})
+        self.assertEqual(fes._data[fes._data["D1"] == 6.2]["energy"].values[0], 0)
 
     def test_two_bin_reweighted_with_walker_one_condition(self):
         """
@@ -692,9 +680,9 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error(
-            "D1", bins=[0, 4, 7], conditions="D1 < 5").set_datum({"D1": 0}
+            "D1", bins=[6, 6.4, 7], conditions="D1 < 7").set_datum({"D1": 0}
                                                                  )
-        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+        self.assertEqual(fes._data[fes._data["D1"] == 6.2]["energy"].values[0], 0)
     
     def test_two_bin_reweighted_with_walker_two_conditions(self):
         """
@@ -702,9 +690,9 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error(
-            "D1", bins=[0, 4, 7], conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0}
+            "D1", bins=[6, 6.4, 7.0], conditions=["D1 < 7", "D1 < 8"]).set_datum({"D1": 0}
                                                                              )
-        self.assertEqual(fes._data[fes._data["D1"] == 2.0]["energy"].values[0], 0)
+        self.assertEqual(fes._data[fes._data["D1"] == 6.2]["energy"].values[0], 0)
 
     def test_reweighted_with_walker_two_conditions(self):
         """
@@ -712,12 +700,12 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         fes = self.landscape.get_reweighted_line_with_walker_error(
-            "D1", bins=10, conditions=["D1 < 6", "D1 < 5"]).set_datum({"D1": 0})
+            "D1", bins=10, conditions=["D1 < 7", "D1 < 8"]).set_datum({"D1": 0})
         data = fes.get_data().round(4)
         self.assertTrue(type(data) == pd.DataFrame)
-        self.assertTrue(data['D1'].iloc[2] == 1.9888)
-        self.assertTrue(data['energy'].iloc[6] == -7.3849)
-        self.assertTrue(data['energy_err'].iloc[1] == 0.7667)
+        self.assertTrue(data['D1'].iloc[2] == 6.3497)
+        self.assertTrue(data['energy'].iloc[6] == 12.1793)
+        self.assertTrue(data['energy_err'].iloc[1] == 1.1086)
 
     def test_bulk_add_trajectories_alternate_constructor_opes_walker_err(self):
         """
@@ -727,7 +715,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         here_dir = "./test_trajectories/ndi_na_binding/"
         shape = FreeEnergySpace.from_standard_directory(here_dir)
         shape.get_reweighted_line_with_walker_error('CM1', bins=200)
-        self.assertTrue(shape.n_walker == 8)
+        self.assertTrue(shape.n_walker == 2)
 
 
 class TestFreeEnergySpaceBiasExchange(unittest.TestCase):

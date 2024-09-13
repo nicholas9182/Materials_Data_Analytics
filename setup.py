@@ -23,7 +23,12 @@ setup(
         "scipy >= 1.11.2",
         "MDAnalysis >= 2.6.1"
     ],
-    scripts=['cli_tools/plot_hills.py'],
+    scripts=[
+        'cli_tools/plot_hills.py',
+	'cli_tools/colvar_plotter.py',
+	'cli_tools/get_cv_sample.py',
+	'cli_tools/get_polymer_contacts.py'
+    ],
     classifiers=[ 
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
