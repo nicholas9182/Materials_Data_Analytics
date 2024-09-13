@@ -1,4 +1,0 @@
-analytics
-cli_tools
-test
-visualisation
