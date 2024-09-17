@@ -205,7 +205,7 @@ class GaussianParser:
         })
         return data
 
-    def get_bonds_from_coordinates(self, cutoff: float = 2, heavy_atoms: bool = False, pre_optimisation: bool = False):
+    def get_bonds_from_coordinates(self, cutoff: float = 1.8, heavy_atoms: bool = False, pre_optimisation: bool = False):
         """
         function to get bond data from the coordinates, using a cut-off distance
         :param cutoff: The cutoff for calculating the bond lengths
