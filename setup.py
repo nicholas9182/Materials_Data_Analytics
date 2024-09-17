@@ -11,7 +11,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "scipy >= 1.11.2",
-	"pandas >= 2.1.1",
+	    "pandas >= 2.1.1",
         "plotly >= 5.17.0",
         "matplotlib >= 3.8.0",
         "typer >= 0.9.0",
