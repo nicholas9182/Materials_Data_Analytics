@@ -3,11 +3,11 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.4", 
+    version="6.1.6", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
-    url="https://github.com/nicholas9182/SalleoGroup/",
+    url="https://github.com/nicholas9182/Materials_Data_Analytics/",
     packages=find_packages(),
     install_requires=[
         "scipy >= 1.11.2",
@@ -24,9 +24,9 @@ setup(
     ],
     scripts=[
         'cli_tools/plot_hills.py',
-	'cli_tools/colvar_plotter.py',
-	'cli_tools/get_cv_sample.py',
-	'cli_tools/get_polymer_contacts.py'
+	    'cli_tools/colvar_plotter.py',
+	    'cli_tools/get_cv_sample.py',
+	    'cli_tools/get_polymer_contacts.py'
     ],
     classifiers=[ 
         "Programming Language :: Python :: 3",

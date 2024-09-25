@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import Union
 import plotly.express as px
+import plotly.graph_objects as go
 import scipy.integrate as integrate
 import base64
 import io
@@ -303,7 +304,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         data = self.data.assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
 
         figure = px.line(data, x='time', y='current', color='cycle_direction', markers=True, title='Current vs Time',
-                         labels={'time': 'Time [s]', 'current': 'Current [mA]'}, **kwargs)
+                         labels={'time': 'Time [s]', 'current': 'Current [mA]', 'cycle_direction': 'Cycle, Direction'}, **kwargs)
         
         return figure
     
@@ -410,8 +411,10 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                          .melt(value_vars=['anodic_charge', 'cathodic_charge'], id_vars=['cycle', 'direction'], var_name='type', value_name='charge')
                          )
 
-        figure = px.bar(passed_charge, x='cycle', y='charge', color='type', barmode='group', facet_row='direction', title='Charge Passed for Each Cycle',
-                        labels={'charge': 'Charge [mC]'} ,**kwargs)
+        figure = px.line(passed_charge, x='cycle', y='charge', color='type', facet_row='direction', title='Charge Passed for Each Cycle', markers=True,
+                        labels={'charge': 'Charge [mC]'} , custom_data=['direction', 'type'], facet_row_spacing=0.12, **kwargs)
+        figure.update_xaxes(dtick=1)
+        figure.update_layout(legend=dict(title='', orientation='h', y=-0.3, x=0.5, yanchor='bottom', xanchor='center'))
         
         return figure
     
@@ -422,4 +425,41 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         figure = self.get_charge_passed_plot(**kwargs)
         figure.show()
         return self
+    
+    def get_charge_integration_plot(self, cycle: int, direction: str, charge_valence: str, **kwargs):
+        """
+        Function to return a plot which shows the area under a curve which is used for calculating the charges passed in the CV
+        """
+        if direction.lower() != "oxidation" and direction.lower() != "reduction":
+            raise ValueError("Direction must be either oxidation or reduction")
+        
+        if charge_valence.lower() != "anodic_charge" and charge_valence.lower() != "cathodic_charge":
+            raise ValueError("Charge valence must be either anodic_charge or cathodic_charge")
 
+        direction = direction.lower()
+        charge_valence = charge_valence.lower()
+
+        data = self.data.copy().assign(cycle_direction = lambda x: x['cycle'].astype('str') + ', ' + x['direction'])
+        segment = data.query('cycle == @cycle and direction == @direction')['segment'].values[0]
+        data_area_plot = data.query('segment == @segment and current >= 0') if charge_valence == 'anodic_charge' else data.query('segment == @segment and current <= 0')
+
+        t_min = data_area_plot['time'].min()
+        t_max = data_area_plot['time'].max()
+        c_min = data_area_plot['current'].min()
+        c_max = data_area_plot['current'].max()
+        t_min = t_min - (t_max - t_min) * 0.3
+        t_max = t_max + (t_max - t_min) * 0.3
+        c_min = c_min - (c_max - c_min) * 0.3
+        c_max = c_max + (c_max - c_min) * 0.3
+
+        figure = px.line(data, x='time', y='current', color='cycle_direction', 
+                         labels={'time': 'Time [s]', 'current': 'Current [mA]', 'cycle_direction': 'Cycle, Direction'}, **kwargs)
+        
+        figure.add_trace(go.Scatter(x=data_area_plot['time'], y=data_area_plot['current'], mode='lines', name='Area', 
+                                    fill='tozeroy', showlegend=False, line=dict(color='grey')))
+        
+        figure.add_shape(x0=t_min, x1=t_max, y0=0, y1=0, line=dict(color='black', width=2))
+        figure.update_xaxes(range=[t_min, t_max])
+        figure.update_yaxes(range=[c_min, c_max])
+
+        return figure

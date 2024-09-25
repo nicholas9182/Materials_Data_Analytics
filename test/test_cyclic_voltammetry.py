@@ -206,3 +206,10 @@ class TestCyclicVoltammetry(unittest.TestCase):
         data = cv.data
         self.assertTrue('scan_rate' in data.columns)
         self.assertTrue('instrument' in data.columns)
+
+    def test_get_charge_integration_plot(self):
+
+        cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic1.txt', metadata = {'scan_rate': 5, 'instrument': 'Biologic'})
+        figure = cv.get_charge_integration_plot(cycle=3, direction='reduction', charge_valence='cathodic_charge')
+        # figure.show()
+        self.assertTrue(type(cv.data == pd.DataFrame))
