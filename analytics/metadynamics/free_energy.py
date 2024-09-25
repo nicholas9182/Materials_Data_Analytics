@@ -19,8 +19,9 @@ class MetaTrajectory:
         data, self._opes = self._read_file(colvar_file)
         self._data = data.pipe(self._get_weights, temperature=temperature)
         self.walker = int(colvar_file.split("/")[-1].split(".")[-1])
-        self.cvs = (self._data.drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed',
-                                             'neff', 'nker'], errors='ignore')
+        self.cvs = (self
+                    ._data
+                    .drop(columns=['time', 'bias', 'reweight_factor', 'reweight_bias', 'weight', 'zed','neff', 'nker'], errors='ignore')
                     .columns
                     .to_list()
                     )
