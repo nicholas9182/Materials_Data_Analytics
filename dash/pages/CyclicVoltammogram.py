@@ -8,7 +8,7 @@ source_options = [{'label': 'Biologic', 'value': 'biologic'}, {'label': 'Afterma
 upload_button_style = {'width': '50%', 'height': '30px', 'lineHeight': '30px', 'borderWidth': '1px', 'borderStyle': 'dashed', 'textAlign': 'center'}
 table_styles = {'width': '50%', 'overflowX': 'auto'}
 button_style = {'width': '30%', 'height': '30px', 'lineHeight': '15px', 'borderWidth': '2px', 'borderStyle': 'dashed', 'textAlign': 'center'}
-plotly_template = 'simple_white'
+plotly_template = 'ggplot2'
 
 ds.register_page(__name__)
 
@@ -158,7 +158,7 @@ def display_charge_passed_analysis(encoded_cv):
     charge_passed_table = the_cv.get_charge_passed().round(7).to_dict('records')
     charge_passed_table_element = ds.dash_table.DataTable(data=charge_passed_table, page_size=10, style_table=table_styles)
 
-    charge_passed_plot = the_cv.get_charge_passed_plot(width=700, height=600, template=plotly_template)
+    charge_passed_plot = the_cv.get_charge_passed_plot(width=740, height=600, template=plotly_template)
     charge_passed_plot_element = ds.dcc.Graph(figure=charge_passed_plot, id='charge_passed_id')
 
     interactive_integration_element = ds.dcc.Graph(id='current_integration_plot')
@@ -185,9 +185,7 @@ def update_integration_plot(clickData, encoded_cv):
     point_info = clickData['points'][0]
     cycle = point_info['x']
     direction = point_info['customdata'][0]
-    type = point_info['customdata'][1]
 
-    integration_plot = the_cv.get_charge_integration_plot(cycle=cycle, direction=direction, charge_valence=type, 
-                                                          width=700, height=520, template=plotly_template)
+    integration_plot = the_cv.get_charge_integration_plot(cycle=cycle, direction=direction, width=700, height=600, template=plotly_template)
 
     return integration_plot
