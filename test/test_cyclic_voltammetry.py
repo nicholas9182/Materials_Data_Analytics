@@ -7,6 +7,7 @@ from analytics.materials.solvents import Solvent
 import plotly.express as px
 import base64
 import mimetypes
+from plotly import graph_objects as go
 
 
 class TestCyclicVoltammetry(unittest.TestCase):
@@ -221,4 +222,43 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('total_charge' in charges.columns)
         self.assertTrue('anodic_charge' in charges.columns)
         self.assertTrue('cathodic_charge' in charges.columns)
-        
+
+    def test_get_charge_passed_biologic1(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte=self.electrolyte)
+        integrals = cv.get_charge_passed()
+        self.assertTrue(type(integrals) == pd.DataFrame)
+        self.assertTrue('anodic_charge' in integrals.columns)
+        self.assertTrue('cathodic_charge' in integrals.columns)
+        self.assertTrue('total_charge' in integrals.columns)
+        self.assertTrue(all(integrals['anodic_charge'] >= 0))
+        self.assertTrue(all(integrals['cathodic_charge'] >= 0))
+
+    def test_get_charge_passed_biologic1_av_segments(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte=self.electrolyte)
+        integrals = cv.get_charge_passed(average_segments=True)
+        self.assertTrue(type(integrals) == pd.DataFrame)
+        self.assertTrue('anodic_charge' in integrals.columns)
+        self.assertTrue('cathodic_charge' in integrals.columns)
+        self.assertTrue('anodic_charge_err' in integrals.columns)
+        self.assertTrue('cathodic_charge_err' in integrals.columns)
+        self.assertTrue(all(integrals['anodic_charge'] >= 0))
+        self.assertTrue(all(integrals['cathodic_charge'] >= 0))
+
+    def test_get_maximum_charges_passed_biologic1(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic1.txt', electrolyte=self.electrolyte)
+        max_charges = cv.get_maximum_charges_passed()
+        self.assertTrue(type(max_charges) == pd.DataFrame)
+        self.assertTrue('total_charge' in max_charges.columns)
+        self.assertTrue('section' in max_charges.columns)
+        self.assertTrue('t_min' in max_charges.columns)
+        self.assertTrue('t_max' in max_charges.columns)
+        self.assertTrue('type' in max_charges.columns)
+        self.assertTrue(all(max_charges['total_charge'] >= 0))
+        self.assertTrue(set(max_charges['type']).issubset({'anodic', 'cathodic'}))
+        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0, 0.0033, 0.0025, 0.0033, 0.0025, 0.0033, 0.0025])
+
+    def test_get_maximum_charge_integration_plot_anodic(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        figure = cv.get_maximum_charge_integration_plot(section=3)
+        figure.show()
+        self.assertTrue(type(figure) == go.Figure)
