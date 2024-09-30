@@ -10,7 +10,7 @@ app.config.suppress_callback_exceptions = True
 app.title = 'Cyclic Voltammogram Analysis'
 
 app.layout = ds.html.Div([
-    ds.html.H1('Materials Characterization Analytics'),
+    ds.html.H1('Materials characterization analytics contents'),
     ds.html.Div([
         ds.html.Div(
             ds.dcc.Link(f"{page['name']} Analysis", href=page["relative_path"])
