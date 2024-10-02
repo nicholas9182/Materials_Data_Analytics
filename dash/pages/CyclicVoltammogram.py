@@ -8,6 +8,7 @@ source_options = [{'label': 'Biologic', 'value': 'biologic'}, {'label': 'Afterma
 upload_button_style = {'width': '50%', 'height': '30px', 'lineHeight': '30px', 'borderWidth': '1px', 'borderStyle': 'dashed', 'textAlign': 'center'}
 table_styles = {'width': '50%', 'overflowX': 'auto'}
 button_style = {'width': '30%', 'height': '30px', 'lineHeight': '15px', 'borderWidth': '2px', 'borderStyle': 'dashed', 'textAlign': 'center'}
+slider_style = {'width':'70%'}
 plotly_template = 'ggplot2'
 
 
@@ -59,11 +60,14 @@ layout = ds.html.Div([
         ds.dcc.Upload(id='data_upload', children=ds.html.Div(['Drag and Drop or Click here to ', ds.html.A('Select File')]), style=upload_button_style),
         ds.html.Div(id='file_name', style={'margin-top': '10px'}),
         ds.html.Br(), ds.html.Br(),
-        ds.html.Button('Load Cyclic Voltammogram', id='store_cv_button', style=button_style),
-        ds.html.Div(id='file_load_status', style={'margin-top': '10px'}),
+        ds.html.Button('Generate Cyclic Voltammogram', id='get_cv_parameters', style=button_style),
+        ds.html.Div(id='parameters_message'),
+        ds.dcc.Store(id="cv_parameters_for_editing"),
         ds.dcc.Store(id="cv_stored")
         ], style={'padding': 10, 'flex': 10}),
 
+    ### Manipulate CV ###
+    ds.html.Div(id='edit_cv'),
     ds.html.Hr(), ds.html.Hr(),
 
     ### Display the basic analysis ###
@@ -75,6 +79,13 @@ layout = ds.html.Div([
     ds.html.H2('Charges passed analysis'),
     ds.html.Div(id='charge_passed_analysis'),
     ds.html.Hr(), ds.html.Hr(),
+
+    ### Display the peak fitting analysis ###
+    ds.html.H2('Peak fitting analysis'),
+    ds.html.Div(id='peak_fitting_analysis'),
+    ds.html.Br(),
+    ds.html.Hr(), ds.html.Hr()
+
     ])
     
 
@@ -105,22 +116,98 @@ def update_file_name(filename):
     
 
 @ds.callback(
-    [ds.Output('cv_stored', 'data'),
-     ds.Output('file_load_status', 'children')],
-    ds.Input('store_cv_button', 'n_clicks'),
+    [ds.Output('cv_parameters_for_editing', 'data'),
+     ds.Output('parameters_message', 'children')],
+     ds.Input('get_cv_parameters', 'n_clicks'),
     [ds.State('data_upload', 'contents'),
      ds.State('data_source', 'value'), 
      ds.State('scan_rate_input', 'value'),
      ds.State('data_upload', 'filename')],
     prevent_initial_call=True
 )
-def store_cv_data(n_clicks, file_contents, source, scan_rate, file_name):
+def store_cv_parameteres_for_editing(n_clicks, file_contents, source, scan_rate, file_name):
     """
     Callback to store the CV data and update the text to let the user know they updated the CV text
     """
     the_cv = CyclicVoltammogram.from_html_base64(file_contents = file_contents, source=source, scan_rate = scan_rate)
-    encoded_cv = pickle_and_encode(the_cv)
-    return encoded_cv, f"Created Cyclic Voltammogram based off of the {source} file, {file_name} :)"
+    max_cycle = the_cv.max_cycle
+    potential_steps_per_cycle = the_cv.steps_per_cycle
+
+    cv_data = {'cv': pickle_and_encode(the_cv),
+               'file_contents': file_contents,
+               'source': source,
+               'scan_rate': scan_rate, 
+               'max_cycle': max_cycle, 
+               'potential_steps_per_cycle': potential_steps_per_cycle
+               }
+
+    message = ds.html.Div(f"""A Cyclic voltammogram will be made from a {file_name} file obtained from {source} with {max_cycle} cycles and 
+                          {potential_steps_per_cycle} potential steps per cycle.""")
+
+    return cv_data, message
+
+
+@ds.callback(
+    ds.Output('edit_cv', 'children'),
+    [ds.Input('cv_parameters_for_editing', 'data')],
+    prevent_initial_call=True
+)
+def display_editing_tools(cv_data):
+    """
+    Callback to display the basic analysis of the CV
+    """
+    max_cycle = cv_data['max_cycle']
+    potential_steps_per_cycle = cv_data['potential_steps_per_cycle']
+    max_downsample = potential_steps_per_cycle // 2
+
+    cycle_slider = ds.html.Div(ds.dcc.RangeSlider(id='cycle_slider', min=0, max=max_cycle, value=[0, max_cycle], step=1, marks={i: str(i) for i in range(max_cycle+1)}), style=slider_style)
+    downsample_slider = ds.html.Div(ds.dcc.Slider(id='downsample_slider', min=1, max=max_downsample, value=potential_steps_per_cycle, tooltip={"placement": "bottom", "always_visible": True}), style=slider_style)
+
+    edit_cv_elements = ds.html.Div(children=[
+        ds.html.H3('Select the cycles to analyze'),
+        cycle_slider,
+        ds.html.Br(),
+        ds.html.H3('Down-sample the CV, select the number of potential steps per cycle'),
+        ds.html.Div([f"""Down-sampling the CV can be useful to reduce the size of the data, remove high frequency noise and speed up the analysis.
+                     When downsampling, make sure the number of potential steps is less than half the original of {potential_steps_per_cycle}. This step can be slow!"""]),
+        ds.html.Br(),
+        downsample_slider,
+        ds.html.Br(),
+        ds.html.Button('Update Cyclic Voltammogram', id='update_cv_button', style=button_style),
+        ds.html.Br()
+        ], style={'padding': 10, 'flex': 10})
+
+    return edit_cv_elements
+
+
+@ds.callback(
+    ds.Output('cv_stored', 'data'),
+    ds.Input('update_cv_button', 'n_clicks'),
+    [ds.State('cycle_slider', 'value'),
+     ds.State('downsample_slider', 'value'),
+     ds.State('cv_parameters_for_editing', 'data')],
+    prevent_initial_call=True
+)
+def update_cv_data(n_clicks, cycle_range, down_sample_n, cv_data):
+    """
+    Callback to update the CV data based off of the sliders
+    """
+    the_cv = pickle_and_decode(cv_data['cv'])
+    max_cycle = cv_data['max_cycle']
+    potential_steps_per_cycle = cv_data['potential_steps_per_cycle']
+    
+    if cycle_range != [0, max_cycle] and down_sample_n == potential_steps_per_cycle:
+        cycles = [i for i in range(cycle_range[0], cycle_range[1]+1)]
+        new_cv = the_cv.drop_cycles(keep=cycles)
+    elif cycle_range == [0, max_cycle] and down_sample_n != potential_steps_per_cycle:
+        new_cv = the_cv.downsample(n=down_sample_n)
+    elif cycle_range == [0, max_cycle] and down_sample_n == potential_steps_per_cycle:
+        new_cv = the_cv
+    elif cycle_range != [0, max_cycle] and down_sample_n != potential_steps_per_cycle:
+        cycles = [i for i in range(cycle_range[0], cycle_range[1]+1)]
+        new_cv = the_cv.downsample(n=down_sample_n).drop_cycles(keep=cycles)
+
+    return pickle_and_encode(new_cv)
 
 
 @ds.callback(
@@ -238,7 +325,7 @@ def display_charge_passed_analysis(encoded_cv):
         ds.dash_table.DataTable(data=max_charges_passed_table_summary, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="max_charges_summary_download_button"),
         ds.dcc.Download(id="max_charges_summary_download"),
-        ds.html.Br()
+        ds.html.Br(), ds.html.Br()
         ])
     
     max_charges_passed_table_element = ds.html.Div([
@@ -441,3 +528,5 @@ def download_max_charges_summary(n_clicks, encoded_cv):
     the_cv = pickle_and_decode(encoded_cv)
     data = the_cv.get_maximum_charges_passed(average_sections = True)
     return ds.dcc.send_data_frame(data.to_csv, "max_charges_summary.csv")
+
+

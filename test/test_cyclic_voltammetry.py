@@ -254,11 +254,18 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('t_max' in max_charges.columns)
         self.assertTrue('type' in max_charges.columns)
         self.assertTrue(all(max_charges['total_charge'] >= 0))
-        self.assertTrue(set(max_charges['type']).issubset({'anodic', 'cathodic'}))
-        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0, 0.0033, 0.0025, 0.0033, 0.0025, 0.0033, 0.0025])
+        self.assertTrue(set(max_charges['type']).issubset({'anodic_charge', 'cathodic_charge'}))
+        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0034, 0.0025, 0.0033, 0.0025, 0.0033, 0.0025, 0.0033, 0.0025])
 
     def test_get_maximum_charge_integration_plot_anodic(self):
         cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
         figure = cv.get_maximum_charge_integration_plot(section=3)
-        figure.show()
+        # figure.show()
         self.assertTrue(type(figure) == go.Figure)
+
+    def test_downsample(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        cv = cv.downsample(100)
+        self.assertTrue(len(cv.data.query('segment == 3')) == 102)
+        # cv.get_current_time_plot().show()
+        # cv.get_potential_time_plot().show()

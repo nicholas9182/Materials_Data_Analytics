@@ -38,17 +38,23 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         self._max_cycle = self._data['cycle'].max()
         self._max_segment = self._data['segment'].max()
+        self._steps_per_cycle = (self._data
+                                 .query('cycle != cycle.max() and cycle != cycle.min()')
+                                 .astype({'cycle': 'int'})
+                                 .groupby(['cycle']).count()['potential'].mean().round(0)
+                                 )
 
-    def _wrangle_data(self, data) -> pd.DataFrame:
+    def _wrangle_data(self, data, first_index = 5) -> pd.DataFrame:
         """
         Function to wrangle the data
         :param data: pd.DataFrame with columns potential, current, cycle, time
         """
         data = (data
-                .query('index > 5')
+                .query('index > @first_index')
                 .dropna()
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
+                .assign(time = lambda x: x['time'] - x['time'].min())
                 .pipe(self._find_current_roots)
                 .pipe(self._determine_direction)
                 .pipe(self._make_segments)
@@ -76,7 +82,14 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
             data_interpolate = data.iloc[i-1:i+1]
             time_root = self.get_root_linear_interpolation(data_interpolate['time'], data_interpolate['current'])
             potential_root = self.get_root_linear_interpolation(data_interpolate['potential'], data_interpolate['current'])
-            new_row = pd.DataFrame({'potential': [potential_root], 'time': [time_root], 'current': [0]})     
+
+            new_row = (data_interpolate
+                       .query('index == index.min()')
+                       .assign(potential = potential_root)
+                       .assign(time = time_root)
+                       .assign(current = 0)
+                       )
+
             data = pd.concat([data, new_row], ignore_index=True) 
 
         return data.sort_values(by=['time']).reset_index(drop=True)
@@ -351,6 +364,14 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
     def anion(self) -> Anion:
         return self.electrolyte.anion
     
+    @property
+    def max_cycle(self) -> int:
+        return self._max_cycle
+    
+    @property
+    def steps_per_cycle(self) -> int:
+        return self._steps_per_cycle
+    
     #TODO: I dont like this function, it should be more general
     def _integrate_curves(self, data: pd.DataFrame, direction: str, valence: str) -> float:
         """
@@ -408,10 +429,23 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         Function to get the maximum charges passed in each direction
         """ 
-        data = self._data.query('segment != 0 and segment != @self._max_segment').copy()
+        data = (self
+                ._data.query('segment != 0 and segment != @self._max_segment')
+                .copy()
+                .assign(section = lambda x: (x['current'] == 0).cumsum())
+                )
+        
+        additional_points = (data
+                             .assign(sos = lambda x: (x['current'] == 0))
+                             .query('sos == True')
+                             .assign(section = lambda x: x['section'] - 1)  
+                             .drop(columns=['sos'])
+                             )
 
-        max_charges_passed = (data
-                              .assign(section = lambda x: (x['current'] == 0).cumsum())
+        max_charges_passed = (pd
+                              .concat([data, additional_points], axis=0)
+                              .sort_values(by=['time'])
+                              .reset_index(drop=True)
                               .groupby(['section'], group_keys=False)
                               .apply(lambda df: (df
                                                   .assign(total_charge = integrate.simpson(df.current, df.time))
@@ -541,3 +575,47 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         figure.update_yaxes(range=[c_min, c_max])
 
         return figure
+
+    def downsample(self, n: int | list[float] = 400) -> pd.DataFrame:
+        """
+        Function to downsample the data
+        """
+        def get_bins(df, n):
+            t_mid_min = df['time'].min()
+            t_mid_max = df['time'].max()
+            t_mids = np.linspace(t_mid_min, t_mid_max, n)
+            dt = (t_mid_max - t_mid_min)/n
+            t_bins = [i - dt/2 for i in t_mids] + [t_mid_max + dt/2]
+            return t_bins
+
+        data = (self
+                ._data
+                .copy()
+                .query('current != 0')
+                .groupby(['segment'], group_keys=False)
+                .apply(lambda df: df.query('index != index.max()'))
+                )
+        
+        down_sampled_data = (data
+                             .groupby(['cycle', 'direction', 'segment'], group_keys=False)
+                             .apply(lambda df: (df
+                                                .assign(time_bin = pd.cut(df['time'], bins=get_bins(df, n), labels=False))
+                                                .groupby(['time_bin'], group_keys=False)
+                                                .apply(lambda df: (df
+                                                                   .assign(
+                                                                       potential = df['potential'].mean(),
+                                                                       current = df['current'].mean(),
+                                                                       time = df['time'].mean())
+                                                                   ))
+                                                ))
+                             .drop(columns=['time_bin'])
+                             .drop_duplicates()
+                             .reset_index(drop=True)
+                             .pipe(self._add_endpoints)
+                             .reset_index(drop=True)
+                             .pipe(self._find_current_roots)
+                             )
+        
+        self._data = down_sampled_data
+        return self
+
