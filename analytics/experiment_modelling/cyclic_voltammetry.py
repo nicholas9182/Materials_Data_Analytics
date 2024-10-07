@@ -124,7 +124,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         Function to double up data points at the end of the cycles so that each cycle is complete when filtered by direction
         """
-        for s in range(1, data['segment'].max()+1):
+        for s in range(data['segment'].min()+1, data['segment'].max()+1):
             prev_seg_num = s - 1
             prev_time = data.query('segment == @prev_seg_num')['time'].iloc[-1]
             prev_current = data.query('segment == @prev_seg_num')['current'].iloc[-1]
@@ -175,17 +175,9 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         Function to find the segments of the cyclic voltammogram
         """
-        segments = [0]
-        for index, row in data.iterrows():
-            if index == 0:
-                continue
-            elif row['direction'] != data['direction'].iloc[index-1]:
-                segments.append(segments[-1] + 1)
-            elif row['direction'] == data['direction'].iloc[index-1]:
-                segments.append(segments[-1])
-
-        data = data.assign(segment = segments)
-
+        direction_change = data['direction'] != data['direction'].shift(1)
+        segments = direction_change.cumsum() - 1
+        data = data.assign(segment=segments)
         return data
 
     @property
@@ -580,42 +572,39 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         """
         Function to downsample the data
         """
+        # from a range and number of intervals, get the bin edges
         def get_bins(df, n):
-            t_mid_min = df['time'].min()
-            t_mid_max = df['time'].max()
-            t_mids = np.linspace(t_mid_min, t_mid_max, n)
-            dt = (t_mid_max - t_mid_min)/n
-            t_bins = [i - dt/2 for i in t_mids] + [t_mid_max + dt/2]
-            return t_bins
+            t_min = df['time'].min()
+            t_max = df['time'].max()
+            t_mids = np.linspace(t_min, t_max, n)
+            dt = (t_max - t_min) / n
+            bins = np.concatenate(([t_min - dt / 2], t_mids + dt / 2))
+            return bins
 
+        # get the original data and remove the additional segment points and current roots
         data = (self
                 ._data
-                .copy()
                 .query('current != 0')
                 .groupby(['segment'], group_keys=False)
                 .apply(lambda df: df.query('index != index.max()'))
                 )
-        
+
+        # downsample the data. Attention to use the .agg as it is much faster than .apply
         down_sampled_data = (data
                              .groupby(['cycle', 'direction', 'segment'], group_keys=False)
-                             .apply(lambda df: (df
-                                                .assign(time_bin = pd.cut(df['time'], bins=get_bins(df, n), labels=False))
-                                                .groupby(['time_bin'], group_keys=False)
-                                                .apply(lambda df: (df
-                                                                   .assign(
-                                                                       potential = df['potential'].mean(),
-                                                                       current = df['current'].mean(),
-                                                                       time = df['time'].mean())
-                                                                   ))
-                                                ))
-                             .drop(columns=['time_bin'])
-                             .drop_duplicates()
-                             .reset_index(drop=True)
+                             .apply(lambda df: df.assign(time_bin = pd.cut(df['time'], bins=get_bins(df, n), labels=False)))
+                             .groupby(['cycle', 'direction', 'segment', 'time_bin'], group_keys=False)
+                             .agg(
+                                 potential = ('potential', 'mean'),
+                                 current = ('current', 'mean'),
+                                 time = ('time', 'mean')
+                                 )
+                             .reset_index()
                              .pipe(self._add_endpoints)
-                             .reset_index(drop=True)
                              .pipe(self._find_current_roots)
                              )
         
         self._data = down_sampled_data
         return self
+    
 

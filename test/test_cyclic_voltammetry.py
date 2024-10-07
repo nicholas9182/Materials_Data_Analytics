@@ -269,3 +269,15 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue(len(cv.data.query('segment == 3')) == 102)
         # cv.get_current_time_plot().show()
         # cv.get_potential_time_plot().show()
+
+    def test_downsample_drop_and_downsample(self):
+
+        cv = (CyclicVoltammogram
+              .from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt')
+              .drop_cycles(drop=[0, 1, 2])
+              .downsample(100)
+              )
+        
+        self.assertTrue(len(cv.data.query('segment == 5')) == 101)
+        cv.get_current_time_plot().show()
+        cv.get_potential_time_plot().show()
