@@ -60,15 +60,24 @@ layout = ds.html.Div([
         ds.dcc.Upload(id='data_upload', children=ds.html.Div(['Drag and Drop or Click here to ', ds.html.A('Select File')]), style=upload_button_style),
         ds.html.Div(id='file_name', style={'margin-top': '10px'}),
         ds.html.Br(), ds.html.Br(),
-        ds.html.Button('Generate Cyclic Voltammogram', id='get_cv_parameters', style=button_style),
+        ds.html.Button('Get editing parameters for Cyclic Voltammogram', id='get_cv_parameters', style=button_style),
         ds.html.Div(id='parameters_message'),
         ds.dcc.Store(id="cv_parameters_for_editing"),
-        ds.dcc.Store(id="cv_stored")
+        ds.dcc.Store(id="cv_stored"),
+        ds.html.Br(), ds.html.Br(), ds.html.Br(),
+        ds.html.H3('Select the cycles to analyze'),
+        ds.html.Div(ds.dcc.RangeSlider(min=0, max=5, value=[0, 5], step=1, marks={i: str(i) for i in range(6)}), id='cycle_slider2', style=slider_style),
+        ds.html.Br(),
+        ds.html.H3('Down-sample the CV, select the number of potential steps per cycle'),
+        ds.html.Br(),
+        ds.html.Div(ds.dcc.Slider(min=1, max=1000, value=1000, tooltip={"placement": "bottom", "always_visible": True}), id='downsample_slider2', style=slider_style),
+        ds.html.Br(),ds.html.Br(),
+        ds.html.Button('Update Cyclic Voltammogram', id='update_cv_button', style=button_style),
+        ds.html.Div(id='update_cv_code'),
+        ds.html.Br(), ds.html.Br(), 
+        ds.html.Div(id='create_cv_code'),
+        ds.html.Hr(), ds.html.Hr()
         ], style={'padding': 10, 'flex': 10}),
-
-    ### Manipulate CV ###
-    ds.html.Div(id='edit_cv'),
-    ds.html.Hr(), ds.html.Hr(),
 
     ### Display the basic analysis ###
     ds.html.H2('Basic Analysis'),
@@ -113,7 +122,7 @@ def update_file_name(filename):
         return f"Selected file: {filename}"
     else:
         return "No file selected"
-    
+
 
 @ds.callback(
     [ds.Output('cv_parameters_for_editing', 'data'),
@@ -141,14 +150,19 @@ def store_cv_parameteres_for_editing(n_clicks, file_contents, source, scan_rate,
                'potential_steps_per_cycle': potential_steps_per_cycle
                }
 
-    message = ds.html.Div(f"""A Cyclic voltammogram will be made from a {file_name} file obtained from {source} with {max_cycle} cycles and 
-                          {potential_steps_per_cycle} potential steps per cycle.""")
+    if source == 'biologic':
+        code_snippet = f"""```cyclic_voltammogram = CyclicVoltammogram.from_biologic(file_path='{file_name}')```"""
+    else:
+        code_snippet = f"""```cyclic_voltammogram = CyclicVoltammogram.from_aftermath(file_path='{file_name}', scan_rate={scan_rate})```"""
 
-    return cv_data, message
+    code_snippet_element = ds.dcc.Markdown(code_snippet)
+
+    return cv_data, code_snippet_element
 
 
 @ds.callback(
-    ds.Output('edit_cv', 'children'),
+    ds.Output('downsample_slider2', 'children'),
+    ds.Output('cycle_slider2', 'children'),
     [ds.Input('cv_parameters_for_editing', 'data')],
     prevent_initial_call=True
 )
@@ -158,30 +172,20 @@ def display_editing_tools(cv_data):
     """
     max_cycle = cv_data['max_cycle']
     potential_steps_per_cycle = cv_data['potential_steps_per_cycle']
-    max_downsample = potential_steps_per_cycle // 2
+    max_downsample = potential_steps_per_cycle
 
-    cycle_slider = ds.html.Div(ds.dcc.RangeSlider(id='cycle_slider', min=0, max=max_cycle, value=[0, max_cycle], step=1, marks={i: str(i) for i in range(max_cycle+1)}), style=slider_style)
-    downsample_slider = ds.html.Div(ds.dcc.Slider(id='downsample_slider', min=1, max=max_downsample, value=potential_steps_per_cycle, tooltip={"placement": "bottom", "always_visible": True}), style=slider_style)
+    cycle_slider = ds.html.Div(ds.dcc.RangeSlider(id='cycle_slider', min=0, max=max_cycle, value=[0, max_cycle], 
+                                                  step=1, marks={i: str(i) for i in range(max_cycle+1)}), style=slider_style)
 
-    edit_cv_elements = ds.html.Div(children=[
-        ds.html.H3('Select the cycles to analyze'),
-        cycle_slider,
-        ds.html.Br(),
-        ds.html.H3('Down-sample the CV, select the number of potential steps per cycle'),
-        ds.html.Div([f"""Down-sampling the CV can be useful to reduce the size of the data, remove high frequency noise and speed up the analysis.
-                     When downsampling, make sure the number of potential steps is less than half the original of {potential_steps_per_cycle}. This step can be slow!"""]),
-        ds.html.Br(),
-        downsample_slider,
-        ds.html.Br(),
-        ds.html.Button('Update Cyclic Voltammogram', id='update_cv_button', style=button_style),
-        ds.html.Br()
-        ], style={'padding': 10, 'flex': 10})
+    downsample_slider = ds.html.Div(ds.dcc.Slider(id='downsample_slider', min=1, max=max_downsample, value=potential_steps_per_cycle, 
+                                                  tooltip={"placement": "bottom", "always_visible": True}), style=slider_style)
 
-    return edit_cv_elements
+    return downsample_slider, cycle_slider
 
 
 @ds.callback(
-    ds.Output('cv_stored', 'data'),
+    [ds.Output('cv_stored', 'data'),
+    ds.Output('update_cv_code', 'children')],
     ds.Input('update_cv_button', 'n_clicks'),
     [ds.State('cycle_slider', 'value'),
      ds.State('downsample_slider', 'value'),
@@ -199,15 +203,21 @@ def update_cv_data(n_clicks, cycle_range, down_sample_n, cv_data):
     if cycle_range != [0, max_cycle] and down_sample_n == potential_steps_per_cycle:
         cycles = [i for i in range(cycle_range[0], cycle_range[1]+1)]
         new_cv = the_cv.drop_cycles(keep=cycles)
+        code_snippet = f"""```cyclic_voltammogram = cyclic_voltammogram.drop_cycles(keep={cycles})```"""
     elif cycle_range == [0, max_cycle] and down_sample_n != potential_steps_per_cycle:
         new_cv = the_cv.downsample(n=down_sample_n)
+        code_snippet = f"""```cyclic_voltammogram = cyclic_voltammogram.downsample(n={down_sample_n})```"""
     elif cycle_range == [0, max_cycle] and down_sample_n == potential_steps_per_cycle:
         new_cv = the_cv
+        code_snippet = f"""```cyclic_voltammogram = cyclic_voltammogram```"""
     elif cycle_range != [0, max_cycle] and down_sample_n != potential_steps_per_cycle:
         cycles = [i for i in range(cycle_range[0], cycle_range[1]+1)]
         new_cv = the_cv.drop_cycles(keep=cycles).downsample(n=down_sample_n)
+        code_snippet = f"""```cyclic_voltammogram = cyclic_voltammogram.drop_cycles(keep={cycles}).downsample(n={down_sample_n})```"""
 
-    return pickle_and_encode(new_cv)
+    code_snippet_element = ds.dcc.Markdown(code_snippet)
+
+    return pickle_and_encode(new_cv), code_snippet_element
 
 
 @ds.callback(
@@ -230,6 +240,7 @@ def display_basic_analysis(encoded_cv):
         ds.html.Br(),
         ds.html.H3('Data post processing'),
         ds.html.Div(["""In the following table, the data is shown post processing. This includes the current, potential, cycle, sweep direction and segment."""]),
+        ds.dcc.Markdown(f"""```cyclic_voltammogram.data.round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=data, page_size=10, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="download_raw_data_button"),
@@ -240,6 +251,7 @@ def display_basic_analysis(encoded_cv):
     potential_vs_current_plot_element = ds.html.Div([
         ds.html.Br(),
         ds.html.H3('Current vs Potential plot'),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_current_potential_plot()```"""),
         ds.dcc.Graph(figure=potential_current_plot),
         ds.html.Button("Download figure as PDF", id="download_current_potential_button"),
         ds.dcc.Download(id="download_current_potential"),
@@ -248,6 +260,7 @@ def display_basic_analysis(encoded_cv):
     current_vs_time_plot_element = ds.html.Div([
         ds.html.Br(),
         ds.html.H3('Current vs Time plot'),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_current_time_plot()```"""),
         ds.dcc.Graph(figure=current_time_plot),
         ds.html.Button("Download figure as PDF", id="download_current_time_button"),
         ds.dcc.Download(id="download_current_time")
@@ -256,6 +269,7 @@ def display_basic_analysis(encoded_cv):
     potential_vs_time_plot_element = ds.html.Div([
         ds.html.Br(),
         ds.html.H3('Potential vs Time plot'),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_potential_time_plot()```"""),
         ds.dcc.Graph(figure=potential_time_plot),
         ds.html.Button("Download figure as PDF", id="download_potential_time_button"),
         ds.dcc.Download(id="download_potential_time")
@@ -294,6 +308,7 @@ def display_charge_passed_analysis(encoded_cv):
         ds.html.H3('Charges passed per cycle summary'),
         ds.html.Div(["""In the following table, the charges passed in the cyclic voltammogram are sectioned by cycle and sweep direction. They are then
                      averaged across the cycles. The error represents the standard error across the cycles."""]),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_charge_passed(average_segments = True).round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=charge_passed_table_summary, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="charges_summary_download_button"),
@@ -305,6 +320,7 @@ def display_charge_passed_analysis(encoded_cv):
         ds.html.Br(),
         ds.html.H3('Charges passed per cycle'),
         ds.html.Div(["""In this table, the data is shown per cycle."""]),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_charge_passed().round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=charge_passed_table, page_size=10, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="charges_cycle_download_button"),
@@ -313,14 +329,21 @@ def display_charge_passed_analysis(encoded_cv):
         ])
 
     charge_passed_plot_element = ds.html.Div([
-        ds.dcc.Graph(figure=charge_passed_plot, id='charge_passed_id'),
-        ds.dcc.Graph(id='current_integration_plot')
+        ds.html.Div([
+            ds.dcc.Markdown("""```cyclic_voltammogram.get_charge_passed_plot()```"""),
+            ds.dcc.Graph(figure=charge_passed_plot, id='charge_passed_id')
+            ]),
+        ds.html.Div([
+            ds.html.Div(id='current_integration_plot_code'),
+            ds.dcc.Graph(id='current_integration_plot')
+            ])
         ], style={'display': 'flex', 'justify-content': 'space-around'})
     
     max_charges_passed_table_summary_element = ds.html.Div([
         ds.html.H3('Maximum charges passed summary'),
         ds.html.Div(["""In the following table, the charges passed in the cyclic voltammogram are sectioned by when the current goes from positive to negative or 
                      vice versa. These are called 'sections'. They are then averaged across the cycles. The error represents the standard error across the sections."""]),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_maximum_charges_passed(average_sections = True).round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=max_charges_passed_table_summary, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="max_charges_summary_download_button"),
@@ -333,6 +356,7 @@ def display_charge_passed_analysis(encoded_cv):
         ds.html.Div(["""In the following analysis, the current-time curve is divided in sections whereby a new section is started whenever the 
                      current flips from positive to negative or vice versa. By integrating these areas, we get the maximum charges that pass in either
                      the anodic or cathodic direction. The maximum charge passed in each section is shown in the table below."""]),
+        ds.dcc.Markdown("""```cyclic_voltammogram.get_maximum_charges_passed().round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=max_charges_passed_table, style_table=table_styles),
         ds.html.Button("Download Table as CSV", id="max_charges_passed_download_button"),
@@ -341,8 +365,14 @@ def display_charge_passed_analysis(encoded_cv):
         ])
     
     max_charge_passed_plot_element = ds.html.Div([
-        ds.dcc.Graph(figure=max_charge_passed_plot, id='max_charge_passed_id'),
-        ds.dcc.Graph(id='max_current_integration_plot')
+        ds.html.Div([
+            ds.dcc.Markdown("""```cyclic_voltammogram.get_maximum_charge_passed_plot()```"""),
+            ds.dcc.Graph(figure=max_charge_passed_plot, id='max_charge_passed_id')
+            ]),
+        ds.html.Div([
+            ds.html.Div(id='max_current_integration_plot_code'),
+            ds.dcc.Graph(id='max_current_integration_plot')
+            ])
         ], style={'display': 'flex', 'justify-content': 'space-around'})
 
     charge_analysis_element = ds.html.Div(children=[
@@ -363,7 +393,8 @@ def display_charge_passed_analysis(encoded_cv):
 
 
 @ds.callback(
-    ds.Output('current_integration_plot', 'figure'),
+    [ds.Output('current_integration_plot', 'figure'),
+     ds.Output('current_integration_plot_code', 'children')],
     [ds.Input('charge_passed_id', 'clickData')],
     [ds.State('cv_stored', 'data')],
     prevent_initial_call=True
@@ -379,12 +410,15 @@ def update_integration_plot(clickData, encoded_cv):
     direction = point_info['customdata'][0]
 
     integration_plot = the_cv.get_charge_integration_plot(cycle=cycle, direction=direction, width=700, height=600, template=plotly_template)
+    code_snippet = f"""```cyclic_voltammogram.get_charge_integration_plot(cycle={cycle}, direction={direction})```"""
+    code_snippet_element = ds.dcc.Markdown(code_snippet)
 
-    return integration_plot
+    return integration_plot, code_snippet_element
 
 
 @ds.callback(
-    ds.Output('max_current_integration_plot', 'figure'),
+    [ds.Output('max_current_integration_plot', 'figure'),
+     ds.Output('max_current_integration_plot_code', 'children')],
     [ds.Input('max_charge_passed_id', 'clickData')],
     [ds.State('cv_stored', 'data')],
     prevent_initial_call=True
@@ -399,8 +433,10 @@ def update_max_charges_integration_plot(clickData, encoded_cv):
     section = point_info['x']
 
     integration_plot = the_cv.get_maximum_charge_integration_plot(section=section, width=700, height=600, template=plotly_template)
+    code_snippet = f"""```cyclic_voltammogram.get_maximum_charge_integration_plot(section={section})```"""
+    code_snippet_element = ds.dcc.Markdown(code_snippet)
 
-    return integration_plot
+    return integration_plot, code_snippet_element
 
 
 @ds.callback(

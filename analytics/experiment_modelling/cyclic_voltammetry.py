@@ -600,6 +600,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                                  time = ('time', 'mean')
                                  )
                              .reset_index()
+                             .drop(columns=['time_bin'])
                              .pipe(self._add_endpoints)
                              .pipe(self._find_current_roots)
                              )
