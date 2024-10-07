@@ -205,7 +205,7 @@ def update_cv_data(n_clicks, cycle_range, down_sample_n, cv_data):
         new_cv = the_cv
     elif cycle_range != [0, max_cycle] and down_sample_n != potential_steps_per_cycle:
         cycles = [i for i in range(cycle_range[0], cycle_range[1]+1)]
-        new_cv = the_cv.downsample(n=down_sample_n).drop_cycles(keep=cycles)
+        new_cv = the_cv.drop_cycles(keep=cycles).downsample(n=down_sample_n)
 
     return pickle_and_encode(new_cv)
 
