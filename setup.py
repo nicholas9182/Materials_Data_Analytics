@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.11", 
+    version="6.1.13", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -37,7 +37,7 @@ setup(
     python_requires=">=3.4",
     entry_points={
         'console_scripts': [
-            'launch_dash_app=analytics.dash.app:run',
+            'launch_dash_app=Materials_Data_Analytics.dash.app:run',
         ],
     }
 )
