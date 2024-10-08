@@ -378,7 +378,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         int_current = current_data.query('direction == @direction')['current'].to_numpy()
         int_time = current_data.query('direction == @direction')['time'].to_numpy()
-        integral = abs(integrate.simpson(int_current, int_time))
+        integral = abs(integrate.simpson(int_current, x=int_time))
 
         return integral
 
@@ -440,7 +440,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                               .reset_index(drop=True)
                               .groupby(['section'], group_keys=False)
                               .apply(lambda df: (df
-                                                  .assign(total_charge = integrate.simpson(df.current, df.time))
+                                                  .assign(total_charge = integrate.simpson(df.current, x=df.time))
                                                   .assign(t_min = df.time.min())
                                                   .assign(t_max = df.time.max())
                                                   .filter(['total_charge', 'section', 't_min', 't_max'])
