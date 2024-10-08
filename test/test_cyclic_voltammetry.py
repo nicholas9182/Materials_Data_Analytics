@@ -279,5 +279,11 @@ class TestCyclicVoltammetry(unittest.TestCase):
               )
         
         self.assertTrue(len(cv.data.query('segment == 5')) == 101)
-        cv.get_current_time_plot().show()
-        cv.get_potential_time_plot().show()
+        # cv.get_current_time_plot().show()
+        # cv.get_potential_time_plot().show()
+
+    def test_integrate_curves(self):
+
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt')
+        data = cv.get_charge_passed(average_segments = True)
+        self.assertTrue(type(data) == pd.DataFrame)
