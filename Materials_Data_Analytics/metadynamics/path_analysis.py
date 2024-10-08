@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from analytics.metadynamics.free_energy import FreeEnergySurface
-from analytics.metadynamics.free_energy import FreeEnergyShape
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySurface
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergyShape
 
 
 class Path:

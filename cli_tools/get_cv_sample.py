@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import click
 import os
-from analytics.metadynamics.free_energy import MetaTrajectory
+from Materials_Data_Analytics.metadynamics.free_energy import MetaTrajectory
 
 
 @click.command()

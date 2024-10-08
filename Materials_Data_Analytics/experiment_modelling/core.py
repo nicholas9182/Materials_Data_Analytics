@@ -1,4 +1,4 @@
-from analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
 import pandas as pd
 import scipy as sp
 

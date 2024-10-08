@@ -1,5 +1,5 @@
-from analytics.materials.material_lists import common_cations, common_anions
-from analytics.materials.material_lists import cation_charges, anion_charges
+from Materials_Data_Analytics.materials.material_lists import common_cations, common_anions
+from Materials_Data_Analytics.materials.material_lists import cation_charges, anion_charges
 
 
 class Ion():

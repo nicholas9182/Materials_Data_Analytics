@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.10", 
+    version="6.1.11", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -20,7 +20,8 @@ setup(
         "torch >= 2.2.0",
         "dash >= 2.17.1",
         "networkx >= 3.1",
-        "MDAnalysis >= 2.6.1"
+        "MDAnalysis >= 2.6.1",
+        "dash >= 2.17.1",
     ],
     scripts=[
         'cli_tools/plot_hills.py',
@@ -33,5 +34,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.4"
+    python_requires=">=3.4",
+    entry_points={
+        'console_scripts': [
+            'launch_dash_app=analytics.dash.app:run',
+        ],
+    }
 )

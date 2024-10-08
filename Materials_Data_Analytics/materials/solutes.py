@@ -1,6 +1,6 @@
-from analytics.materials.material_lists import common_solutes
-from analytics.materials.material_lists import solute_pkas
-from analytics.laws_and_constants import R, F
+from Materials_Data_Analytics.materials.material_lists import common_solutes
+from Materials_Data_Analytics.materials.material_lists import solute_pkas
+from Materials_Data_Analytics.laws_and_constants import R, F
 
 
 class Solute():

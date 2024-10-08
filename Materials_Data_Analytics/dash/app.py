@@ -1,5 +1,5 @@
 import dash as ds
-from analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
+from Materials_Data_Analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
 import base64
 import io
 import pickle
@@ -21,3 +21,6 @@ app.layout = ds.html.Div([
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+def run():
+    app.run_server(debug=True)

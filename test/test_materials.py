@@ -1,10 +1,10 @@
 import unittest
 import tracemalloc
-from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.ions import Ion, Cation, Anion
-from analytics.materials.polymers import Polymer, NType, PType
-from analytics.materials.solvents import Solvent
-from analytics.materials.solutes import MolecularOxygen, Solute
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.ions import Ion, Cation, Anion
+from Materials_Data_Analytics.materials.polymers import Polymer, NType, PType
+from Materials_Data_Analytics.materials.solvents import Solvent
+from Materials_Data_Analytics.materials.solutes import MolecularOxygen, Solute
 
 
 class TestSolvent(unittest.TestCase):

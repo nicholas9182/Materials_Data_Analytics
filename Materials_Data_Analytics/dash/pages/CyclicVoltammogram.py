@@ -1,5 +1,5 @@
 import dash as ds
-from analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
+from Materials_Data_Analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
 import base64
 import io
 import pickle

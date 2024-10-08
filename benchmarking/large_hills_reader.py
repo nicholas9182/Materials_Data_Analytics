@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import plumed as pl
 from timer import Timer
-from analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
 
 if __name__ == "__main__":
 

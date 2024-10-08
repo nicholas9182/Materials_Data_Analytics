@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from analytics.laws_and_constants import lorentzian
+from Materials_Data_Analytics.laws_and_constants import lorentzian
 
 pd.set_option('mode.chained_assignment', None)
 

@@ -1,7 +1,7 @@
 import plumed as pl
 import pandas as pd
 from timer import Timer
-from analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
 
 
 def benchmark_plotting_hills_v1(time_res: int) -> pd.DataFrame:

@@ -1,9 +1,9 @@
-from analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
+from Materials_Data_Analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
 import unittest
 import pandas as pd
-from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.ions import Cation, Anion  
-from analytics.materials.solvents import Solvent
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.ions import Cation, Anion  
+from Materials_Data_Analytics.materials.solvents import Solvent
 import plotly.express as px
 import base64
 import mimetypes
