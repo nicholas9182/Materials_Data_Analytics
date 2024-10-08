@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from pandas import DataFrame
 from visualisation.themes import custom_dark_template
-from analytics.laws_and_constants import boltzmann_energy_to_population, Kb, boltzmann_population_to_energy
+from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, Kb, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
 
 

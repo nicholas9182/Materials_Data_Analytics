@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import click
 from datetime import datetime
-from analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
 from glob import glob
 
 

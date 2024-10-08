@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 import pandas as pd
-from analytics.metadynamics.path_analysis import Path
-from analytics.metadynamics.free_energy import FreeEnergySpace
-from analytics.metadynamics.path_analysis import SurfacePath
+from Materials_Data_Analytics.metadynamics.path_analysis import Path
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.path_analysis import SurfacePath
 
 
 class TestPath(unittest.TestCase):

@@ -3,7 +3,7 @@ import tracemalloc
 import pandas as pd
 import plotly.express as px
 import numpy as np
-from analytics.quantum_chemistry.gaussian import GaussianParser
+from Materials_Data_Analytics.quantum_chemistry.gaussian import GaussianParser
 tracemalloc.start()
 
 

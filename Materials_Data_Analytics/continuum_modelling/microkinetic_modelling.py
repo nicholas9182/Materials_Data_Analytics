@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import torch
-from analytics.laws_and_constants import R, F
-from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.polymers import Polymer, NType
-from analytics.materials.solutes import Solute
+from Materials_Data_Analytics.laws_and_constants import R, F
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.polymers import Polymer, NType
+from Materials_Data_Analytics.materials.solutes import Solute
 from scipy.optimize import fsolve
 
 

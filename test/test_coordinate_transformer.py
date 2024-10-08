@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from analytics.core.coordinate_transformer import CoordinateTransformer
+from Materials_Data_Analytics.core.coordinate_transformer import CoordinateTransformer
 
 
 class TestCoordinateTransformer(unittest.TestCase):

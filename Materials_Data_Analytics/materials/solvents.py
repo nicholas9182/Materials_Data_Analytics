@@ -1,6 +1,6 @@
-from analytics.materials.material_lists import common_solvents
-from analytics.materials.material_lists import solvent_phs
-from analytics.materials.solutes import Solute
+from Materials_Data_Analytics.materials.material_lists import common_solvents
+from Materials_Data_Analytics.materials.material_lists import solvent_phs
+from Materials_Data_Analytics.materials.solutes import Solute
 
 
 class Solvent():

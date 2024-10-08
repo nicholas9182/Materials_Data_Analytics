@@ -1,7 +1,7 @@
 import unittest
 import tracemalloc
-from analytics.core.universe import Universe
-from analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.core.universe import Universe
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
 tracemalloc.start()
 
 

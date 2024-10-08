@@ -6,7 +6,7 @@ from glob import glob
 import pandas as pd
 import plumed as pl
 import matplotlib.pyplot as plt
-from analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
 tracemalloc.start()
 
 

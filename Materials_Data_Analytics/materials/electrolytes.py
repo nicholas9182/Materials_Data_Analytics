@@ -1,6 +1,6 @@
-from analytics.materials.solvents import Solvent
-from analytics.materials.ions import Ion, Cation, Anion
-from analytics.materials.solutes import Solute, MolecularOxygen
+from Materials_Data_Analytics.materials.solvents import Solvent
+from Materials_Data_Analytics.materials.ions import Ion, Cation, Anion
+from Materials_Data_Analytics.materials.solutes import Solute, MolecularOxygen
 
 
 class Electrolyte():

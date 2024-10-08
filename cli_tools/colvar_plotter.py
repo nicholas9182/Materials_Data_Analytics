@@ -5,7 +5,7 @@ import pandas as pd
 from visualisation.themes import custom_dark_template
 import plotly.express as px
 from datetime import datetime
-from analytics.metadynamics.free_energy import MetaTrajectory, FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.free_energy import MetaTrajectory, FreeEnergySpace
 
 
 @click.command()

@@ -1,6 +1,6 @@
-from analytics.experiment_modelling.core import ElectrochemicalMeasurement
-from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.ions import Cation, Anion
+from Materials_Data_Analytics.experiment_modelling.core import ElectrochemicalMeasurement
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.ions import Cation, Anion
 import pandas as pd
 import numpy as np
 from typing import Union

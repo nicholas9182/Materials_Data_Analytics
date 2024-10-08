@@ -4,12 +4,12 @@ import torch
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel, OxygenReductionModel, ECpD
-from analytics.materials.electrolytes import Electrolyte
-from analytics.materials.solutes import Solute, MolecularOxygen
-from analytics.materials.ions import Cation, Anion
-from analytics.materials.solvents import Solvent
-from analytics.materials.polymers import NType
+from Materials_Data_Analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel, OxygenReductionModel, ECpD
+from Materials_Data_Analytics.materials.electrolytes import Electrolyte
+from Materials_Data_Analytics.materials.solutes import Solute, MolecularOxygen
+from Materials_Data_Analytics.materials.ions import Cation, Anion
+from Materials_Data_Analytics.materials.solvents import Solvent
+from Materials_Data_Analytics.materials.polymers import NType
 
 
 class TestMicrokinetic(unittest.TestCase):

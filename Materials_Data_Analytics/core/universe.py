@@ -1,6 +1,6 @@
 from __future__ import annotations
 import MDAnalysis as mda
-from analytics.metadynamics.free_energy import FreeEnergySpace
+from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
 
 
 class Universe:
