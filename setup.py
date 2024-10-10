@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.15", 
+    version="6.1.18", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -22,12 +22,14 @@ setup(
         "networkx >= 3.1",
         "MDAnalysis >= 2.6.1",
         "dash >= 2.17.1",
+	    "kaleido >= 0.2.1",
+        "plumed >= 2.9.0"
     ],
     scripts=[
         'cli_tools/plot_hills.py',
-	    'cli_tools/colvar_plotter.py',
-	    'cli_tools/get_cv_sample.py',
-	    'cli_tools/get_polymer_contacts.py'
+	'cli_tools/colvar_plotter.py',
+	'cli_tools/get_cv_sample.py',
+	'cli_tools/get_polymer_contacts.py'
     ],
     classifiers=[ 
         "Programming Language :: Python :: 3",
@@ -37,7 +39,7 @@ setup(
     python_requires=">=3.4",
     entry_points={
         'console_scripts': [
-            'launch_dash_app=Materials_Data_Analytics.dash.app:run',
+            'launch_dash_app=dash_app.app:run',
         ],
     }
 )
