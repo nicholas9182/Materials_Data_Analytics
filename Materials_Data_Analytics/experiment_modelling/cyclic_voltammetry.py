@@ -608,4 +608,73 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         self._data = down_sampled_data
         return self
     
+    def get_peaks(self, window = 0.01, polynomial_order = 4, summary: bool = False) -> pd.DataFrame:
+        """
+        Function to find the peaks in the data
+        """
+        data = self._data.copy()
+        
+        peaks = (data
+                 .query('segment != 0 and segment != @self._max_segment')
+                 .assign(current=lambda x: np.where(x['direction'] == 'reduction', x['current'] * -1, x['current']))
+                 .groupby(['segment', 'direction', 'cycle'], group_keys=False)
+                 .apply(lambda df: self.find_local_peak(df, y_col='current', x_col='potential', initial_guess=df.loc[df['current'].idxmax(), 'potential'], window=window, polynomial_order=polynomial_order))
+                 .assign(
+                     current=lambda x: np.where(x['direction'] == 'reduction', x['current'] * -1, x['current']),
+                     fit_current=lambda x: np.where(x['direction'] == 'reduction', x['fit_current'] * -1, x['fit_current']),
+                     current_peak=lambda x: np.where(x['direction'] == 'reduction', x['current_peak'] * -1, x['current_peak'])
+                     )
+                 )
+        
+        if summary is True:
+            peaks = (peaks
+                     .drop(columns=['current', 'potential', 'time', 'fit_current'])
+                     .drop_duplicates()
+                     )
+        
+        return peaks
+    
+    def get_peak_plot(self, direction: str, plot_window = 0.2, window = 0.01, polynomial_order = 4, summary = False, **kwargs):
+
+        data = (self
+                .data
+                .copy()
+                .assign(cycle_direction = lambda x: x['cycle'].astype('str')+", "+x['direction']).query('segment != segment.max() and segment != segment.min()')
+                .query(f'direction == "{direction}"')
+                )
+        
+        parabolas = (self
+                    .get_peaks(window=window, polynomial_order=polynomial_order, summary=summary)
+                    .assign(cycle_direction = lambda x: x['cycle'].astype('str')+", "+x['direction'])
+                    .query(f'direction == "{direction}"')
+                    )
+        
+        c_min = parabolas['current'].min()
+        c_max = parabolas['current'].max()
+        v_min = parabolas['potential'].min()
+        v_max = parabolas['potential'].max()
+        c_range = c_max - c_min
+        v_range = v_max - v_min
+        c_plot_min = c_min - c_range*plot_window
+        c_plot_max = c_max + c_range*plot_window
+        v_plot_min = v_min - v_range*plot_window
+        v_plot_max = v_max + v_range*plot_window
+
+        peak_points = (self
+                       .get_peaks(window=window, polynomial_order=polynomial_order, summary=summary)
+                       .assign(cycle_direction = lambda x: x['cycle'].astype('str')+", "+x['direction'])
+                       )
+
+        figure = px.scatter(data, x='potential', y='current', color='cycle_direction', labels={'current': 'Current [mA]', 'cycle_direction': 'Cycle, Direction', 'potential': 'Potential [V]'}, **kwargs)
+        colors = {trace.name: trace.marker.color for trace in figure.data}
+        for segment in parabolas['cycle_direction'].unique():
+            segment_df = parabolas[parabolas['cycle_direction'] == segment]
+            point_df = peak_points[peak_points['cycle_direction'] == segment]
+            figure.add_trace(go.Scatter(x=segment_df['potential'], y=segment_df['fit_current'], name=f"Fitted {segment}", line=dict(color=colors[segment], width=3), mode='lines'))
+            figure.add_trace(go.Scatter(x=point_df['potential_peak'], y=point_df['current_peak'], name=f"Peak {segment}", marker=dict(color=colors[segment], size=16, symbol='diamond'), mode='markers'))
+        figure.update_layout(xaxis=dict(range=[v_plot_min, v_plot_max]), yaxis=dict(range=[c_plot_min, c_plot_max]))
+
+        return figure
+
+    
 

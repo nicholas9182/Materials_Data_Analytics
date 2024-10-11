@@ -282,8 +282,37 @@ class TestCyclicVoltammetry(unittest.TestCase):
         # cv.get_current_time_plot().show()
         # cv.get_potential_time_plot().show()
 
-    def test_integrate_curves(self):
+    def test_get_peaks_biologic5(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
 
-        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt')
-        data = cv.get_charge_passed(average_segments = True)
-        self.assertTrue(type(data) == pd.DataFrame)
+        peaks = cv.get_peaks()
+        self.assertTrue(type(peaks) == pd.DataFrame)
+        self.assertTrue('current_peak' in peaks.columns)
+        self.assertTrue('fit_current' in peaks.columns)
+        self.assertTrue(all(peaks['current_peak'].notnull()))
+        self.assertTrue(all(peaks['fit_current'].notnull()))
+
+    def test_get_peak_plot_anodic(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        figure = cv.get_peak_plot(direction='oxidation', width=800, height=500)
+        self.assertTrue(type(figure) == go.Figure)
+        self.assertTrue(len(figure.data) > 0)
+        self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
+        self.assertTrue(any(trace.name.startswith("Peak") for trace in figure.data))
+        # figure.show()
+
+    def test_get_peak_plot_cathodic(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        figure = cv.get_peak_plot(direction='reduction', width=800, height=500)
+        self.assertTrue(type(figure) == go.Figure)
+        self.assertTrue(len(figure.data) > 0)
+        self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
+        self.assertTrue(any(trace.name.startswith("Peak") for trace in figure.data))
+        # figure.show()
+
+
+
+
+        
+
+
