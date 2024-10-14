@@ -83,23 +83,7 @@ layout = ds.html.Div([
         ds.dcc.Tab(label='Basic Analysis', value='basic_analysis', children=[ds.html.Div(id='basic_analysis')]),
         ds.dcc.Tab(label='Charges passed analysis', value='charge_passed_analysis', children=[ds.html.Div(id='charge_passed_analysis')]),
         ds.dcc.Tab(label='Peak fitting analysis', value='peak_fitting_analysis', children=[ds.html.Div(id='peak_fitting_tools'), ds.html.Div(id='peak_fitting_analysis')]),
-    ])
-
-    ### Display the basic analysis ###
-    # ds.html.H2('Basic Analysis'),
-    # ds.html.Div(id='basic_analysis'),
-    # ds.html.Hr(), ds.html.Hr(),
-
-    ### Display the charge passed analysis ###
-    # ds.html.H2('Charges passed analysis'),
-    # ds.html.Div(id='charge_passed_analysis'),
-    # ds.html.Hr(), ds.html.Hr(),
-
-    ### Display the peak fitting analysis ###
-    # ds.html.H2('Peak fitting analysis'),
-    # ds.html.Div(id='peak_fitting_tools'),
-    # ds.html.Div(id='peak_fitting_analysis'),
-    # ds.html.Hr(), ds.html.Hr()
+    ], value='basic_analysis'),
 
     ])
     
