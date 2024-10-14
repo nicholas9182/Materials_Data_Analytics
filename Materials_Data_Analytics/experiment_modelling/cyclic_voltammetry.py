@@ -678,7 +678,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                        .assign(cycle = lambda x: x['cycle'].astype('str'))
                        )
 
-        figure = px.scatter(data, x='potential', y='current', color='cycle', title=f'{direction.capitalize()} peaks',
+        figure = px.scatter(data, x='potential', y='current', color='cycle', title=f'Principal {direction.capitalize()} peak',
                             labels={'current': 'Current [mA]', 'cycle': 'Cycle', 'potential': 'Potential [V]'}, **kwargs)
 
         colors = {trace.name: trace.marker.color for trace in figure.data}
