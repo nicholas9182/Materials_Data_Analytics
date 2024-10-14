@@ -272,12 +272,28 @@ class TestGaussianParserRestart(unittest.TestCase):
         with self.assertRaises(ValueError):
             bbl_log = GaussianParser("./test_trajectories/bbl/step5_raman_restart.log")
 
+
 class TestGaussianParserRestart2(unittest.TestCase):
 
     def test_parser_restart(self):
         path1 = './test_trajectories/bbl/step4.log'
         path2 = './test_trajectories/bbl/step4_restart.log'
         bbl_log = GaussianParser([path1, path2])
+        self.assertTrue(type(bbl_log) == GaussianParser)
+        self.assertTrue(bbl_log.energy == -18889245.002059143)
+        self.assertTrue('opt' in bbl_log.keywords)
+        self.assertTrue(bbl_log.raman is False)
+        self.assertTrue(bbl_log.esp is False)
+        self.assertTrue(bbl_log.complete is True)
+        self.assertTrue(bbl_log.opt is True)
+        self.assertTrue(bbl_log.functional == 'WB97XD')
+        self.assertTrue(bbl_log.basis == '6-311(d,p)')
+        self.assertTrue(bbl_log.restart == True)
+
+    def test_parser_restart_tuple(self):
+        path1 = './test_trajectories/bbl/step4.log'
+        path2 = './test_trajectories/bbl/step4_restart.log'
+        bbl_log = GaussianParser((path1, path2))
         self.assertTrue(type(bbl_log) == GaussianParser)
         self.assertTrue(bbl_log.energy == -18889245.002059143)
         self.assertTrue('opt' in bbl_log.keywords)

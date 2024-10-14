@@ -91,8 +91,8 @@ layout = ds.html.Div([
 
     ### Display the peak fitting analysis ###
     ds.html.H2('Peak fitting analysis'),
+    ds.html.Div(id='peak_fitting_tools'),
     ds.html.Div(id='peak_fitting_analysis'),
-    ds.html.Br(),
     ds.html.Hr(), ds.html.Hr()
 
     ])
@@ -390,6 +390,64 @@ def display_charge_passed_analysis(encoded_cv):
         ], style={'padding': 2, 'flex': 10})
 
     return charge_analysis_element
+
+
+@ds.callback(
+    ds.Output('peak_fitting_tools', 'children'),
+    [ds.Input('cv_stored', 'data')],
+    prevent_initial_call=True
+)
+def display_peak_fitting_tools(encoded_cv):
+    """
+    Callback to display the peak fitting analysis
+    """
+    peak_fitting_tools_element = ds.html.Div([
+        ds.html.H3('Peak fitting tools'),
+        ds.html.Div(["""In the following section, you can fit a polynomial to the data around a peak. The polynomial is then used to find the peak x and y value."""]),
+        ds.html.Br(),
+        ds.html.H3("Select the order of the polynomial to fit around the peak"),
+        ds.html.Div(ds.dcc.Slider(min=2, max=8, step=2, value=4, id='polynomial_order_slider'), style=slider_style),
+        ds.html.Br(),
+        ds.html.H3("Select the potential window around the peak to fit your polynomial"),
+        ds.html.Div(ds.dcc.Slider(min=0.001, max=0.04, value=0.01, id='window_slider'), style=slider_style),
+        ds.html.Br(),
+        ds.html.Button('Update Peak Fitting', id='update_peak_fitting', style=button_style),
+        ])
+
+    return peak_fitting_tools_element
+
+
+@ds.callback(
+    ds.Output('peak_fitting_analysis', 'children'),
+    [ds.Input('update_peak_fitting', 'n_clicks')],
+    [ds.State('cv_stored', 'data'),
+     ds.State('polynomial_order_slider', 'value'),
+     ds.State('window_slider', 'value')],
+    prevent_initial_call=True
+)
+def display_peak_fitting_analysis(n_clicks, encoded_cv, polynomial_order, window):
+
+    the_cv = pickle_and_decode(encoded_cv)
+
+    peak_points = the_cv.get_peaks(window=window, polynomial_order=polynomial_order, summary=True).round(7).to_dict('records')
+
+    peak_points_table_summary_element = ds.html.Div([
+        ds.html.H3('Peaks for each cycle'),
+        ds.html.Div(["""The following table shows the peak potentials and currents for each cycle. The polynomial order and window size are used to fit a polynomial to the data around the peak."""]),
+        ds.dcc.Markdown(f"""```cyclic_voltammogram.get_peaks(window={window}, polynomial_order={polynomial_order}, summary=True).round(7)```"""),
+        ds.html.Br(),
+        ds.dash_table.DataTable(data=peak_points, style_table=table_styles),
+        ds.html.Button("Download Table as CSV", id="charges_summary_download_button"),
+        ds.dcc.Download(id="Peaks_summary_download"),
+        ds.html.Br()
+        ])
+    
+    peaks_analysis_element = ds.html.Div(children=[
+        ds.html.Br(),
+        peak_points_table_summary_element,
+        ], style={'padding': 2, 'flex': 10})
+    
+    return peaks_analysis_element
 
 
 @ds.callback(

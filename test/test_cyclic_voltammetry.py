@@ -294,7 +294,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_get_peak_plot_anodic(self):
         cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
-        figure = cv.get_peak_plot(direction='oxidation', width=800, height=500)
+        figure = cv.get_peak_plot(direction='oxidation', window = 0.02, width=700, height=500)
         self.assertTrue(type(figure) == go.Figure)
         self.assertTrue(len(figure.data) > 0)
         self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
@@ -303,16 +303,26 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_get_peak_plot_cathodic(self):
         cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
-        figure = cv.get_peak_plot(direction='reduction', width=800, height=500)
+        figure = cv.get_peak_plot(direction='reduction', window = 0.02, width=700, height=500)
         self.assertTrue(type(figure) == go.Figure)
         self.assertTrue(len(figure.data) > 0)
         self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
         self.assertTrue(any(trace.name.startswith("Peak") for trace in figure.data))
         # figure.show()
 
+    def test_get_plots_peaks_with_cycle(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        current_figure, potential_figure = cv.get_plots_peaks_with_cycle(polynomial_order=4, window=0.02, width=700, height=500)
 
-
-
+        self.assertTrue(type(current_figure) == go.Figure)
+        self.assertTrue(type(potential_figure) == go.Figure)
         
-
+        self.assertTrue(len(current_figure.data) > 0)
+        self.assertTrue(len(potential_figure.data) > 0)
+        
+        self.assertTrue(any(trace.name.startswith("anodic peak") or trace.name.startswith("cathodic peak") for trace in current_figure.data))
+        self.assertTrue(any(trace.name.startswith("anodic peak") or trace.name.startswith("cathodic peak") for trace in potential_figure.data))
+        
+        # current_figure.show()
+        # potential_figure.show()
 
