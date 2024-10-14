@@ -102,7 +102,7 @@ class Measurement():
         x_range = (x_min, x_max)
 
         # get the coefficients and covariance matrix of the polynomial fit
-        coefficients = np.polyfit(data[x_col], data[y_col], 4, cov=True)[0]
+        coefficients = np.polyfit(data[x_col], data[y_col], polynomial_order, cov=True)[0]
 
         # create a polymonial object and its derivative from those coefficients
         polynomial = np.poly1d(coefficients)

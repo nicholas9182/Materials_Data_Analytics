@@ -310,6 +310,17 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue(any(trace.name.startswith("Peak") for trace in figure.data))
         # figure.show()
 
+    def test_get_peak_plot_cathodic_poly(self):
+        cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
+        figure1 = cv.get_peak_plot(direction='oxidation', window = 0.02, polynomial_order=2, width=700, height=500)
+        figure2 = cv.get_peak_plot(direction='oxidation', window = 0.02, polynomial_order=6, width=700, height=500)
+        self.assertTrue(type(figure1) == go.Figure)
+        self.assertTrue(len(figure1.data) > 0)
+        self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure1.data))
+        self.assertTrue(any(trace.name.startswith("Peak") for trace in figure1.data))
+        figure1.show()
+        figure2.show()
+
     def test_get_plots_peaks_with_cycle(self):
         cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)
         current_figure, potential_figure = cv.get_plots_peaks_with_cycle(polynomial_order=4, window=0.02, width=700, height=500)

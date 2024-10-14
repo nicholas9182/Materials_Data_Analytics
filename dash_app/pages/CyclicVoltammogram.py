@@ -79,21 +79,27 @@ layout = ds.html.Div([
         ds.html.Hr(), ds.html.Hr()
         ], style={'padding': 10, 'flex': 10}),
 
+    ds.dcc.Tabs([
+        ds.dcc.Tab(label='Basic Analysis', value='basic_analysis', children=[ds.html.Div(id='basic_analysis')]),
+        ds.dcc.Tab(label='Charges passed analysis', value='charge_passed_analysis', children=[ds.html.Div(id='charge_passed_analysis')]),
+        ds.dcc.Tab(label='Peak fitting analysis', value='peak_fitting_analysis', children=[ds.html.Div(id='peak_fitting_tools'), ds.html.Div(id='peak_fitting_analysis')]),
+    ])
+
     ### Display the basic analysis ###
-    ds.html.H2('Basic Analysis'),
-    ds.html.Div(id='basic_analysis'),
-    ds.html.Hr(), ds.html.Hr(),
+    # ds.html.H2('Basic Analysis'),
+    # ds.html.Div(id='basic_analysis'),
+    # ds.html.Hr(), ds.html.Hr(),
 
     ### Display the charge passed analysis ###
-    ds.html.H2('Charges passed analysis'),
-    ds.html.Div(id='charge_passed_analysis'),
-    ds.html.Hr(), ds.html.Hr(),
+    # ds.html.H2('Charges passed analysis'),
+    # ds.html.Div(id='charge_passed_analysis'),
+    # ds.html.Hr(), ds.html.Hr(),
 
     ### Display the peak fitting analysis ###
-    ds.html.H2('Peak fitting analysis'),
-    ds.html.Div(id='peak_fitting_tools'),
-    ds.html.Div(id='peak_fitting_analysis'),
-    ds.html.Hr(), ds.html.Hr()
+    # ds.html.H2('Peak fitting analysis'),
+    # ds.html.Div(id='peak_fitting_tools'),
+    # ds.html.Div(id='peak_fitting_analysis'),
+    # ds.html.Hr(), ds.html.Hr()
 
     ])
     
@@ -428,8 +434,10 @@ def display_peak_fitting_tools(encoded_cv):
 def display_peak_fitting_analysis(n_clicks, encoded_cv, polynomial_order, window):
 
     the_cv = pickle_and_decode(encoded_cv)
-
     peak_points = the_cv.get_peaks(window=window, polynomial_order=polynomial_order, summary=True).round(7).to_dict('records')
+    peak_plot_reduction = the_cv.get_peak_plot(direction='reduction', window = window, polynomial_order = polynomial_order, width=700, height=500)
+    peak_plot_oxidation = the_cv.get_peak_plot(direction='oxidation', window = window, polynomial_order = polynomial_order, width=700, height=500)
+    current_figure, potential_figure = the_cv.get_plots_peaks_with_cycle(polynomial_order=polynomial_order, window=window, width=700, height=500)
 
     peak_points_table_summary_element = ds.html.Div([
         ds.html.H3('Peaks for each cycle'),
@@ -437,14 +445,39 @@ def display_peak_fitting_analysis(n_clicks, encoded_cv, polynomial_order, window
         ds.dcc.Markdown(f"""```cyclic_voltammogram.get_peaks(window={window}, polynomial_order={polynomial_order}, summary=True).round(7)```"""),
         ds.html.Br(),
         ds.dash_table.DataTable(data=peak_points, style_table=table_styles),
-        ds.html.Button("Download Table as CSV", id="charges_summary_download_button"),
-        ds.dcc.Download(id="Peaks_summary_download"),
         ds.html.Br()
         ])
+    
+    peak_plot_element = ds.html.Div([
+        ds.html.Div([
+            ds.dcc.Markdown(f"""```cyclic_voltammogram.get_peak_plot(direction='reduction', window = {window}, polynomial_order = {polynomial_order})```"""),
+            ds.dcc.Graph(figure=peak_plot_reduction, id='peak_plot_reduction_plot')
+            ]),
+        ds.html.Div([
+            ds.dcc.Markdown(f"""```cyclic_voltammogram.get_peak_plot(direction='oxidation', window = {window}, polynomial_order = {polynomial_order})```"""),
+            ds.dcc.Graph(figure=peak_plot_oxidation, id='peak_plot_oxidation_plot')
+            ])
+        ], style={'display': 'flex', 'justify-content': 'space-around'})
+    
+    peak_position_plot_element = ds.html.Div([
+        ds.html.Div([
+            ds.dcc.Markdown(f"""```cyclic_voltammogram.get_plots_peaks_with_cycle(polynomial_order={polynomial_order}, window={window})[0]```"""),
+            ds.dcc.Graph(figure=current_figure, id='current_peak_plot_plot')
+            ]),
+        ds.html.Div([
+            ds.dcc.Markdown(f"""```cyclic_voltammogram.get_plots_peaks_with_cycle(polynomial_order={polynomial_order}, window={window})[1]```"""),
+            ds.dcc.Graph(figure=potential_figure, id='potential_peak_oxidation_plot')
+            ])
+        ], style={'display': 'flex', 'justify-content': 'space-around'})
     
     peaks_analysis_element = ds.html.Div(children=[
         ds.html.Br(),
         peak_points_table_summary_element,
+        ds.html.Br(),
+        peak_plot_element,
+        ds.html.Br(),
+        peak_position_plot_element,
+        ds.html.Br()
         ], style={'padding': 2, 'flex': 10})
     
     return peaks_analysis_element
