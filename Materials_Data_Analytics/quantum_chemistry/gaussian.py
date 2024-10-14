@@ -14,20 +14,20 @@ class GaussianParser:
 
         self._log_file = log_file
 
-        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1):
+        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
             if type(log_file) == str:
                 self._lines = [line for line in open(log_file, 'r')]
             elif len(log_file) == 1:
                 self._lines = [line for line in open(log_file[0], 'r')]
             self._restart = False
-        elif type(log_file) == list:
+        elif type(log_file) == list or type(log_file) == tuple:
             lines = []
             for file in log_file:
                 lines = lines + [line for line in open(file, 'r')]
             self._lines = lines
             self._restart = True
         else:
-            raise ValueError("The log file must be a path or a list of paths")
+            raise ValueError("The log file must be a path, a list of paths or a tuple of paths")
         
         self._keywords = self._get_keywords()
         self._raman = True if len([i for i in self.keywords if 'raman' in i]) > 0 else False
