@@ -14,6 +14,7 @@ import io
 class CyclicVoltammogram(ElectrochemicalMeasurement):
     """
     A general class for the analysis of cyclic voltammograms.
+    Done the demo 
     Main contributors:
     Nicholas Siemons
     Contributors:
