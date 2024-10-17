@@ -88,7 +88,7 @@ class GaussianParser:
         keywords_str = ''
         for i in keyword_lines:
             keywords_str = keywords_str + i[1:-1]
-        keywords = [i for i in keywords_str.split()][1:]
+        keywords = [i.lower() for i in keywords_str.split()][1:]
 
         if 'restart' in keywords or 'Restart' in keywords:
             raise ValueError("This log file is a restart file and should be parsed with the previous log file")

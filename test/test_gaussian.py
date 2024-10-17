@@ -19,7 +19,7 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_multiline_keyword_parsing(self):
         result = self.bbl_step6_log.keywords
-        self.assertTrue(result == ['scrf=(smd,solvent=water)', 'uwB97XD/6-311(d,p)', 'Geom=AllCheck', 'guess=read', 'stable'])
+        self.assertTrue(result == ['scrf=(smd,solvent=water)', 'uwb97xd/6-311(d,p)', 'geom=allcheck', 'guess=read', 'stable'])
 
     def test_get_bonds_from_log(self):
         result = self.bbl_log.get_bonds_from_log()
