@@ -15,8 +15,8 @@ class TestMetaTrajectory(unittest.TestCase):
     Test the contruction and behaviour of a meta trajectory
     """
 
-    file = "./test_trajectories/ndi_na_binding/COLVAR.0"
-    cv_traj = MetaTrajectory(file)
+    cv_traj = MetaTrajectory("./test_trajectories/ndi_na_binding/COLVAR.0")
+    opes_traj = MetaTrajectory("./test_trajectories/ndi_single_opes/COLVAR.0")
 
     def test_colvar_read(self):
         """
@@ -28,24 +28,15 @@ class TestMetaTrajectory(unittest.TestCase):
         self.assertEqual(self.cv_traj.cvs, ['D1', 'CM1'])
         self.assertTrue(self.cv_traj._opes is False)
 
-
-class TestMetaTrajectoryOPES(unittest.TestCase):
-    """
-    Test the contruction and behaviour of a meta trajectory with OPES
-    """
-
-    file = "./test_trajectories/ndi_single_opes/COLVAR.0"
-    cv_traj = MetaTrajectory(file)
-
     def test_colvar_read_opes(self):
         """
         checking that the MetaTrajectory is reading in and processing colvar files correctly.
         Comparing with a direct plumed read in
         """
-        self.assertEqual(self.cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias','reweight_factor', 'zed', 'neff', 'nker', 'weight'])
-        self.assertEqual(self.cv_traj.walker, 0)
-        self.assertEqual(self.cv_traj.cvs, ['D1', 'CM1'])
-        self.assertTrue(self.cv_traj._opes is True)
+        self.assertEqual(self.opes_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias','reweight_factor', 'zed', 'neff', 'nker', 'weight'])
+        self.assertEqual(self.opes_traj.walker, 0)
+        self.assertEqual(self.opes_traj.cvs, ['D1', 'CM1'])
+        self.assertTrue(self.opes_traj._opes is True)
 
 
 class TestFreeEnergyLine(unittest.TestCase):
@@ -53,14 +44,16 @@ class TestFreeEnergyLine(unittest.TestCase):
     Test the construction and behaviour of a free energy line
     """
 
-    line_file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
-    plumed_file = pd.DataFrame(pl.read_as_pandas(line_file)).rename(columns={'projection': 'energy'})
+    plumed_file = (pd
+                   .DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1.dat"))
+                   .rename(columns={'projection': 'energy'})
+                   )
 
     fes_folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
     fes_pattern = "FES*dat"
 
     line = FreeEnergyLine(plumed_file)
-    line_from_plumed = FreeEnergyLine.from_plumed(line_file)
+    line_from_plumed = FreeEnergyLine.from_plumed("./test_trajectories/ndi_na_binding/FES_CM1.dat")
 
     def test_basic_attributes(self):
         """
@@ -131,9 +124,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         testing that the normalise function works with a range
         :return:
         """
-        file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
-        line = FreeEnergyLine.from_plumed(file)
-        line.set_datum(datum={'CM1': (6, 8)})
+        line = self.line.set_datum(datum={'CM1': (6, 8)})
         self.assertAlmostEqual(line._data.loc[line._data['CM1'] > 6].loc[line._data['CM1'] < 8]['energy'].mean(), 0)
         figure = go.Figure()
         trace = go.Scatter(x=line._data[line.cvs[0]], y=line._data['energy'])
