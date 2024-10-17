@@ -318,8 +318,8 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue(len(figure1.data) > 0)
         self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure1.data))
         self.assertTrue(any(trace.name.startswith("Peak") for trace in figure1.data))
-        figure1.show()
-        figure2.show()
+        # figure1.show()
+        # figure2.show()
 
     def test_get_plots_peaks_with_cycle(self):
         cv = CyclicVoltammogram.from_biologic(path='test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte=self.electrolyte)

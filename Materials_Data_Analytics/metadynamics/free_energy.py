@@ -574,13 +574,14 @@ class FreeEnergySpace:
         return self._metadata
 
     @classmethod
-    def from_standard_directory(cls, standard_dir, colvar_string_matcher: str = "COLVAR_REWEIGHT.", **kwargs):
+    def from_standard_directory(cls, standard_dir, colvar_string_matcher: str = "COLVAR_REWEIGHT.", verbose = True, **kwargs):
         """
         alternate constructor to make a free energy space from a standard metadynamics directory. In this directory,
         the free energy lines and surfaces are held in folders called FES_* . The reweight data is held in COLVAR files
         called COLVAR_REWEIGHT.* .
         :param standard_dir: The directory with the plumed/gromacs files
         :param colvar_string_matcher: the string that matches to the colvar files names
+        :param verbose: print out the files being added
         :return: a populated FreeEnergySpace
         """
         temperature = kwargs['temperature'] if 'temperature' in kwargs.keys() else 298
@@ -591,7 +592,8 @@ class FreeEnergySpace:
             if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
                     and len(f.path.split("/")[-1].split("_")) == 2):
                 path = f.path + "/"
-                print(f"Adding a free energy line from files in {path}")
+                if verbose:
+                    print(f"Adding a free energy line from files in {path}")
                 files = [path + d for d in os.listdir(path)]
                 files = files[0] if len(files) == 1 else files
                 line = FreeEnergyLine.from_plumed(files, temperature=temperature)
@@ -601,7 +603,8 @@ class FreeEnergySpace:
             if (f.is_dir() and f.path.split("/")[-1].split("_")[0] == "FES"
                     and len(f.path.split("/")[-1].split("_")) == 3):
                 path = f.path + "/"
-                print(f"Adding a free energy surface from files in {path}")
+                if verbose:
+                    print(f"Adding a free energy surface from files in {path}")
                 files = [path + d for d in os.listdir(path)]
                 files = files[0] if len(files) == 1 else files
                 surface = FreeEnergySurface.from_plumed(files, temperature=temperature)
@@ -610,7 +613,8 @@ class FreeEnergySpace:
         for f in [standard_dir + "/" + f for f in os.listdir(standard_dir)
                   if colvar_string_matcher in f and 'bck' not in f]:
             file = f.split("/")[-1]
-            print(f"Adding {file} as a metaD trajectory")
+            if verbose:
+                print(f"Adding {file} as a metaD trajectory")
             traj = MetaTrajectory(f, temperature=temperature)
             space.add_metad_trajectory(traj)
 
@@ -919,7 +923,7 @@ class FreeEnergySpace:
 
     @staticmethod
     def _reweight_traj_list(traj_list: list, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None, temperature: float = 298
+                            verbose: bool = False, conditions: str | list[str] = None, temperature: float = 298
                             ) -> (pd.DataFrame | dict[pd.DataFrame]):
         """
         Function to reweight a list of trajectories.
@@ -927,7 +931,7 @@ class FreeEnergySpace:
         :param cv: the cv in which to get the reweight.
         :param bins: number of bins, or a list of bin boundaries.
         :param n_timestamps: number of time stamps to have in the _time_data.
-        :param verbosity: print progress?
+        :param verbose: print progress?
         :param conditions: some query style conditions to put on the histogram.
         :param temperature: temperature to get the population.
         :return: reweighted trajectory data.
@@ -958,7 +962,7 @@ class FreeEnergySpace:
                                                       conditions=conditions)
                                  .filter([cv, 'energy', 'population'])
                                  )
-                if verbosity:
+                if verbose:
                     print(f"Made histogram for {i} timestamp")
         else:
             raise ValueError("n_timestamps needs to be None or integer!")
@@ -966,7 +970,7 @@ class FreeEnergySpace:
         return fes_data
 
     def get_reweighted_line(self, cv: str, bins: int | list[int | float] = 200, n_timestamps: int = None,
-                            verbosity: bool = False, conditions: str | list[str] = None, adaptive_bins: bool = False
+                            verbose: bool = False, conditions: str | list[str] = None, adaptive_bins: bool = False
                             ) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
@@ -974,7 +978,7 @@ class FreeEnergySpace:
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
         :param n_timestamps: number of time stamps to have in the _time_data
-        :param verbosity: print progress?
+        :param verbose: print progress?
         :param conditions: some query style conditions to put on the histogram
         :param adaptive_bins: whether to use bins with equal number of points
         :return:
@@ -990,13 +994,13 @@ class FreeEnergySpace:
             bins = pd.qcut(pd.concat(traj_list_data)[cv], bins, retbins=True)[1]
 
         # reweight the trajectories
-        fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbosity, conditions, self.temperature)
+        fes_data = self._reweight_traj_list(traj_list, cv, bins, n_timestamps, verbose, conditions, self.temperature)
 
         line = FreeEnergyLine(fes_data, temperature=self.temperature, metadata=self._metadata)
         return line
 
     def get_reweighted_line_with_walker_error(self, cv: str, bins: int | list[int | float] = 200,
-                                              verbosity: bool = False, conditions: str | list[str] = None,
+                                              verbose: bool = False, conditions: str | list[str] = None,
                                               adaptive_bins: bool = False) -> FreeEnergyLine:
         """
         Function to get a free energy line from a free energy space with meta trajectories in it, using weighted
@@ -1004,7 +1008,7 @@ class FreeEnergySpace:
         analysis. Errors are calculated from the standard deviation of the multiple walkers.
         :param cv: the cv in which to get the reweight
         :param bins: number of bins, or a list with the bin boundaries
-        :param verbosity: print progress?
+        :param verbose: print progress?
         :param conditions: some query style conditions to put on the histogram
         :param adaptive_bins: whether to make bins on quartiles
         :return:
@@ -1025,10 +1029,10 @@ class FreeEnergySpace:
         # reweight each trajectory individually
         fes_data = []
         for w, t in self.trajectories.items():
-            if verbosity:
+            if verbose:
                 print(f"Getting reweighted data for walker {w}")
             new_fes_data = (self
-                            ._reweight_traj_list([t], cv, bins, verbosity=verbosity, conditions=conditions,
+                            ._reweight_traj_list([t], cv, bins, verbose=verbose, conditions=conditions,
                                                  temperature=self.temperature)
                             .assign(walker=w)
                             )

@@ -11,71 +11,76 @@ tracemalloc.start()
 
 
 class TestMetaTrajectory(unittest.TestCase):
+    """
+    Test the contruction and behaviour of a meta trajectory
+    """
+
+    file = "./test_trajectories/ndi_na_binding/COLVAR.0"
+    cv_traj = MetaTrajectory(file)
 
     def test_colvar_read(self):
         """
         checking that the MetaTrajectory is reading in and processing colvar files correctly. Comparing with a direct
         plumed read in
         """
-        file = "./test_trajectories/ndi_na_binding/COLVAR.0"
-        cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor', 'weight'])
-        self.assertEqual(cv_traj.walker, 0)
-        self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
-        self.assertTrue(cv_traj._opes is False)
+        self.assertEqual(self.cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'bias', 'reweight_bias', 'reweight_factor', 'weight'])
+        self.assertEqual(self.cv_traj.walker, 0)
+        self.assertEqual(self.cv_traj.cvs, ['D1', 'CM1'])
+        self.assertTrue(self.cv_traj._opes is False)
+
+
+class TestMetaTrajectoryOPES(unittest.TestCase):
+    """
+    Test the contruction and behaviour of a meta trajectory with OPES
+    """
+
+    file = "./test_trajectories/ndi_single_opes/COLVAR.0"
+    cv_traj = MetaTrajectory(file)
 
     def test_colvar_read_opes(self):
         """
         checking that the MetaTrajectory is reading in and processing colvar files correctly.
         Comparing with a direct plumed read in
         """
-        file = "./test_trajectories/ndi_single_opes/COLVAR.0"
-        cv_traj = MetaTrajectory(file)
-        self.assertEqual(cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias','reweight_factor', 'zed', 'neff', 'nker', 'weight'])
-        self.assertEqual(cv_traj.walker, 0)
-        self.assertEqual(cv_traj.cvs, ['D1', 'CM1'])
-        self.assertTrue(cv_traj._opes is True)
+        self.assertEqual(self.cv_traj._data.columns.to_list(), ['time', 'D1', 'CM1', 'reweight_bias','reweight_factor', 'zed', 'neff', 'nker', 'weight'])
+        self.assertEqual(self.cv_traj.walker, 0)
+        self.assertEqual(self.cv_traj.cvs, ['D1', 'CM1'])
+        self.assertTrue(self.cv_traj._opes is True)
 
 
 class TestFreeEnergyLine(unittest.TestCase):
+    """
+    Test the construction and behaviour of a free energy line
+    """
 
-    def test_fes_read(self):
+    line_file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
+    plumed_file = pd.DataFrame(pl.read_as_pandas(line_file)).rename(columns={'projection': 'energy'})
+
+    fes_folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
+    fes_pattern = "FES*dat"
+
+    line = FreeEnergyLine(plumed_file)
+    line_from_plumed = FreeEnergyLine.from_plumed(line_file)
+
+    def test_basic_attributes(self):
         """
         checking that the 1d fes file is being read in correctly and the cv extracted correctly.
         Comparing with a direct plumed read in
         """
-        file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
-        pan_file = pl.read_as_pandas(file)
-        file = pd.DataFrame(pan_file).rename(columns={'projection': 'energy'})
-        line = FreeEnergyLine(file)
-        self.assertEqual(line._data.loc[:, 'energy'].to_list(), file.loc[:, 'energy'].to_list())
-        self.assertEqual(line.cvs[0], 'CM1')
-
-    def test_fes_read_from_plumed(self):
-        """
-        checking that the 1d fes file is being read in correctly and the cv extracted correctly.
-        Comparing with a direct plumed read in
-        """
-        file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
-        line = FreeEnergyLine.from_plumed(file)
-        self.assertEqual(line.cvs[0], 'CM1')
+        self.assertEqual(self.line._data.loc[:, 'energy'].to_list(), self.plumed_file.loc[:, 'energy'].to_list())
+        self.assertEqual(self.line.cvs[0], 'CM1')
+        self.assertEqual(self.line_from_plumed.cvs[0], 'CM1')
 
     def test_fes_read_with_time_data(self):
         """
         checking that alternate constructor works for reading in fes _data with strides to get _time_data dictionary
         """
-        folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
-        pattern = "FES*dat"
-
-        all_fes_files = [file for folder, subdir, files in os.walk(folder)
-                         for file in glob(os.path.join(folder, pattern))]
-        
+        all_fes_files = [file for folder, subdir, files in os.walk(self.fes_folder) for file in glob(os.path.join(folder, self.fes_pattern))]
         individual_files = [f.split("/")[-1] for f in all_fes_files]
         time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
         data_frames = [FreeEnergyLine._read_file(f) for f in all_fes_files]
         data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
         line = FreeEnergyLine(data)
-
         compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
         energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
         my_diff = line._time_data[2].loc[1, 'energy'] - line._time_data[2].loc[2, 'energy']
@@ -85,9 +90,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         checking that alternate constructor works for reading in fes _data with strides to get _time_data dictionary
         """
-        folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
-        pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder) for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(self.fes_folder) for file in glob(os.path.join(self.fes_folder, self.fes_pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
         energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
@@ -99,9 +102,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         testing that the normalise function works with a single value
         :return:
         """
-        file = "./test_trajectories/ndi_na_binding/FES_CM1.dat"
-        line = FreeEnergyLine.from_plumed(file)
-        line.set_datum({'CM1': 0})
+        line = self.line_from_plumed.set_datum({'CM1': 0})
         figure = go.Figure()
         trace = go.Scatter(x=line._data[line.cvs[0]], y=line._data['energy'])
         figure.add_trace(trace)
@@ -113,10 +114,8 @@ class TestFreeEnergyLine(unittest.TestCase):
         testing that the normalise function works with a range
         :return:
         """
-        folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
-        pattern = "FES*dat"
-        all_fes_files = [file for folder, subdir, files in os.walk(folder)
-                         for file in glob(os.path.join(folder, pattern))]
+        all_fes_files = [file for folder, subdir, files in os.walk(self.fes_folder)
+                         for file in glob(os.path.join(folder, self.fes_pattern))]
         line = FreeEnergyLine.from_plumed(all_fes_files)
         line.set_datum(datum={'CM1': 7})
         self.assertTrue(0 in line._time_data[0]['energy'])
@@ -230,7 +229,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
 
-        shape = FreeEnergySpace.from_standard_directory(here_dir)
+        shape = FreeEnergySpace.from_standard_directory(here_dir, verbose=False)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(shape.lines['CM1'].cvs == ['CM1'])
         self.assertTrue(len(shape.trajectories) == 2)
@@ -274,7 +273,7 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_surface_reweighting(self):
 
-        surface = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/")
+        surface = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/", verbose=False)
         data = surface.get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5]).get_data()
         figure = go.Figure()
         figure.add_trace(go.Heatmap(x=data["CM2"], y=data["CM3"], z=data['energy']))
@@ -284,7 +283,7 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_surface_reweight_with_symmetry(self):
 
-        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/")
+        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/", verbose=False)
         data = (space
                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
                 .set_as_symmetric('y=x')
@@ -298,7 +297,7 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_surface_reweight_with_symmetry_err(self):
 
-        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/")
+        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/", verbose=False)
         data = (space
                 .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
                 .set_as_symmetric('y=x')
@@ -312,7 +311,7 @@ class TestFreeEnergySurface(unittest.TestCase):
 
     def test_get_forces(self):
 
-        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/")
+        space = FreeEnergySpace.from_standard_directory("./test_trajectories/ndi_na_binding/", verbose=False)
 
         force = (space
                  .get_reweighted_surface(cvs=["CM2", "CM3"], bins=[-0.5, 0.5, 1.5, 2.5, 3.5])
@@ -589,7 +588,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_single_opes/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", verbose=False)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 1)
         self.assertTrue(shape.n_walker == 1)
@@ -600,7 +599,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.")
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", verbose=False)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 2)
         self.assertTrue(shape.n_walker == 2)
@@ -611,7 +610,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350)
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350, verbose=False)
         line = shape.get_reweighted_line('D1', bins=80)
         self.assertTrue(type(line) == FreeEnergyLine)
         self.assertTrue(type(shape) == FreeEnergySpace)
@@ -624,7 +623,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350)
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350, verbose=False)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 2)
         self.assertTrue(shape.n_walker == 2)
@@ -638,8 +637,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350,
-                                                        metadata={'ion': 'Na'})
+        shape = FreeEnergySpace.from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", temperature=350, metadata={'ion': 'Na'}, verbose=False)
         self.assertTrue(type(shape) == FreeEnergySpace)
         self.assertTrue(len(shape.trajectories) == 2)
         self.assertTrue(shape.n_walker == 2)
@@ -653,9 +651,11 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_single_opes/"
-        shape = FreeEnergySpace.from_standard_directory(
-            here_dir, colvar_string_matcher="COLVAR.", metadata={'unit': 'NDI'}
-        ).trajectories[0].get_data(with_metadata=True)
+        shape = (FreeEnergySpace
+                 .from_standard_directory(here_dir, colvar_string_matcher="COLVAR.", metadata={'unit': 'NDI'}, verbose=False)
+                 .trajectories[0]
+                 .get_data(with_metadata=True)
+                 )
         self.assertTrue('unit' in shape.columns)
 
     def test_one_walker_reweighted_with_walker_error(self):
@@ -713,7 +713,7 @@ class TestFreeEnergySpace(unittest.TestCase):
         :return:
         """
         here_dir = "./test_trajectories/ndi_na_binding/"
-        shape = FreeEnergySpace.from_standard_directory(here_dir)
+        shape = FreeEnergySpace.from_standard_directory(here_dir, verbose=False)
         shape.get_reweighted_line_with_walker_error('CM1', bins=200)
         self.assertTrue(shape.n_walker == 2)
 
@@ -725,9 +725,12 @@ class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
              './test_trajectories/ndi_bias_exchange/HILLS.2',
              './test_trajectories/ndi_bias_exchange/HILLS.3']
 
-    landscape = FreeEnergySpace.from_standard_directory('./test_trajectories/ndi_bias_exchange/', hills_file=hills)
+    landscape = FreeEnergySpace.from_standard_directory('./test_trajectories/ndi_bias_exchange/', hills_file=hills, verbose=False)
 
     def test_attributes(self):
+        """
+        Test the attributes of a FreeEnergySpace object
+        """
         self.assertTrue(self.landscape.cvs == ['D1', 'CM1', 'CM2', 'CM3'])
         self.assertTrue(self.landscape.dt == 0.0004)
         self.assertTrue(self.landscape.max_time == 0.0596)
@@ -736,24 +739,39 @@ class TestFreeEnergySpaceBiasExchange(unittest.TestCase):
         self.assertTrue(self.landscape.temperature == 298)
 
     def test_get_hills_figures(self):
+        """
+        Test the get_hills_figures method for a FreeEnergySpace object
+        """
         figures = self.landscape.get_hills_figures()
         self.assertTrue(self.landscape._biasexchange is True)
         self.assertEqual(len(figures), 4)
 
     def test_get_average_hills_figure(self):
+        """
+        Test the get_average_hills_figure method for a FreeEnergySpace object
+        """
         figure = self.landscape.get_average_hills_figure()
         self.assertTrue(type(self.landscape) == FreeEnergySpace)
 
     def test_get_max_hills_figure(self):
+        """
+        Test the get_max_hills_figure method for a FreeEnergySpace object
+        """
         figure = self.landscape.get_max_hills_figure()
         self.assertTrue(type(self.landscape) == FreeEnergySpace)
 
     def test_get_hills_figures_hp(self):
+        """
+        Test the get_hills_figures method for a FreeEnergySpace object with height_power
+        """
         figures = self.landscape.get_hills_figures(height_power=0.5)
         self.assertTrue(self.landscape._biasexchange is True)
         self.assertEqual(len(figures), 4)
 
     def test_get_CM1_data(self):
+        """
+        Test the get_data method for a FreeEnergySpace object
+        """
         data = self.landscape.lines['CM1'].get_data()
         self.assertTrue(type(data) == pd.DataFrame)
 
