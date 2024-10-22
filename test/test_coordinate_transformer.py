@@ -12,6 +12,7 @@ class TestCoordinateTransformer(unittest.TestCase):
     })
 
     def test_rotate_x(self):
+        """ Test the rotation of the x axis """
         rot_data = CoordinateTransformer(self.data).rotate(theta_x=82).data
 
         correct_data = pd.DataFrame({

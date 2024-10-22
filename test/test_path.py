@@ -14,12 +14,12 @@ class TestPath(unittest.TestCase):
     })
 
     def test_path(self):
-
+        """ Test the Path class """
         path = Path(self.mep)
         self.assertTrue(type(path) == Path)
 
     def test_from_points(self):
-
+        """ Test the from_points method """
         points = [[8, 0], [0, 0], [0, 8]]
         cvs = ['CM6', 'CM7']
         path = Path.from_points(points, n_steps=21, cvs=cvs).get_data()
@@ -28,7 +28,7 @@ class TestPath(unittest.TestCase):
         self.assertTrue(path['CM7'].iloc[4] == 0.0)
 
     def test_get_surface_force(self):
-
+        """ Test the get_surface_force method """
         points = [[3, 0], [0, 0], [0, 3]]
         cvs = ['CM2', 'CM3']
 
@@ -39,7 +39,5 @@ class TestPath(unittest.TestCase):
                    )
 
         path = SurfacePath.from_points(points, n_steps=21, cvs=cvs, shape=surface)
-
         forces = path._get_surface_forces(index=5)
-
         self.assertTrue(type(forces) == np.ndarray)

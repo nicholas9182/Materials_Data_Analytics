@@ -3,13 +3,14 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.22", 
+    version="6.1.24", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
     url="https://github.com/nicholas9182/Materials_Data_Analytics/",
     packages=find_packages(),
     install_requires=[
+<<<<<<< HEAD
         "scipy >= 1.11.2",
 	    "pandas >= 2.1.1",
         "plotly >= 5.17.0",
@@ -24,6 +25,22 @@ setup(
         "dash >= 2.17.1",
 	    "kaleido >= 0.2.1",
         "plumed >= 2.9.0"
+=======
+        "scipy",
+        "pandas",
+        "plotly",
+        "matplotlib",
+        "typer",
+        "click",
+        "numpy",
+        "torch",
+        "dash",
+        "networkx",
+        "MDAnalysis",
+        "dash",
+        "kaleido",
+        "plumed"
+>>>>>>> e92b74d8ae1129be62fe6994c7d0d65b110920e8
     ],
     scripts=[
         'cli_tools/plot_hills.py',
