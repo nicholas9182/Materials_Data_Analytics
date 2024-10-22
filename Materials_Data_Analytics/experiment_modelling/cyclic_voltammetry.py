@@ -709,7 +709,3 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         return current_figure, potential_figure
     
-    def get_half_wave_potentials(self):
-        """
-        Function to get the half wave potential of the principal peaks
-        """
