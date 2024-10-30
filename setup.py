@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.25", 
+    version="6.1.26", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -36,7 +36,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.4",
+    python_requires=">=3.10",
     entry_points={
         'console_scripts': [
             'launch_dash_app=dash_app.app:run',

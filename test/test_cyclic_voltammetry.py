@@ -26,6 +26,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
     cv_biologic_4 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic3.txt', electrolyte = electrolyte)
     cv_biologic_5 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic4.txt', electrolyte = electrolyte)
     cv_biologic_6 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte = electrolyte)
+    cv_biologic_7 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic6.txt', electrolyte = electrolyte)
     cv_aftermath_1 = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath1.csv', scan_rate=5)
 
 
@@ -38,7 +39,12 @@ class TestCyclicVoltammetry(unittest.TestCase):
         base64_data = base64.b64encode(file_content).decode('utf-8')
         base64_data = f'data:{mime_type};base64,{base64_data}'
         cv_html_base64 = CyclicVoltammogram.from_html_base64(file_contents = base64_data, electrolyte = electrolyte, source='biologic')
+
     
+    def test_create_aftermath2(self):
+        """ Test the creation from aftermath2 file """
+        the_cv = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath2.csv', scan_rate=5)
+        self.assertTrue(type(the_cv) == CyclicVoltammogram)
 
     def test_from_biologic(self):
         """ Test the from_biologic method """
@@ -113,7 +119,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
         integrals = self.cv_biologic_3.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [0.0042, 3.7438, 0.0048, 3.7424, 0.0049, 3.7397, 0.0048, 3.7381, 0.0048])
+        self.assertTrue(charges == [3.7438, 0.0048, 3.7419, 0.0067, 3.7393, 0.0065, 3.7381, 0.0048])
 
     def test_get_charge_passed_biologic3(self):
         """ Test the get_charge_passed method for biologic3 """
@@ -128,6 +134,13 @@ class TestCyclicVoltammetry(unittest.TestCase):
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
         self.assertTrue(charges == [48.3689, 5232.7224, 112.5849])
+
+    def test_get_charge_passed_biologic7(self):
+        """ Test the get_charge_passed method for biologic7 """
+        integrals = self.cv_biologic_7.get_charge_passed()
+        charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
+        self.assertTrue(type(integrals) == pd.DataFrame)
+        self.assertTrue(charges == [0.0038, 6.0156, 0.003, 5.4851])
 
     def test_get_charge_passed_biologic4_av_segments(self):
         """ Test the get_charge_passed method for biologic4 with average segments """

@@ -45,7 +45,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                                  .groupby(['cycle']).count()['potential'].mean().round(0)
                                  )
 
-    def _wrangle_data(self, data, first_index = 5) -> pd.DataFrame:
+    def _wrangle_data(self, data, first_index = 50) -> pd.DataFrame:
         """
         Function to wrangle the data
         :param data: pd.DataFrame with columns potential, current, cycle, time
@@ -67,6 +67,12 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 )
         
         return data
+    
+    def _remove_first_points(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Function to remove the first points of the cyclic voltammogram
+        """
+        
     
     def _find_current_roots(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -100,25 +106,12 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         Function to determine the direction of the cycle (either oxidation or reduction)
         :param data: pd.DataFrame with potential and time
         """
-        potential = data['potential']
-        potential_shifted = potential.shift(1)
-        dv = potential - potential_shifted
-        directions = ['oxidation'] if dv[1] > 0 else ['reduction']
-
-        for i in range(1, len(dv)):
-            if dv[i] > 0:
-                directions.append('oxidation')
-            elif dv[i] < 0:
-                directions.append('reduction')
-            elif dv[i] == 0:
-                directions.append(directions[i-1])
-        
-        for i in range(1, len(directions)-1):
-            if directions[i] != directions[i-1] and directions[i] != directions[i+1]:
-                directions[i] = directions[i-1]
-
-        data = data.assign(direction = directions)
-            
+        data['direction'] = data['potential'].diff().apply(lambda x: 'oxidation' if x > 0 else ('reduction' if x < 0 else 'no_change'))
+        data['direction'] = data['direction'].replace('no_change', pd.NA).ffill()
+        data.loc[0, 'direction'] = data.loc[1, 'direction']
+        previous = data['direction'].shift(1)
+        next = data['direction'].shift(-1)
+        data['direction'] = data['direction'].where((data['direction'] == previous) | (data['direction'] == next), previous)
         return data
     
     def _add_endpoints(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -254,7 +247,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         dv = (pd
               .DataFrame({'dv': data['potential'] - data['potential'].shift(1)})
-              .query('index > 0')
+              .query('index > 100')
               .abs()
               .mean()
               .iloc[0]
