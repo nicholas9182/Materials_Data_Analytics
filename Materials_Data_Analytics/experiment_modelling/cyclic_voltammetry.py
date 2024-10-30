@@ -45,7 +45,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                                  .groupby(['cycle']).count()['potential'].mean().round(0)
                                  )
 
-    def _wrangle_data(self, data, first_index = 5) -> pd.DataFrame:
+    def _wrangle_data(self, data, first_index = 50) -> pd.DataFrame:
         """
         Function to wrangle the data
         :param data: pd.DataFrame with columns potential, current, cycle, time
@@ -56,6 +56,13 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
                 .assign(time = lambda x: x['time'] - x['time'].min())
+                .groupby(['potential','time'], as_index=False)
+                .mean()
+                .sort_values('time')
+                .reset_index(drop=True)
+                )
+        
+        data = (data
                 .pipe(self._find_current_roots)
                 .pipe(self._determine_direction)
                 .pipe(self._make_segments)
@@ -67,6 +74,12 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 )
         
         return data
+    
+    def _remove_first_points(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Function to remove the first points of the cyclic voltammogram
+        """
+        
     
     def _find_current_roots(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -100,25 +113,12 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         Function to determine the direction of the cycle (either oxidation or reduction)
         :param data: pd.DataFrame with potential and time
         """
-        potential = data['potential']
-        potential_shifted = potential.shift(1)
-        dv = potential - potential_shifted
-        directions = ['oxidation'] if dv[1] > 0 else ['reduction']
-
-        for i in range(1, len(dv)):
-            if dv[i] > 0:
-                directions.append('oxidation')
-            elif dv[i] < 0:
-                directions.append('reduction')
-            elif dv[i] == 0:
-                directions.append(directions[i-1])
-        
-        for i in range(1, len(directions)-1):
-            if directions[i] != directions[i-1] and directions[i] != directions[i+1]:
-                directions[i] = directions[i-1]
-
-        data = data.assign(direction = directions)
-            
+        data['direction'] = data['potential'].diff().apply(lambda x: 'oxidation' if x > 0 else ('reduction' if x < 0 else 'no_change'))
+        data['direction'] = data['direction'].replace('no_change', pd.NA).ffill()
+        data.loc[0, 'direction'] = data.loc[1, 'direction']
+        previous = data['direction'].shift(1)
+        next = data['direction'].shift(-1)
+        data['direction'] = data['direction'].where((data['direction'] == previous) | (data['direction'] == next), previous)
         return data
     
     def _add_endpoints(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -236,6 +236,9 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
     def from_aftermath(cls, path: str = None, scan_rate: float = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from an AfterMath file
+        :param path: str, path to the AfterMath file
+        :param scan_rate: float, the scan rate of the cyclic voltammogram in mV/s
+        :param data: pd.DataFrame, the data of the cyclic voltammogram
         """
 
         if path is None and data is not None:
@@ -246,29 +249,27 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         if type(scan_rate) != float:
             scan_rate = float(scan_rate)
 
+        scan_rate = scan_rate/1000
+
         data = (data
                 .rename({'Potential (V)': 'potential', 'Current (A)': 'current'}, axis=1)
                 .filter(['potential', 'current'])
-                .assign(current = lambda x: x['current']/1000)
+                .assign(current = lambda x: x['current']*1000)
+                .assign(dv = lambda x: x['potential'] - x['potential'].shift(1))
+                .assign(time = lambda x: x['dv'].abs().cumsum()/scan_rate)
                 )
         
-        dv = (pd
-              .DataFrame({'dv': data['potential'] - data['potential'].shift(1)})
-              .query('index > 0')
-              .abs()
-              .mean()
-              .iloc[0]
-              )
-        
-        time = [(i*dv)/(scan_rate/1000) for i in range(0, len(data))]
-        
-        cv = cls(potential=data['potential'], current=data['current'], time=time, **kwargs)
+        data.loc[0, 'time'] = 0
+
+        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
 
         return cv
     
     def drop_cycles(self, drop: list[int] | int = None, keep: list[int] | int = None) -> pd.DataFrame:
         """
         Function to edit which cycles are being considered
+        :param drop: list of cycles to drop
+        :param keep: list of cycles to keep
         """
         if type(drop) == int:
             drop = [int]
