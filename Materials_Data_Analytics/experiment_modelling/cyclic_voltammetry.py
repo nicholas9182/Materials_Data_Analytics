@@ -56,6 +56,13 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
                 .assign(time = lambda x: x['time'] - x['time'].min())
+                .groupby(['potential','time'], as_index=False)
+                .mean()
+                .sort_values('time')
+                .reset_index(drop=True)
+                )
+        
+        data = (data
                 .pipe(self._find_current_roots)
                 .pipe(self._determine_direction)
                 .pipe(self._make_segments)
@@ -229,6 +236,9 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
     def from_aftermath(cls, path: str = None, scan_rate: float = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to make a CyclicVoltammogram object from an AfterMath file
+        :param path: str, path to the AfterMath file
+        :param scan_rate: float, the scan rate of the cyclic voltammogram in mV/s
+        :param data: pd.DataFrame, the data of the cyclic voltammogram
         """
 
         if path is None and data is not None:
@@ -239,29 +249,27 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         if type(scan_rate) != float:
             scan_rate = float(scan_rate)
 
+        scan_rate = scan_rate/1000
+
         data = (data
                 .rename({'Potential (V)': 'potential', 'Current (A)': 'current'}, axis=1)
                 .filter(['potential', 'current'])
-                .assign(current = lambda x: x['current']/1000)
+                .assign(current = lambda x: x['current']*1000)
+                .assign(dv = lambda x: x['potential'] - x['potential'].shift(1))
+                .assign(time = lambda x: x['dv'].abs().cumsum()/scan_rate)
                 )
         
-        dv = (pd
-              .DataFrame({'dv': data['potential'] - data['potential'].shift(1)})
-              .query('index > 100')
-              .abs()
-              .mean()
-              .iloc[0]
-              )
-        
-        time = [(i*dv)/(scan_rate/1000) for i in range(0, len(data))]
-        
-        cv = cls(potential=data['potential'], current=data['current'], time=time, **kwargs)
+        data.loc[0, 'time'] = 0
+
+        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
 
         return cv
     
     def drop_cycles(self, drop: list[int] | int = None, keep: list[int] | int = None) -> pd.DataFrame:
         """
         Function to edit which cycles are being considered
+        :param drop: list of cycles to drop
+        :param keep: list of cycles to keep
         """
         if type(drop) == int:
             drop = [int]

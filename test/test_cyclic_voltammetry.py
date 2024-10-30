@@ -28,6 +28,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
     cv_biologic_6 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic5.txt', electrolyte = electrolyte)
     cv_biologic_7 = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic6.txt', electrolyte = electrolyte)
     cv_aftermath_1 = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath1.csv', scan_rate=5)
+    cv_aftermath_2 = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath2.csv', scan_rate=5)
 
 
     mime_type = mimetypes.guess_type('test_trajectories/cyclic_voltammetry/biologic1.txt')[0]
@@ -43,8 +44,9 @@ class TestCyclicVoltammetry(unittest.TestCase):
     
     def test_create_aftermath2(self):
         """ Test the creation from aftermath2 file """
-        the_cv = CyclicVoltammogram.from_aftermath(path = 'test_trajectories/cyclic_voltammetry/aftermath2.csv', scan_rate=5)
-        self.assertTrue(type(the_cv) == CyclicVoltammogram)
+        figure = self.cv_aftermath_2.get_current_time_plot()
+        self.assertTrue(type(self.cv_aftermath_2) == CyclicVoltammogram)
+        # figure.show()
 
     def test_from_biologic(self):
         """ Test the from_biologic method """
