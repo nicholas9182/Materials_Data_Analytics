@@ -4,7 +4,6 @@ import os
 import plotly.graph_objects as go
 from glob import glob
 import pandas as pd
-import plumed as pl
 import matplotlib.pyplot as plt
 from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace, MetaTrajectory, FreeEnergyLine, FreeEnergySurface
 tracemalloc.start()
@@ -44,7 +43,7 @@ class TestFreeEnergyLine(unittest.TestCase):
     Test the construction and behaviour of a free energy line
     """
 
-    plumed_file = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1.dat")).rename(columns={'projection': 'energy'})
+    plumed_file = pd.read_table("./test_trajectories/ndi_na_binding/FES_CM1.dat", comment='#', names=['CM1', 'energy'], sep='\s+')
     fes_folder = "./test_trajectories/ndi_na_binding/FES_CM1/"
     fes_pattern = "FES*dat"
     line = FreeEnergyLine(plumed_file)
@@ -71,7 +70,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         data_frames = [FreeEnergyLine._read_file(f) for f in self.all_fes_files_list]
         data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
         line = FreeEnergyLine(data)
-        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
+        compare = pd.read_table("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat", comment='#', names=['CM1', 'projection'], sep='\s+') 
         energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
         my_diff = line._time_data[2].loc[1, 'energy'] - line._time_data[2].loc[2, 'energy']
         self.assertEqual(energy_diff, my_diff)
@@ -81,7 +80,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         checking that alternate constructor works for reading in fes _data with strides to get _time_data dictionary
         """
         line = FreeEnergyLine.from_plumed(self.all_fes_files_list)
-        compare = pd.DataFrame(pl.read_as_pandas("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat"))
+        compare = pd.read_table("./test_trajectories/ndi_na_binding/FES_CM1/FES2.dat", comment='#', names=['CM1', 'projection'], sep='\s+')
         energy_diff = compare.loc[1, 'projection'] - compare.loc[2, 'projection']
         my_diff = line._time_data[2].loc[1, 'energy'] - line._time_data[2].loc[2, 'energy']
         self.assertEqual(energy_diff, my_diff)
