@@ -149,7 +149,7 @@ class FreeEnergyShape:
             data = cls._read_file(file, **kwargs)
         elif type(file) == list:
             individual_files = [f.split("/")[-1] for f in file]
-            time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
+            time_stamps = [int(''.join(x for x in os.path.basename(f) if x.isdigit())) for f in individual_files]
             data_frames = [cls._read_file(f) for f in file]
             data = {time_stamps[i]: data_frames[i] for i in range(0, len(file))}
         else:

@@ -66,7 +66,7 @@ class TestFreeEnergyLine(unittest.TestCase):
         checking that alternate constructor works for reading in fes _data with strides to get _time_data dictionary
         """
         individual_files = [f.split("/")[-1] for f in self.all_fes_files_list]
-        time_stamps = [int(''.join(x for x in f if x.isdigit())) for f in individual_files]
+        time_stamps = [int(''.join(x for x in os.path.basename(f) if x.isdigit())) for f in individual_files]
         data_frames = [FreeEnergyLine._read_file(f) for f in self.all_fes_files_list]
         data = {time_stamps[i]: data_frames[i] for i in range(0, len(time_stamps))}
         line = FreeEnergyLine(data)
