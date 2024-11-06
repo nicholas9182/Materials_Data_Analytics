@@ -43,7 +43,7 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_get_bonds_from_coordinates_pre_opt(self):
         """ Test that the parser can extract bond information from the coordinates in the log file before an optimisation """
-        result = self.bbl_log.get_bonds_from_coordinates(pre_optimisation=True)
+        result = self.bbl_log.get_bonds_from_coordinates(scf_iteration=0)
         self.assertTrue(type(result))
         self.assertTrue(result.iloc[0, 0] == 1)
         self.assertTrue(result.iloc[10, 2] == 1.3935)
@@ -56,6 +56,14 @@ class TestGaussianParser(unittest.TestCase):
         result2 = self.bbl_log.get_bonds_from_coordinates().sort_values(["atom_id_1", "atom_id_2"])
         pd.testing.assert_frame_equal(result1.round(3), result2.round(3))
 
+    def test_get_scf_convergence(self):
+        """ Test that the parser can extract the SCF convergence from the log file """
+        result = self.bbl_log.get_scf_convergence().round(5)
+        self.assertTrue(type(result) == pd.DataFrame)
+        self.assertTrue(result['energy'].iloc[0] == -0.03369)
+        self.assertTrue(result['cycles'].iloc[0] == 1)
+        self.assertTrue(result['de'].iloc[0] == 0.01455)
+
     def test_attributes(self):
         """ test the charge attributes of the parsers """
         self.assertTrue(self.pedot_log.charge == 0)
@@ -67,8 +75,11 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(type(self.raman_log.keywords) == list)
         self.assertTrue(self.raman_log._raman is True)
         self.assertTrue(self.pedot_log.raman is True)
+        self.assertTrue(self.pedot_log.freq is True)
         self.assertTrue(self.bbl_log.raman is False)
+        self.assertTrue(self.bbl_log.freq is False)
         self.assertTrue(self.pedot_log.opt is True)
+        self.assertTrue(self.pedot_log.scf_iterations == 11)
         self.assertTrue(self.pedot_log.complete is True)
         self.assertTrue(self.pedot_log.atomcount == 28)
         self.assertTrue(self.bbl_log.atomcount == 140)
@@ -187,13 +198,27 @@ class TestGaussianParser(unittest.TestCase):
                                                        0.013091, 0.031796, 0.051678, 0.047337, -0.022861,
                                                        0.049976, 0.355428, -0.364014, 0.062057, 1.437312,
                                                        -1.445597, -0.096827, 0.069261])
+        
+    def test_get_coordinates_pedot_through_scf(self):
+        """ Test that the coordinates can be extracted from the log file through the SCF iterations """
+        coordinates = self.pedot_log.get_coordinates_through_scf()
+        self.assertTrue([i for i in coordinates['iteration'].unique()] == [i for i in range(0, 11)])
 
     def test_get_coordinates_pedot_pre_eq(self):
         """ Test that the parser can extract the coordinates from the log file before an optimisation for pedot """
-        coordinates = self.pedot_log.get_coordinates(pre_optimisation=True).round(3)
-        self.assertTrue(coordinates['x'].to_list()[0] == -2.98)
-        self.assertTrue(coordinates['x'].to_list()[1] == -2.00)
-        self.assertTrue(coordinates['x'].to_list()[2] == -0.632)
+        coordinates = self.pedot_log.get_coordinates(scf_iteration=0).round(4)
+        self.assertTrue(coordinates['x'].to_list() == [-2.9799, -1.9997, -0.6323, -0.6799, -2.4332, -4.3287, -2.3374, 
+                                                       -4.6132, -3.7137, -3.0014, -5.6637, -4.481, -3.817, -3.9767, 0.634, 
+                                                       2.0013, 2.9849, 2.4372, 0.6819, 2.3293, 4.3294, 3.6881, 4.633, 
+                                                       3.9619, 3.7353, 4.5628, 5.6681, 3.0007])
+        self.assertTrue(coordinates['y'].to_list() == [-0.9153, 0.123, -0.3523, -2.135, -2.2084, -0.6969, 1.4271, 0.5998, 
+                                                       1.6701, -3.1168, 0.8231, 0.5524, 1.6967, 2.658, 0.3524, -0.127, 0.9038, 
+                                                       2.2153, 2.148, -1.4344, 0.6886, -1.5731, -0.7038, -2.6286, -1.3052,
+                                                       -0.9441, -0.8594, 3.1337])
+        self.assertTrue(coordinates['z'].to_list() == [-0.0515, 0.0122, -0.0714, -0.3392, -0.2825, 0.0092, 0.2637, 0.555, 
+                                                       -0.0597, -0.4099, 0.3473, 1.6432, -1.1514, 0.3328, -0.0636, 0.0101, 
+                                                       -0.0934, -0.164, -0.1985, 0.2539, 0.0407, 0.6915, -0.1345, 0.5925, 
+                                                       1.7537, -1.2031, 0.1842, -0.117])
 
     def test_get_coordinates_pedot_heavies(self):
         """ Test that the parser can extract the coordinates from the log file for heavy atoms for pedot """
@@ -234,7 +259,7 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_get_thermochemistry(self):
         """ Test that the parser can extract the thermochemistry numbers from the log file """
-        data = self.raman_log.get_thermo_chemistry()
+        data = self.raman_log.get_thermo_chemistry().round(5)
         self.assertTrue(type(data) == pd.DataFrame)
         self.assertTrue(data['g_corr'].iloc[0] == 3342.10134)
         self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)

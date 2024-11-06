@@ -13,56 +13,58 @@ class GaussianParser:
     def __init__(self, log_file: str | list[str]):
 
         self._log_file = log_file
-
-        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
-            if type(log_file) == str:
-                self._lines = [line for line in open(log_file, 'r')]
-            elif len(log_file) == 1:
-                self._lines = [line for line in open(log_file[0], 'r')]
-            self._restart = False
-        elif type(log_file) == list or type(log_file) == tuple:
-            lines = []
-            for file in log_file:
-                lines = lines + [line for line in open(file, 'r')]
-            self._lines = lines
-            self._restart = True
-        else:
-            raise ValueError("The log file must be a path, a list of paths or a tuple of paths")
-        
+        self._lines, self._restart = self._concatenate_log_files(log_file)
         self._keywords = self._get_keywords()
-        self._raman = True if len([i for i in self.keywords if 'raman' in i]) > 0 else False
-        self._opt = True if 'opt' in self._keywords else False
-        self._complete = True if len([r for r in self._lines if 'Normal termination of ' in r]) > 0 else False
-        self._esp = True if len([r for r in self._lines if 'ESP charges:' in r]) > 0 else False
+
+        # extract boolean attributes from keywords
+        self._raman = any('raman' in s.lower() for s in self._keywords)
+        self._freq = any('freq' in s.lower() for s in self._keywords)
+        self._opt = any('opt' in s.lower() for s in self._keywords)
+        self._stable = any('stable' in s.lower() for s in self._keywords)
+        self._pop = any('pop' in s.lower() for s in self._keywords)
+        self._solvent = any('scrf' in s.lower() for s in self._keywords)
+
+        # extract boolean attributes from the log file
+        self._complete = any('Normal termination of' in s for s in self._lines[-20:])
+        self._esp = any('esp charges' in s.lower() for s in self._lines)
+
+        # extract non-boolean attributes from the keywords
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
 
-        if len([c for c in self._lines if 'Charge =' in c]) > 0:
+        # get the charge and multiplicity from the log file
+        if any('Charge =' in c for c in self._lines):
             self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
             self._multiplicity = int([m for m in self._lines if 'Charge =' in m][0][27:])
         else:
             self._charge = None
             self._multiplicity = None
 
-        if self._complete is True:
+        # get the energy from the log file
+        if any('SCF Done' in e for e in self._lines):
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
-            self._mull_start = self._lines.index([k for k in self._lines if 'Mulliken charges' in k][0]) + 2
-            self._mull_end = self._lines.index([k for k in self._lines if 'Sum of Mulliken charges' in k][0])
-            self._atomcount = self._mull_end - self._mull_start
-            self._atoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end]]
-            self._heavyatoms = [a.split()[1] for a in self._lines[self._mull_start:self._mull_end] if 'H' not in a]
-            self._heavyatomcount = len(self._heavyatoms)
+            self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e])
         else:
             self._energy = None
             self._unrestricted = None
-            self._mull_start = None
-            self._mull_end = None
+            self._scf_iterations = None
+
+        # get the atom counts from the log file
+        if any('Mulliken charges' in a for a in self._lines):
+            _mull_start = self._lines.index([k for k in self._lines if 'Mulliken charges' in k][0]) + 2
+            _mull_end = self._lines.index([k for k in self._lines if 'Sum of Mulliken charges' in k][0])
+            self._atomcount = _mull_end - _mull_start
+            self._atoms = [a.split()[1] for a in self._lines[_mull_start:_mull_end]]
+            self._heavyatoms = [a.split()[1] for a in self._lines[_mull_start:_mull_end] if 'H' not in a]
+            self._heavyatomcount = len(self._heavyatoms)
+        else:
             self._atomcount = None
             self._atoms = None
             self._heavyatoms = None
             self._heavyatomcount = None
 
+        # Get the stability report from the log file
         if " The wavefunction is stable under the perturbations considered.\n" in self._lines:
             self._stable = "stable"
         elif " The wavefunction has an internal instability.\n" in self._lines:
@@ -71,6 +73,121 @@ class GaussianParser:
             self._stable = "RHF instability"
         else:
             self._stable = "untested"
+
+    @property
+    def scf_iterations(self) -> int:
+        return self._scf_iterations
+    
+    @property
+    def pop(self) -> bool:
+        return self._pop
+    
+    @property
+    def solvent(self) -> bool:
+        return self._solvent
+
+    @property
+    def stable(self) -> str:
+        return self._stable
+
+    @property
+    def restart(self) -> bool:
+        return self._restart
+
+    @property
+    def esp(self) -> bool:
+        return self._esp
+
+    @property
+    def heavyatomcount(self) -> int:
+        return self._heavyatomcount
+
+    @property
+    def heavyatoms(self) -> list:
+        return self._heavyatoms
+
+    @property
+    def atoms(self) -> list:
+        return self._atoms
+    
+    @property
+    def freq(self) -> bool:
+        return self._freq
+
+    @property
+    def unrestricted(self) -> bool:
+        return self._unrestricted
+
+    @property
+    def functional(self) -> str:
+        if self._functional[0] == "U" or self._functional[0] == "R":
+            return self._functional[1:]
+        else:
+            return self._functional
+
+    @property
+    def basis(self) -> str:
+        return self._basis
+
+    @property
+    def energy(self) -> float:
+        return self._energy
+
+    @property
+    def charge(self) -> int:
+        return self._charge
+
+    @property
+    def raman(self) -> bool:
+        return self._raman
+
+    @property
+    def opt(self) -> bool:
+        return self._opt
+
+    @property
+    def multiplicity(self) -> int:
+        return self._multiplicity
+
+    @property
+    def keywords(self) -> list:
+        return self._keywords
+
+    @property
+    def log_file(self) -> str:
+        return self._log_file
+
+    @property
+    def complete(self) -> bool:
+        return self._complete
+
+    @property
+    def atomcount(self) -> int:
+        return self._atomcount
+    
+    def _concatenate_log_files(self, log_file):
+        """
+        function to concatenate log files
+        :return:
+        """
+        # If log file is a list or tuple, then concatenate the log files
+        # TODO: This is a bit of a hacky way to do this, but it works for now. Ideally we want to check the log files for the order they ran in
+        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
+            if type(log_file) == str:
+                lines = [line for line in open(log_file, 'r')]
+            elif len(log_file) == 1:
+                lines = [line for line in open(log_file[0], 'r')]
+            restart = False
+        elif type(log_file) == list or type(log_file) == tuple:
+            lines = []
+            for file in log_file:
+                lines = lines + [line for line in open(file, 'r')]
+            lines = lines
+            restart = True
+        else:
+            raise ValueError("The log file must be a path, a list of paths or a tuple of paths. If the last two then the log files must be in order they were calculated")
+        
+        return lines, restart
 
     def _get_keywords(self):
         """
@@ -95,55 +212,46 @@ class GaussianParser:
 
         return keywords
 
+    def get_scf_convergence(self) -> pd.DataFrame:
+        """
+        Function to extract the SCF convergence data from the log file
+        :return: pandas data frame of the SCF convergence data
+        """
+        if self._opt is False:
+            raise ValueError("Your log file needs to be from an optimisation")
 
-    @property
-    def stable(self):
-        return self._stable
+        scf_lines = [s for s in self._lines if "SCF Done" in s]
 
-    @property
-    def restart(self):
-        return self._restart
-
-    @property
-    def esp(self):
-        return self._esp
-
-    @property
-    def heavyatomcount(self) -> int:
-        return self._heavyatomcount
-
-    @property
-    def heavyatoms(self) -> list:
-        return self._heavyatoms
-
-    @property
-    def atoms(self) -> list:
-        return self._atoms
+        data = (pd
+                .DataFrame({
+                    'iteration': [i for i in range(len(scf_lines))],
+                    'energy': [float(s.split()[4]) * 2625.5 for s in scf_lines],
+                    'cycles': [int(s.split()[7]) for s in scf_lines]})
+                .assign(de = lambda x: x['energy'].diff())
+                .assign(energy = lambda x: x['energy'] - x['energy'].iloc[-1])
+                )
+        
+        data['de'].iloc[0] = data['de'].iloc[1]
+        
+        return data
 
     def get_thermo_chemistry(self) -> pd.DataFrame:
         """
         Function to extract the thermochemistry values from a log file
         :return: thermochemistry values
         """
-        if self._raman is False:
+
+        if self._freq is False:
             raise ValueError("Your log file needs to be from a vibrational analysis")
 
-        zero_point_correction = float([line for line in self._lines
-                                       if "Zero-point correction" in line][0].split()[2]) * 2625.5
-        energy_thermal_cor = float([line for line in self._lines
-                                    if "Thermal correction to Energy=" in line][0].split()[4]) * 2625.5
-        enthalpy_thermal_cor = float([line for line in self._lines
-                                      if "Thermal correction to Enthalpy=" in line][0].split()[4]) * 2625.5
-        gibbs_thermal_cor = float([line for line in self._lines
-                                   if "Thermal correction to Gibbs Free Energy=" in line][0].split()[6]) * 2625.5
-        electronic_and_zp = float([line for line in self._lines
-                                   if "Sum of electronic and zero-point Energies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_e = float([line for line in self._lines
-                                    if "Sum of electronic and thermal Energies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_s = float([line for line in self._lines
-                                    if "Sum of electronic and thermal Enthalpies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_g = float([line for line in self._lines
-                                    if "Sum of electronic and thermal Free Energies=" in line][0].split()[7]) * 2625.5
+        zero_point_correction = float([line for line in self._lines if "Zero-point correction" in line][0].split()[2]) * 2625.5
+        energy_thermal_cor = float([line for line in self._lines if "Thermal correction to Energy=" in line][0].split()[4]) * 2625.5
+        enthalpy_thermal_cor = float([line for line in self._lines if "Thermal correction to Enthalpy=" in line][0].split()[4]) * 2625.5
+        gibbs_thermal_cor = float([line for line in self._lines if "Thermal correction to Gibbs Free Energy=" in line][0].split()[6]) * 2625.5
+        electronic_and_zp = float([line for line in self._lines if "Sum of electronic and zero-point Energies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_e = float([line for line in self._lines if "Sum of electronic and thermal Energies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_s = float([line for line in self._lines if "Sum of electronic and thermal Enthalpies=" in line][0].split()[6]) * 2625.5
+        elec_and_thermal_g = float([line for line in self._lines if "Sum of electronic and thermal Free Energies=" in line][0].split()[7]) * 2625.5
 
         return pd.DataFrame({
             'zp_corr': [zero_point_correction],
@@ -154,7 +262,7 @@ class GaussianParser:
             'e_elec_therm': [elec_and_thermal_e],
             's_elec_therm': [elec_and_thermal_s],
             'g_elec_therm': [elec_and_thermal_g]
-        }).round(5)
+        })
 
     def get_bonds_from_log(self):
         """
@@ -163,19 +271,11 @@ class GaussianParser:
         :return:
         """
         if self._opt is False:
-            start_line = len(self._lines) - \
-                         (self._lines[::-1].index(
-                             [k for k in self._lines if '!    Initial Parameters    !' in k][0]) - 4)
-            end_line = len(self._lines) - self._lines[::-1].index(
-                [k for k in self._lines if 'Trust Radius=' in k][0]) + 2
+            start_line = len(self._lines) - (self._lines[::-1].index([k for k in self._lines if '!    Initial Parameters    !' in k][0]) - 4)
+            end_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Trust Radius=' in k][0]) + 2
         else:
-            start_line = len(self._lines) - \
-                         (self._lines[::-1].index(
-                             [k for k in self._lines if '!   Optimized Parameters   !' in k][0]) - 4)
-
-            end_line = len(self._lines) - \
-                       (self._lines[::-1].index(
-                           [k for k in self._lines if 'Largest change from initial coordinates is atom' in k][0]) + 2)
+            start_line = len(self._lines) - (self._lines[::-1].index([k for k in self._lines if '!   Optimized Parameters   !' in k][0]) - 4)
+            end_line = len(self._lines) - (self._lines[::-1].index([k for k in self._lines if 'Largest change from initial coordinates is atom' in k][0]) + 2)
 
         bond_lines = [r for r in self._lines[start_line:end_line] if '! R' in r]
 
@@ -205,7 +305,7 @@ class GaussianParser:
         })
         return data
 
-    def get_bonds_from_coordinates(self, cutoff: float = 1.8, heavy_atoms: bool = False, pre_optimisation: bool = False):
+    def get_bonds_from_coordinates(self, cutoff: float = 1.8, heavy_atoms: bool = False, scf_iteration: int = -1):
         """
         function to get bond data from the coordinates, using a cut-off distance
         :param cutoff: The cutoff for calculating the bond lengths
@@ -213,7 +313,7 @@ class GaussianParser:
         :param pre_optimisation: get the coordinated before the optimisation has begun?
         :return:
         """
-        coordinates = self.get_coordinates(heavy_atoms=heavy_atoms, pre_optimisation=pre_optimisation)
+        coordinates = self.get_coordinates(heavy_atoms=heavy_atoms, scf_iteration=scf_iteration)
 
         cross = (coordinates
                  .merge(coordinates, how='cross', suffixes=('_1', '_2'))
@@ -239,22 +339,32 @@ class GaussianParser:
                 )
 
         return data
+    
+    def get_coordinates_through_scf(self, heavy_atoms: bool = False) -> pd.DataFrame:
+        """
+        function to get the coordinates through the SCF iterations
+        :param heavy_atoms: just get the heavy atoms?
+        :return:
+        """
+        if self.opt is False:
+            raise ValueError("This log file needs to be from an optimisation")
 
-    def get_coordinates(self, heavy_atoms: bool = False, pre_optimisation: bool = False) -> pd.DataFrame:
+        data = pd.DataFrame()
+        for i in range(self._scf_iterations):
+            new_data = self.get_coordinates(heavy_atoms=heavy_atoms, scf_iteration=i).assign(iteration=i)
+            data = pd.concat([data, new_data])
+
+        return data
+
+    def get_coordinates(self, heavy_atoms: bool = False, scf_iteration: int = -1) -> pd.DataFrame:
         """
         function to get the coordinates from the log file
         :param heavy_atoms: return just the heavy atoms?
-        :param pre_optimisation: get the coordinated before the optimisation has begun?
+        :param scf_interation: get the coordinates at this scf iteration. If 0, then before optimisation has begun
         :return:
         """
-        if pre_optimisation is False:
-            start_line = len(self._lines) - (self
-                                             ._lines[::-1]
-                                             .index([k for k in self._lines if 'Standard orientation:' in k][0]) - 4
-                                             )
-        else:
-            start_line = self._lines.index([k for k in self._lines if 'Standard orientation:' in k][0]) + 5
-
+        indices = [i for i, line in enumerate(self._lines) if 'Standard orientation:' in line]
+        start_line = indices[scf_iteration] + 5
         end_line = start_line + self._atomcount
 
         data = (pd.DataFrame({
@@ -277,8 +387,7 @@ class GaussianParser:
         :param with_coordinates: whether to also output coordinates
         :return:
         """
-        start_line = len(self._lines) - self._lines[::-1].index(
-            [k for k in self._lines if 'Mulliken charges' in k][0]) + 1
+        start_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Mulliken charges' in k][0]) + 1
         end_line = start_line + self._atomcount
         if heavy_atoms is False:
             data = pd.DataFrame({
@@ -340,57 +449,6 @@ class GaussianParser:
             ))
 
         return data
-
-    @property
-    def unrestricted(self) -> bool:
-        return self._unrestricted
-
-    @property
-    def functional(self) -> str:
-        if self._functional[0] == "U" or self._functional[0] == "R":
-            return self._functional[1:]
-        else:
-            return self._functional
-
-    @property
-    def basis(self) -> str:
-        return self._basis
-
-    @property
-    def energy(self) -> float:
-        return self._energy
-
-    @property
-    def charge(self) -> int:
-        return self._charge
-
-    @property
-    def raman(self) -> bool:
-        return self._raman
-
-    @property
-    def opt(self) -> bool:
-        return self._opt
-
-    @property
-    def multiplicity(self) -> int:
-        return self._multiplicity
-
-    @property
-    def keywords(self) -> list:
-        return self._keywords
-
-    @property
-    def log_file(self) -> str:
-        return self._log_file
-
-    @property
-    def complete(self) -> bool:
-        return self._complete
-
-    @property
-    def atomcount(self) -> int:
-        return self._atomcount
 
     def get_raman_frequencies(self, frac_filter: float = 0.99) -> pd.DataFrame:
         """
