@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from Materials_Data_Analytics.laws_and_constants import lorentzian
+from Materials_Data_Analytics.core.coordinate_transformer import PdbParser
 
 pd.set_option('mode.chained_assignment', None)
 
@@ -502,3 +503,12 @@ class GaussianParser:
             intensity = [sum(intensity) for intensity in zip(intensity, peak)]
 
         return pd.DataFrame({'wavenumber': wn, 'intensity': intensity})
+    
+    def get_optimisation_trajectory(self, filename: str, path: str = '.', fit_t0 = False):
+        """
+        Function to get the optimisation trajectory from the log file
+        """
+        coordinates = self.get_coordinates_through_scf()
+        PdbParser.pandas_to_pdb_trajectory(coordinates, time_col='iteration', filename=filename, path=path, fit_t0=fit_t0)
+        return None
+    
