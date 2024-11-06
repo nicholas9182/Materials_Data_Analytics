@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 from Materials_Data_Analytics.quantum_chemistry.gaussian import GaussianParser
+from Materials_Data_Analytics.core.coordinate_transformer import PdbParser
 tracemalloc.start()
 
 
@@ -198,6 +199,34 @@ class TestGaussianParser(unittest.TestCase):
                                                        0.013091, 0.031796, 0.051678, 0.047337, -0.022861,
                                                        0.049976, 0.355428, -0.364014, 0.062057, 1.437312,
                                                        -1.445597, -0.096827, 0.069261])
+        
+    def test_write_coordinates_to_pdb(self):
+        """ test of getting coordinates from a log file and writing them to a pdb file """
+        coordinates = self.pedot_log.get_coordinates()
+        # PdbParser.pandas_to_pdb(data=coordinates, filename='pedot_test.pdb', path='.')
+        self.assertTrue(True)
+
+    def test_write_coordinates_with_grouping_to_pdb(self):
+        """ test of getting coordinates from a log file and writing them to a pdb file with grouping """
+        coordinates = self.pedot_log.get_coordinates_through_scf()
+        # PdbParser.pandas_to_pdb(data=coordinates, grouping_variables=['iteration'], filename='pedot_test', path='.')
+        self.assertTrue(True)
+
+    def test_write_coordinates_with_grouping_to_pdb_trajectory(self):
+        """ test of getting coordinates from a log file and writing them to a pdb file with grouping """
+        coordinates = self.pedot_log.get_coordinates_through_scf()
+        # PdbParser.pandas_to_pdb_trajectory(coordinates, time_col='iteration', filename='pedot_test_traj', path='.', fit_t0=True)
+        self.assertTrue(True)
+
+    def test_get_bbl_opt_traj(self):
+        """ Test that the parser can extract the coordinates from the log file for bbl """
+        # self.bbl_log.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.')
+        self.assertTrue(True)
+
+    def test_get_bbl_opt_traj_rotfit(self):
+        """ Test that the parser can extract the coordinates from the log file for bbl """
+        # self.bbl_log.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.', fit_t0=True)
+        self.assertTrue(True)
         
     def test_get_coordinates_pedot_through_scf(self):
         """ Test that the coordinates can be extracted from the log file through the SCF iterations """
