@@ -13,4 +13,6 @@ README OUTLINE:
   - Create conda enviornment in python 3.10.15
   - Install all packages in setup.py
   - Check that unit tests run correctly
+- Repository structure
+- How to cite (related papers, authors)
 
