@@ -18,7 +18,6 @@ setup(
         "click",
         "numpy",
         "torch",
-        "dash",
         "networkx",
         "MDAnalysis",
         "dash",
