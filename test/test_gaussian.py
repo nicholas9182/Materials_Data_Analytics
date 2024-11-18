@@ -18,6 +18,7 @@ class TestGaussianParser(unittest.TestCase):
     raman_log = GaussianParser("./test_trajectories/bbl/raman.log")
     bbl_spe_log = GaussianParser("./test_trajectories/bbl/step_37.log")
     bbl_step6_log = GaussianParser("./test_trajectories/bbl/step6.log")
+    bbl_pdb_traj = GaussianParser("./test_trajectories/bbl/pdb_traj_bug.log")
 
     def test_multiline_keyword_parsing(self):
         """ Test that the parser can handle multiline keywords """
@@ -221,6 +222,17 @@ class TestGaussianParser(unittest.TestCase):
     def test_get_bbl_opt_traj(self):
         """ Test that the parser can extract the coordinates from the log file for bbl """
         # self.bbl_log.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.')
+        self.assertTrue(True)
+
+    def test_get_bbl_opt_traj_2(self):
+        """ Test that the parser can extract the coordinates from the log file for bbl """
+        self.bbl_pdb_traj.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.')
+        self.assertTrue(True)
+
+    def test_get_bbl_scf_conv_2(self):
+        """ Test that the parser can extract the coordinates from the log file for bbl """
+        e_conv = self.bbl_pdb_traj.get_scf_convergence()
+        # px.line(e_conv, x='iteration', y='energy', markers=True).show()
         self.assertTrue(True)
 
     def test_get_bbl_opt_traj_rotfit(self):
