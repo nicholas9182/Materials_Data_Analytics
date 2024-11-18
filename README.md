@@ -1,18 +1,20 @@
-# Analytics
+# Materials_Data_Analytics
+
+A python package for the handling and analysis of a wide range of synthetic and experimental data for the development of next generation energy materials.
+
+## Key Analysis Types
+
+- **Cyclic Voltammetry**
+
+- **Gaussian Quantum Chemistry Calculations**
+- **Gromacs+Plumed Metadynamics Calculations** 
 
 
-This is no longer empty, but Nick should write something else here. Thank you.
-Arianna Making more comments here. We (Nick) should really make this usefull. hello
 
-This is empty. Nick should write something here. Thank you.
-Arianna Making more comments here. We (Nick) should really make this useful.
 
-README OUTLINE:
-- What topics should a README cover?
-- Installation directions
-  - Create conda enviornment in python 3.10.15
-  - Install all packages in setup.py
-  - Check that unit tests run correctly
-- Repository structure
-- How to cite (related papers, authors)
+## Installation
 
+To install the package, clone the repository and run the following command:
+
+```sh
+pip install .

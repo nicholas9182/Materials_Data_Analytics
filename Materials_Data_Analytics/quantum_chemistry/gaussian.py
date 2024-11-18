@@ -45,7 +45,7 @@ class GaussianParser:
         if any('SCF Done' in e for e in self._lines):
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
-            self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e])
+            self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e]) - len([e for e in self._lines if '>>>>>>>>>> Convergence criterion not met' in e])
         else:
             self._energy = None
             self._unrestricted = None
@@ -221,7 +221,8 @@ class GaussianParser:
         if self._opt is False:
             raise ValueError("Your log file needs to be from an optimisation")
 
-        scf_lines = [s for s in self._lines if "SCF Done" in s]
+        scf_to_ignore = [i + 2 for i, line in enumerate(self._lines) if '>>>>>>>>>> Convergence criterion not met' in line]
+        scf_lines = [line for i, line in enumerate(self._lines) if i not in scf_to_ignore and 'SCF Done' in line]
 
         data = (pd
                 .DataFrame({
