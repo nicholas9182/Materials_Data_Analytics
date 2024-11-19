@@ -56,7 +56,7 @@ Currently there are three supported ways of initiating a CyclicVoltammogram obje
     ```
  - From a .txt file exported from biologic software
     ```python
-    my_cv = CyclicVoltammogram.from_biologic_txt('path/to/file.txt')
+    my_cv = CyclicVoltammogram.from_biologic('path/to/file.txt')
     ```
 
  - From a .csv file exported from aftermath software
