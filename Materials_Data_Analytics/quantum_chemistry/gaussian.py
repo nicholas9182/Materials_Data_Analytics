@@ -452,7 +452,7 @@ class GaussianParser:
 
         return data
 
-    def get_raman_frequencies(self, frac_filter: float = 0.99) -> pd.DataFrame:
+    def get_raman_frequencies(self, frac_filter: float = 1) -> pd.DataFrame:
         """
         method to get the raman frequencies from the log file
         :param frac_filter: take this fraction of peaks with the highest intensities

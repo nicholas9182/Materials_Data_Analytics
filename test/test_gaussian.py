@@ -100,7 +100,7 @@ class TestGaussianParser(unittest.TestCase):
         """ Test that the parser can extract the raman frequencies from the log file """
         raman_frequencies = self.pedot_log.get_raman_frequencies()
         self.assertTrue(type(raman_frequencies) == pd.DataFrame)
-        self.assertTrue(len(raman_frequencies) == 19)
+        self.assertTrue(len(raman_frequencies) == 59)
 
     def test_raman_frequencies_bbl(self):
         """ Test that the parser can extract the raman frequencies from the log file for bbl """
