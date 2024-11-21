@@ -45,7 +45,7 @@ class GaussianParser:
         if any('SCF Done' in e for e in self._lines):
             self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
-            self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e])
+            self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e]) - len([e for e in self._lines if '>>>>>>>>>> Convergence criterion not met' in e])
         else:
             self._energy = None
             self._unrestricted = None
@@ -221,7 +221,8 @@ class GaussianParser:
         if self._opt is False:
             raise ValueError("Your log file needs to be from an optimisation")
 
-        scf_lines = [s for s in self._lines if "SCF Done" in s]
+        scf_to_ignore = [i + 2 for i, line in enumerate(self._lines) if '>>>>>>>>>> Convergence criterion not met' in line]
+        scf_lines = [line for i, line in enumerate(self._lines) if i not in scf_to_ignore and 'SCF Done' in line]
 
         data = (pd
                 .DataFrame({
@@ -402,7 +403,7 @@ class GaussianParser:
             data = pd.DataFrame({
                 "atom_id": [int(a.split()[0]) for a in self._lines[start_line:end_line]],
                 "element": [a.split()[1] for a in self._lines[start_line:end_line]],
-                "partial_charge": [float(a.split()[2]) for a in self._lines[start_line:end_line] if 'H' not in a]
+                "partial_charge": [float(a.split()[2]) for a in self._lines[start_line:end_line]]
             })
 
         if with_coordinates is True:
@@ -413,6 +414,56 @@ class GaussianParser:
             ))
 
         return data
+    
+    def get_mulliken_spin_densities(self, heavy_atoms: bool = False, with_coordinates: bool = False, **kwargs) -> pd.DataFrame:
+        """
+        method to return the mulliken spin densities from the log file
+        :param heavy_atoms: whether to give the heavy atoms or all the atoms
+        :param with_coordinates: whether to also output coordinates
+        :return: pandas dataframe with the spin densities
+        """
+        # check whether spin density information is in the log file
+        if any('Mulliken charges and spin densities:' in s for s in self._lines) is False:
+            spins = False
+        else:
+            spins = True
+
+        start_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Mulliken charges and spin densities:' in k][0]) + 1
+        end_line = start_line + self._atomcount
+
+        if heavy_atoms is False:
+            data = pd.DataFrame({
+                "atom_id": [int(a.split()[0]) for a in self._lines[start_line:end_line]],
+                "element": [a.split()[1] for a in self._lines[start_line:end_line]]
+            })
+
+            if spins == True:
+                data = data.assign(spin_density=[float(a.split()[3]) for a in self._lines[start_line:end_line]])
+            else:
+                data = data.assign(spin_density = 0)
+
+        else:
+            start_line = start_line + self._atomcount + 3
+            end_line = start_line + self._heavyatomcount
+            data = pd.DataFrame({
+                "atom_id": [int(a.split()[0]) for a in self._lines[start_line:end_line]],
+                "element": [a.split()[1] for a in self._lines[start_line:end_line]]
+            })
+
+            if spins == True:
+                data = data.assign(spin_density=[float(a.split()[3]) for a in self._lines[start_line:end_line]])
+            else:
+                data = data.assign(spin_density = 0)
+
+        if with_coordinates is True:
+            data = (data.assign(
+                x=self.get_coordinates(heavy_atoms=heavy_atoms, **kwargs)['x'].to_list(),
+                y=self.get_coordinates(heavy_atoms=heavy_atoms, **kwargs)['y'].to_list(),
+                z=self.get_coordinates(heavy_atoms=heavy_atoms, **kwargs)['z'].to_list()
+            ))
+
+        return data
+
 
     def get_esp_charges(self, heavy_atoms: bool = False, with_coordinates: bool = False, **kwargs) -> pd.DataFrame:
         """
@@ -451,7 +502,7 @@ class GaussianParser:
 
         return data
 
-    def get_raman_frequencies(self, frac_filter: float = 0.99) -> pd.DataFrame:
+    def get_raman_frequencies(self, frac_filter: float = 1) -> pd.DataFrame:
         """
         method to get the raman frequencies from the log file
         :param frac_filter: take this fraction of peaks with the highest intensities

@@ -75,12 +75,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         return data
     
-    def _remove_first_points(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Function to remove the first points of the cyclic voltammogram
-        """
-        
-    
     def _find_current_roots(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Function to find the time and voltage points where the current passes through 0
@@ -709,4 +703,3 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         potential_figure = px.line(peaks, x='cycle', y='potential_peak', color='tag', markers=True, labels={'potential_peak': 'Peak Potential [V]', 'cycle': 'Cycle'}, **kwargs)
         
         return current_figure, potential_figure
-    
