@@ -169,10 +169,11 @@ bond_data = my_gaussian.get_bonds_from_coordinates(cutoff = 1.8) # get the bonds
 my_gaussian.get_optimisation_trajectory('opt_traj.pdb') # write the optimisation trajectory to a pdb file
 ```
 
-charge analysis:
+charge and spin analysis:
 
 ```python
 charge_data = my_gaussian.get_mulliken_charges() # get the mulliken charges for each atom
+spin_data = my_gaussian.get_mulliken_spin_densities() # get the spin density for each atom
 charge_data = my_gaussian.get_esp_charges() # get the esp charges for each atom
 ```
 

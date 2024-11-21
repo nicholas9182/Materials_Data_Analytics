@@ -145,6 +145,23 @@ class TestGaussianParser(unittest.TestCase):
         charges = self.bbl_log.get_mulliken_charges()
         self.assertTrue(charges['atom_id'].tolist() == [i for i in range(1, 141)])
         self.assertTrue(charges['element'].tolist() == self.bbl_log.atoms)
+        self.assertTrue(charges['partial_charge'].iloc[0] == -0.015446)
+        self.assertTrue(charges['partial_charge'].iloc[1] == 0.124604)
+
+    def test_get_mulliken_spins_bbl(self):
+        """ Test that the parser can extract the mulliken spins from the log file for bbl """
+        spins = self.bbl_log.get_mulliken_spin_densities()
+        self.assertTrue(spins['atom_id'].tolist() == [i for i in range(1, 141)])
+        self.assertTrue(spins['element'].tolist() == self.bbl_log.atoms)
+        self.assertTrue(spins['spin_density'].iloc[0] == 0.031504)
+        self.assertTrue(spins['spin_density'].iloc[1] == -0.001347)
+
+    def test_get_mulliken_spins_heavies(self): 
+        """ test that the parser can extract the mulliken spins from the log file for heavy atoms """
+        spins = self.bbl_log.get_mulliken_spin_densities(heavy_atoms=True)
+        self.assertTrue(spins['element'].tolist() == self.bbl_log.heavyatoms)
+        self.assertTrue(spins['spin_density'].iloc[0] == 0.030156)
+        self.assertTrue(spins['spin_density'].iloc[1] == -0.012499)
 
     def test_get_mullikens_heavies(self):
         """ Test that the parser can extract the mulliken charges from the log file for heavy atoms """
