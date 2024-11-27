@@ -145,6 +145,7 @@ The GausianParser class contains various attributes which can easily be accessed
  - ```heavyatomcount``` - The number of heavy atoms in the system
  - ```atoms``` - A list with the elements in the system
  - ```heavy_atoms``` - A list with the heavy atoms in the system
+ - ```time_stamp``` - The time stamp of the calculation
 
 Once created, various operations can be performed on the object. These checking the SCF energy during an optimization or checking for spin contamination:
 
