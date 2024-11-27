@@ -16,7 +16,6 @@ class TestGaussianParser(unittest.TestCase):
     bbl_log_double_digit_charge = GaussianParser("./test_trajectories/bbl/step1.log")
     bbl_log = GaussianParser("./test_trajectories/bbl/step3.log")
     raman_log = GaussianParser("./test_trajectories/bbl/raman.log")
-    bbl_spe_log = GaussianParser("./test_trajectories/bbl/step_37.log")
     bbl_step6_log = GaussianParser("./test_trajectories/bbl/step6.log")
     bbl_pdb_traj = GaussianParser("./test_trajectories/bbl/pdb_traj_bug.log")
 
@@ -95,6 +94,8 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.heavyatomcount == 110)
         self.assertTrue(self.pedot_log.esp is False)
         self.assertTrue(self.bbl_log.esp is True)
+        self.assertTrue(self.bbl_log.time_stamp == '2023-09-30 13:04:10')
+        self.assertTrue(self.pedot_log.time_stamp == '2023-09-29 16:34:29')
 
     def test_raman_frequencies_pedot(self):
         """ Test that the parser can extract the raman frequencies from the log file """
@@ -338,6 +339,7 @@ class TestGaussianParserRestart2(unittest.TestCase):
     path2 = './test_trajectories/bbl/step4_restart.log'
     bbl_log = GaussianParser([path1, path2])
     bbl_log_tuple = GaussianParser((path1, path2))
+    bbl_log_wrong_order = GaussianParser((path2, path1))
 
     def test_parser_restart(self):
         self.assertTrue(type(self.bbl_log) == GaussianParser)
@@ -350,6 +352,14 @@ class TestGaussianParserRestart2(unittest.TestCase):
         self.assertTrue(self.bbl_log.functional == 'WB97XD')
         self.assertTrue(self.bbl_log.basis == '6-311(d,p)')
         self.assertTrue(self.bbl_log.restart == True)
+        self.assertTrue(self.bbl_log.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_wrong_order.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_wrong_order.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_wrong_order.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_wrong_order.raman is False)
+        self.assertTrue(self.bbl_log_wrong_order.esp is False)
+        self.assertTrue(self.bbl_log_wrong_order.complete is True)
+        self.assertTrue(self.bbl_log_wrong_order.opt is True)
 
     def test_parser_restart_tuple(self):
         self.assertTrue(type(self.bbl_log_tuple) == GaussianParser)

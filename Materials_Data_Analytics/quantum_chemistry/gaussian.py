@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import DateTime as dt
 from Materials_Data_Analytics.laws_and_constants import lorentzian
 from Materials_Data_Analytics.core.coordinate_transformer import PdbParser
 
@@ -14,7 +15,7 @@ class GaussianParser:
     def __init__(self, log_file: str | list[str]):
 
         self._log_file = log_file
-        self._lines, self._restart = self._concatenate_log_files(log_file)
+        self._lines, self._restart, self._time_stamp = self._concatenate_log_files(log_file)
         self._keywords = self._get_keywords()
 
         # extract boolean attributes from keywords
@@ -74,6 +75,10 @@ class GaussianParser:
             self._stable = "RHF instability"
         else:
             self._stable = "untested"
+
+    @property
+    def time_stamp(self) -> dt.DateTime:
+        return self._time_stamp.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def scf_iterations(self) -> int:
@@ -171,24 +176,57 @@ class GaussianParser:
         function to concatenate log files
         :return:
         """
-        # If log file is a list or tuple, then concatenate the log files
-        # TODO: This is a bit of a hacky way to do this, but it works for now. Ideally we want to check the log files for the order they ran in
+        # If just one file passed, or a list/tuple is passed of length 1
         if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
             if type(log_file) == str:
                 lines = [line for line in open(log_file, 'r')]
             elif len(log_file) == 1:
                 lines = [line for line in open(log_file[0], 'r')]
             restart = False
+            time_stamp = self._get_time_stamp(log_file)
+
+        # If a list or tuple of log files is passed
         elif type(log_file) == list or type(log_file) == tuple:
+            log_file_dict = {}
             lines = []
-            for file in log_file:
-                lines = lines + [line for line in open(file, 'r')]
-            lines = lines
+            for l in log_file:
+                time_stamp = self._get_time_stamp(l)
+                log_file_dict[time_stamp] = l
+            for key, value in sorted(log_file_dict.items()):
+                lines = lines + [line for line in open(value, 'r')]
             restart = True
+            time_stamp = min(log_file_dict)
         else:
-            raise ValueError("The log file must be a path, a list of paths or a tuple of paths. If the last two then the log files must be in order they were calculated")
+            raise ValueError("The log file must be a path, a list of paths or a tuple of paths.")
         
-        return lines, restart
+        return lines, restart, time_stamp
+    
+    @staticmethod
+    def _get_time_stamp(log_file):
+        """ 
+        Function to read the contents of a log file, and from that get the line containing Leave Link and construct the time stamp from that line
+        """
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+        
+        if any('Leave Link  ' in l for l in lines):
+            time_line = [l for l in lines if 'Leave Link  ' in l][0]
+            year = time_line.split()[8][:-1]
+            month = time_line.split()[5]
+            day = time_line.split()[6]
+            time = time_line.split()[7]
+            time_stamp = dt.DateTime(year + '-' + month + '-' + day + ' ' + time)
+        elif any('Normal termination of' in l for l in lines):
+            time_line = [l for l in lines[-20:] if 'Normal termination of' in l][0]
+            year = time_line.split()[10][:-1]
+            month = time_line.split()[7]
+            day = time_line.split()[8]
+            time = time_line.split()[9]
+            time_stamp = dt.DateTime(year + '-' + month + '-' + day + ' ' + time)
+        else:
+            time_stamp = None
+
+        return time_stamp
 
     def _get_keywords(self):
         """
@@ -463,7 +501,6 @@ class GaussianParser:
             ))
 
         return data
-
 
     def get_esp_charges(self, heavy_atoms: bool = False, with_coordinates: bool = False, **kwargs) -> pd.DataFrame:
         """
