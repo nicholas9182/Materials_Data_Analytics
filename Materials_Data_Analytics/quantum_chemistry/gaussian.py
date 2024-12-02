@@ -3,6 +3,7 @@ import numpy as np
 import DateTime as dt
 from Materials_Data_Analytics.laws_and_constants import lorentzian
 from Materials_Data_Analytics.core.coordinate_transformer import PdbParser
+import plotly.express as px
 
 pd.set_option('mode.chained_assignment', None)
 
@@ -33,6 +34,9 @@ class GaussianParser:
         # extract non-boolean attributes from the keywords
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
+        self._n_alpha = int([i for i in self._lines if "alpha electrons" in i][0].split()[0])
+        self._n_beta = int([i for i in self._lines if "alpha electrons" in i][0].split()[3])
+        self._n_electrons = self._n_alpha + self._n_beta
 
         # get the charge and multiplicity from the log file
         if any('Charge =' in c for c in self._lines):
@@ -75,6 +79,35 @@ class GaussianParser:
             self._stable = "RHF instability"
         else:
             self._stable = "untested"
+
+    @property
+    def homo(self) -> float:
+        """
+        Function to get the HOMO energy with reference to the vacuum level
+        """
+        return self.get_orbitals().query('occupied == True').query('energy == energy.max()')['energy'].iloc[0]
+    
+    @property
+    def lumo(self) -> float:
+        """
+        Function to get the LUMO energy with reference to the vacuum level
+        """
+        return self.get_orbitals().query('occupied == False').query('energy == energy.min()')['energy'].iloc[0]
+
+    @property
+    def bandgap(self) -> float:
+        """
+        Function to get the band gap from the log file
+        """
+        return self.lumo - self.homo
+
+    @property
+    def n_alpha(self) -> int:
+        return self._n_alpha
+    
+    @property
+    def n_beta(self) -> int:
+        return self._n_beta
 
     @property
     def time_stamp(self) -> dt.DateTime:
@@ -600,3 +633,69 @@ class GaussianParser:
         PdbParser.pandas_to_pdb_trajectory(coordinates, time_col='iteration', filename=filename, path=path, fit_t0=fit_t0)
         return None
     
+    def get_orbitals(self):
+        """
+        Function to get the orbital information from the log file
+        """
+        if any('Population analysis using the SCF Density' in s for s in self._lines) is False:
+            raise ValueError("This log file doesnt have molecular orbital data in it")
+        
+        start_line = [i for i, line in enumerate(self._lines) if 'Population analysis using the SCF Density' in line][-1] + 4
+        end_line = [i for i, line in enumerate(self._lines) if 'Condensed to atoms (all electrons)' in line][-1]
+        chunk = self._lines[start_line:end_line]
+
+        alpha_len = len([l for l in chunk if 'Alpha  occ. eigenvalues' in l])
+        beta_len = len([l for l in chunk if 'Beta  occ. eigenvalues' in l])
+
+        # Get the alpha molecular orbitals
+        if alpha_len > 1:
+            alpha_occ = [l for l in chunk if 'Alpha  occ. eigenvalues' in l]
+            alpha_virt = [l for l in chunk if 'Alpha virt. eigenvalues' in l]
+            alpha_occ = [s.split()[4:] for s in alpha_occ]
+            alpha_virt = [s.split()[4:] for s in alpha_virt]
+            alpha_occ = [item for sublist in alpha_occ for item in sublist]
+            alpha_virt = [item for sublist in alpha_virt for item in sublist]
+            alpha_occ = [float(a)*2625.5 for a in alpha_occ]
+            alpha_virt = [float(a)*2625.5 for a in alpha_virt]
+            alpha_occ_df = pd.DataFrame({'energy': alpha_occ, 'occupied': True})
+            alpha_virt_df = pd.DataFrame({'energy': alpha_virt, 'occupied': False})
+
+            alpha_df = (pd
+                        .concat([alpha_occ_df, alpha_virt_df])
+                        .assign(orbital_number = lambda x: [i for i in range(1, len(x) + 1)])
+                        )
+
+        # Get the beta molecular orbitals
+        if beta_len > 1:
+            beta_occ = [l for l in chunk if 'Beta  occ. eigenvalues' in l]
+            beta_virt = [l for l in chunk if 'Beta virt. eigenvalues' in l]
+            beta_occ = [s.split()[4:] for s in beta_occ]
+            beta_virt = [s.split()[4:] for s in beta_virt]
+            beta_occ = [item for sublist in beta_occ for item in sublist]
+            beta_virt = [item for sublist in beta_virt for item in sublist]
+            beta_occ = [float(a)*2625.5 for a in beta_occ]
+            beta_virt = [float(a)*2625.5 for a in beta_virt]
+            beta_occ_df = pd.DataFrame({'energy': beta_occ, 'occupied': True})
+            beta_virt_df = pd.DataFrame({'energy': beta_virt, 'occupied': False})
+
+            beta_df = (pd
+                       .concat([beta_occ_df, beta_virt_df])
+                       .assign(orbital_number = lambda x: [i for i in range(1, len(x) + 1)])
+                      )
+
+        if alpha_len > 1 and beta_len > 1:
+            data = pd.concat([alpha_df.assign(electron = 'alpha'), beta_df.assign(electron = 'beta')])
+        elif alpha_len > 1 and beta_len <= 1:
+            data = alpha_df.assign(electron = 'paired')
+        else:
+            raise ValueError("This log file doesnt have molecular orbital data in it!")
+
+        return data
+    
+    def get_dos_plot(self, **kwargs):
+        """ Function to return a density of states plot """
+        data = self.get_orbitals()
+        bins = len(data) // 2
+        figure = px.histogram(data, x='energy', marginal='rug', color='occupied', nbins=bins, 
+                              pattern_shape='electron', labels={'energy': 'E [kJ/mol]'}, **kwargs)
+        return figure
