@@ -96,6 +96,12 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.esp is True)
         self.assertTrue(self.bbl_log.time_stamp == '2023-09-30 13:04:10')
         self.assertTrue(self.pedot_log.time_stamp == '2023-09-29 16:34:29')
+        self.assertTrue(self.bbl_log.n_alpha == 363)
+        self.assertTrue(self.bbl_log.n_beta == 361)
+        self.assertTrue(self.bbl_log._n_electrons == 724)
+        self.assertTrue(self.bbl_log.bandgap == 219.01921)
+        self.assertTrue(self.bbl_log.homo == -224.979095)
+        self.assertTrue(self.bbl_log.lumo == -5.959885)
 
     def test_raman_frequencies_pedot(self):
         """ Test that the parser can extract the raman frequencies from the log file """
@@ -323,6 +329,22 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(data['g_corr'].iloc[0] == 3342.10134)
         self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)
         self.assertTrue(data['g_elec_therm'].iloc[0] == -18887783.57055)
+
+    def test_get_orbitals(self):
+        data_1 = self.bbl_log.get_orbitals()
+        data_2 = self.bbl_log_double_digit_charge.get_orbitals()
+        data_3 = self.bbl_step6_log.get_orbitals()
+        self.assertTrue(type(data_1) == pd.DataFrame)
+        self.assertTrue(type(data_2) == pd.DataFrame)
+        self.assertTrue(type(data_3) == pd.DataFrame)
+        self.assertTrue(data_1['energy'].iloc[5] == -50178.424725)
+        self.assertTrue(data_2['energy'].iloc[500] == -889.965735)
+        self.assertTrue(data_3['energy'].iloc[1000] == 1635.135145)
+
+    def test_get_dos_plot(self):
+        figure = self.bbl_log.get_dos_plot()
+        # figure.show()
+        self.assertTrue(True)
 
 
 class TestGaussianParserRestart(unittest.TestCase):
