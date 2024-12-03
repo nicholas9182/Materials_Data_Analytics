@@ -209,17 +209,14 @@ class GaussianParser:
         function to concatenate log files
         :return:
         """
-        # If just one file passed, or a list/tuple is passed of length 1
-        if type(log_file) == str or (len(log_file) == 1 and (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series)):
-            if type(log_file) == str:
-                lines = [line for line in open(log_file, 'r')]
-            elif len(log_file) == 1:
-                lines = [line for line in open(log_file[0], 'r')]
+        # If the file passed is just a string
+        if type(log_file) == str:
+            lines = [line for line in open(log_file, 'r')]
             restart = False
             time_stamp = self._get_time_stamp(log_file)
 
         # If a list or tuple of log files is passed
-        elif (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series) and len(log_file) > 1:
+        elif (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series):
             log_file_dict = {}
             lines = []
             for l in log_file:
