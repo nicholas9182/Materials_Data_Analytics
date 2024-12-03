@@ -18,6 +18,7 @@ class TestGaussianParser(unittest.TestCase):
     raman_log = GaussianParser("./test_trajectories/bbl/raman.log")
     bbl_step6_log = GaussianParser("./test_trajectories/bbl/step6.log")
     bbl_pdb_traj = GaussianParser("./test_trajectories/bbl/pdb_traj_bug.log")
+    bbl_pd_series = GaussianParser(pd.Series(["./test_trajectories/bbl/step3.log"]))
 
     def test_multiline_keyword_parsing(self):
         """ Test that the parser can handle multiline keywords """
@@ -86,6 +87,7 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.atomcount == 140)
         self.assertTrue(self.pedot_log.energy == -4096904.424959145)
         self.assertTrue(self.bbl_log.energy == -12531769.403127551)
+        self.assertTrue(self.bbl_pd_series.energy == -12531769.403127551)
         self.assertTrue(self.pedot_log.functional == "B3LYP")
         self.assertTrue(self.bbl_log.functional == "WB97XD")
         self.assertTrue(self.pedot_log.basis == "6-311g")
@@ -102,6 +104,12 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.bandgap == 219.01921)
         self.assertTrue(self.bbl_log.homo == -224.979095)
         self.assertTrue(self.bbl_log.lumo == -5.959885)
+        self.assertTrue(self.bbl_pd_series.n_alpha == 363)
+        self.assertTrue(self.bbl_pd_series.n_beta == 361)
+        self.assertTrue(self.bbl_pd_series._n_electrons == 724)
+        self.assertTrue(self.bbl_pd_series.bandgap == 219.01921)
+        self.assertTrue(self.bbl_pd_series.homo == -224.979095)
+        self.assertTrue(self.bbl_pd_series.lumo == -5.959885)
 
     def test_raman_frequencies_pedot(self):
         """ Test that the parser can extract the raman frequencies from the log file """
