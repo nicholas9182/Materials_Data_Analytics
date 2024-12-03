@@ -204,13 +204,13 @@ class GaussianParser:
     def atomcount(self) -> int:
         return self._atomcount
     
-    def _concatenate_log_files(self, log_file):
+    def _concatenate_log_files(self, log_file: list[str] | tuple[str] | pd.Series | str) -> tuple[list[str], bool, dt.DateTime]:
         """
         function to concatenate log files
         :return:
         """
         # If just one file passed, or a list/tuple is passed of length 1
-        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
+        if type(log_file) == str or (len(log_file) == 1 and (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series)):
             if type(log_file) == str:
                 lines = [line for line in open(log_file, 'r')]
             elif len(log_file) == 1:
@@ -219,7 +219,7 @@ class GaussianParser:
             time_stamp = self._get_time_stamp(log_file)
 
         # If a list or tuple of log files is passed
-        elif type(log_file) == list or type(log_file) == tuple:
+        elif (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series) and len(log_file) > 1:
             log_file_dict = {}
             lines = []
             for l in log_file:
@@ -230,7 +230,7 @@ class GaussianParser:
             restart = True
             time_stamp = min(log_file_dict)
         else:
-            raise ValueError("The log file must be a path, a list of paths or a tuple of paths.")
+            raise ValueError("The log file must be a path, a list of paths, a tuple of paths or a pd.Series of paths")
         
         return lines, restart, time_stamp
     
