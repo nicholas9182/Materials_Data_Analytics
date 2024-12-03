@@ -362,6 +362,8 @@ class TestGaussianParserRestart2(unittest.TestCase):
     bbl_log = GaussianParser([path1, path2])
     bbl_log_tuple = GaussianParser((path1, path2))
     bbl_log_wrong_order = GaussianParser((path2, path1))
+    bbl_log_pd_series = GaussianParser(pd.Series([path1, path2]))
+    bbl_log_pd_series_wrong_order = GaussianParser(pd.Series([path2, path1]))
 
     def test_parser_restart(self):
         self.assertTrue(type(self.bbl_log) == GaussianParser)
@@ -382,6 +384,20 @@ class TestGaussianParserRestart2(unittest.TestCase):
         self.assertTrue(self.bbl_log_wrong_order.esp is False)
         self.assertTrue(self.bbl_log_wrong_order.complete is True)
         self.assertTrue(self.bbl_log_wrong_order.opt is True)
+        self.assertTrue(self.bbl_log_pd_series.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_pd_series.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_pd_series.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_pd_series.raman is False)
+        self.assertTrue(self.bbl_log_pd_series.esp is False)
+        self.assertTrue(self.bbl_log_pd_series.complete is True)
+        self.assertTrue(self.bbl_log_pd_series.opt is True)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.raman is False)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.esp is False)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.complete is True)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.opt is True)
 
     def test_parser_restart_tuple(self):
         self.assertTrue(type(self.bbl_log_tuple) == GaussianParser)
