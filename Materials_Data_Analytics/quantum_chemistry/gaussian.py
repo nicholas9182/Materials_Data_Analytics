@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+import DateTime as dt
 from Materials_Data_Analytics.laws_and_constants import lorentzian
 from Materials_Data_Analytics.core.coordinate_transformer import PdbParser
+import plotly.express as px
 
 pd.set_option('mode.chained_assignment', None)
 
@@ -14,7 +16,7 @@ class GaussianParser:
     def __init__(self, log_file: str | list[str]):
 
         self._log_file = log_file
-        self._lines, self._restart = self._concatenate_log_files(log_file)
+        self._lines, self._restart, self._time_stamp = self._concatenate_log_files(log_file)
         self._keywords = self._get_keywords()
 
         # extract boolean attributes from keywords
@@ -32,6 +34,9 @@ class GaussianParser:
         # extract non-boolean attributes from the keywords
         self._functional = [k for k in self._keywords if "/" in k][0].split("/")[0].upper()
         self._basis = [k for k in self._keywords if "/" in k][0].split("/")[1]
+        self._n_alpha = int([i for i in self._lines if "alpha electrons" in i][0].split()[0])
+        self._n_beta = int([i for i in self._lines if "alpha electrons" in i][0].split()[3])
+        self._n_electrons = self._n_alpha + self._n_beta
 
         # get the charge and multiplicity from the log file
         if any('Charge =' in c for c in self._lines):
@@ -74,6 +79,39 @@ class GaussianParser:
             self._stable = "RHF instability"
         else:
             self._stable = "untested"
+
+    @property
+    def homo(self) -> float:
+        """
+        Function to get the HOMO energy with reference to the vacuum level
+        """
+        return self.get_orbitals().query('occupied == True').query('energy == energy.max()')['energy'].iloc[0]
+    
+    @property
+    def lumo(self) -> float:
+        """
+        Function to get the LUMO energy with reference to the vacuum level
+        """
+        return self.get_orbitals().query('occupied == False').query('energy == energy.min()')['energy'].iloc[0]
+
+    @property
+    def bandgap(self) -> float:
+        """
+        Function to get the band gap from the log file
+        """
+        return self.lumo - self.homo
+
+    @property
+    def n_alpha(self) -> int:
+        return self._n_alpha
+    
+    @property
+    def n_beta(self) -> int:
+        return self._n_beta
+
+    @property
+    def time_stamp(self) -> dt.DateTime:
+        return self._time_stamp.strftime("%Y-%m-%d %H:%M:%S")
 
     @property
     def scf_iterations(self) -> int:
@@ -166,29 +204,59 @@ class GaussianParser:
     def atomcount(self) -> int:
         return self._atomcount
     
-    def _concatenate_log_files(self, log_file):
+    def _concatenate_log_files(self, log_file: list[str] | tuple[str] | pd.Series | str) -> tuple[list[str], bool, dt.DateTime]:
         """
         function to concatenate log files
         :return:
         """
-        # If log file is a list or tuple, then concatenate the log files
-        # TODO: This is a bit of a hacky way to do this, but it works for now. Ideally we want to check the log files for the order they ran in
-        if type(log_file) == str or (type(log_file) == list and len(log_file) == 1) or (type(log_file) == tuple and len(log_file) == 1):
-            if type(log_file) == str:
-                lines = [line for line in open(log_file, 'r')]
-            elif len(log_file) == 1:
-                lines = [line for line in open(log_file[0], 'r')]
+        # If the file passed is just a string
+        if type(log_file) == str:
+            lines = [line for line in open(log_file, 'r')]
             restart = False
-        elif type(log_file) == list or type(log_file) == tuple:
+            time_stamp = self._get_time_stamp(log_file)
+
+        # If a list or tuple of log files is passed
+        elif (type(log_file) == list or type(log_file) == tuple or type(log_file) == pd.Series):
+            log_file_dict = {}
             lines = []
-            for file in log_file:
-                lines = lines + [line for line in open(file, 'r')]
-            lines = lines
+            for l in log_file:
+                time_stamp = self._get_time_stamp(l)
+                log_file_dict[time_stamp] = l
+            for key, value in sorted(log_file_dict.items()):
+                lines = lines + [line for line in open(value, 'r')]
             restart = True
+            time_stamp = min(log_file_dict)
         else:
-            raise ValueError("The log file must be a path, a list of paths or a tuple of paths. If the last two then the log files must be in order they were calculated")
+            raise ValueError("The log file must be a path, a list of paths, a tuple of paths or a pd.Series of paths")
         
-        return lines, restart
+        return lines, restart, time_stamp
+    
+    @staticmethod
+    def _get_time_stamp(log_file):
+        """ 
+        Function to read the contents of a log file, and from that get the line containing Leave Link and construct the time stamp from that line
+        """
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+        
+        if any('Leave Link  ' in l for l in lines):
+            time_line = [l for l in lines if 'Leave Link  ' in l][0]
+            year = time_line.split()[8][:-1]
+            month = time_line.split()[5]
+            day = time_line.split()[6]
+            time = time_line.split()[7]
+            time_stamp = dt.DateTime(year + '-' + month + '-' + day + ' ' + time)
+        elif any('Normal termination of' in l for l in lines):
+            time_line = [l for l in lines[-20:] if 'Normal termination of' in l][0]
+            year = time_line.split()[10][:-1]
+            month = time_line.split()[7]
+            day = time_line.split()[8]
+            time = time_line.split()[9]
+            time_stamp = dt.DateTime(year + '-' + month + '-' + day + ' ' + time)
+        else:
+            time_stamp = None
+
+        return time_stamp
 
     def _get_keywords(self):
         """
@@ -464,7 +532,6 @@ class GaussianParser:
 
         return data
 
-
     def get_esp_charges(self, heavy_atoms: bool = False, with_coordinates: bool = False, **kwargs) -> pd.DataFrame:
         """
         method to return the mulliken charges from the log file
@@ -563,3 +630,69 @@ class GaussianParser:
         PdbParser.pandas_to_pdb_trajectory(coordinates, time_col='iteration', filename=filename, path=path, fit_t0=fit_t0)
         return None
     
+    def get_orbitals(self):
+        """
+        Function to get the orbital information from the log file
+        """
+        if any('Population analysis using the SCF Density' in s for s in self._lines) is False:
+            raise ValueError("This log file doesnt have molecular orbital data in it")
+        
+        start_line = [i for i, line in enumerate(self._lines) if 'Population analysis using the SCF Density' in line][-1] + 4
+        end_line = [i for i, line in enumerate(self._lines) if 'Condensed to atoms (all electrons)' in line][-1]
+        chunk = self._lines[start_line:end_line]
+
+        alpha_len = len([l for l in chunk if 'Alpha  occ. eigenvalues' in l])
+        beta_len = len([l for l in chunk if 'Beta  occ. eigenvalues' in l])
+
+        # Get the alpha molecular orbitals
+        if alpha_len > 1:
+            alpha_occ = [l for l in chunk if 'Alpha  occ. eigenvalues' in l]
+            alpha_virt = [l for l in chunk if 'Alpha virt. eigenvalues' in l]
+            alpha_occ = [s.split()[4:] for s in alpha_occ]
+            alpha_virt = [s.split()[4:] for s in alpha_virt]
+            alpha_occ = [item for sublist in alpha_occ for item in sublist]
+            alpha_virt = [item for sublist in alpha_virt for item in sublist]
+            alpha_occ = [float(a)*2625.5 for a in alpha_occ]
+            alpha_virt = [float(a)*2625.5 for a in alpha_virt]
+            alpha_occ_df = pd.DataFrame({'energy': alpha_occ, 'occupied': True})
+            alpha_virt_df = pd.DataFrame({'energy': alpha_virt, 'occupied': False})
+
+            alpha_df = (pd
+                        .concat([alpha_occ_df, alpha_virt_df])
+                        .assign(orbital_number = lambda x: [i for i in range(1, len(x) + 1)])
+                        )
+
+        # Get the beta molecular orbitals
+        if beta_len > 1:
+            beta_occ = [l for l in chunk if 'Beta  occ. eigenvalues' in l]
+            beta_virt = [l for l in chunk if 'Beta virt. eigenvalues' in l]
+            beta_occ = [s.split()[4:] for s in beta_occ]
+            beta_virt = [s.split()[4:] for s in beta_virt]
+            beta_occ = [item for sublist in beta_occ for item in sublist]
+            beta_virt = [item for sublist in beta_virt for item in sublist]
+            beta_occ = [float(a)*2625.5 for a in beta_occ]
+            beta_virt = [float(a)*2625.5 for a in beta_virt]
+            beta_occ_df = pd.DataFrame({'energy': beta_occ, 'occupied': True})
+            beta_virt_df = pd.DataFrame({'energy': beta_virt, 'occupied': False})
+
+            beta_df = (pd
+                       .concat([beta_occ_df, beta_virt_df])
+                       .assign(orbital_number = lambda x: [i for i in range(1, len(x) + 1)])
+                      )
+
+        if alpha_len > 1 and beta_len > 1:
+            data = pd.concat([alpha_df.assign(electron = 'alpha'), beta_df.assign(electron = 'beta')])
+        elif alpha_len > 1 and beta_len <= 1:
+            data = alpha_df.assign(electron = 'paired')
+        else:
+            raise ValueError("This log file doesnt have molecular orbital data in it!")
+
+        return data
+    
+    def get_dos_plot(self, **kwargs):
+        """ Function to return a density of states plot """
+        data = self.get_orbitals()
+        bins = len(data) // 2
+        figure = px.histogram(data, x='energy', marginal='rug', color='occupied', nbins=bins, 
+                              pattern_shape='electron', labels={'energy': 'E [kJ/mol]'}, **kwargs)
+        return figure
