@@ -703,4 +703,3 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         potential_figure = px.line(peaks, x='cycle', y='potential_peak', color='tag', markers=True, labels={'potential_peak': 'Peak Potential [V]', 'cycle': 'Cycle'}, **kwargs)
         
         return current_figure, potential_figure
-    
