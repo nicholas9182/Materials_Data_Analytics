@@ -2,18 +2,20 @@ import pandas as pd
 import numpy as np
 
 # fundamentals
-Kb = 0.008314463  # in kJ/mol
+KB = 0.008314463  # in kJ/mol
 R = 8.314         # (J)/(K mol)
 F = 96485.332     # (J)/(V mol)
 
+E = 1.60217662e-19 # (C)
+
 #standard reduction potentials vs SHE
-potential_standard_O2_H2O2 = 0.695
+POTENTIAL_STANDARD_O2_H2O2 = 0.695
 
 # diffusion rates
-diff_rate_O2  = 1.9e-5 # cm2/s
+DIFF_RATE_O2  = 1.9e-5 # cm2/s
 
 # viscosity parameters
-viscosity_aq = 0.01 # cm2/s
+VISCOSITY_AQ = 0.01 # cm2/s
 
 def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: float = 298, y_col: str = 'energy',
                                    y_col_out: str = 'population', discrete_bins: bool = False) -> pd.DataFrame:
@@ -27,7 +29,7 @@ def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: 
     :param discrete_bins: set to true if x is a non-continuous function
     :return: dataframe with a new column
     """
-    data[y_col_out] = np.exp((-data[y_col])/(Kb * temperature))
+    data[y_col_out] = np.exp((-data[y_col])/(KB * temperature))
     if not discrete_bins:
         area = np.trapz(x=data[x_col], y=data[y_col_out])
     else:
@@ -46,7 +48,7 @@ def boltzmann_population_to_energy(data: pd.DataFrame, temperature: float = 298,
     :param y_col_out: the name of the new column with the population distribution
     :return: dataframe with a new column
     """
-    data[y_col_out] = -np.log(data[y_col]) * Kb * temperature
+    data[y_col_out] = -np.log(data[y_col]) * KB * temperature
     return data
 
 

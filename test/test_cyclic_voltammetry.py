@@ -61,6 +61,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('current' in self.cv_biologic_1.data.columns)
         self.assertTrue('cycle' in self.cv_biologic_1.data.columns)
         self.assertTrue('time' in self.cv_biologic_1.data.columns)
+        self.assertTrue('segment' in self.cv_biologic_1.data.columns)
 
     def test_from_biologic_dataframe(self):
         """ Test the from_biologic method with a dataframe """
