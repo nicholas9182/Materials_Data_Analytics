@@ -182,7 +182,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
     
     @property
     def image_masked(self):
-        if hasattr(self, '_row_image_masked'):
+        if hasattr(self, '_image_masked'):
             return self._image_masked
         else:
             raise ValueError('No mask applied')
@@ -391,7 +391,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         
         pg.incident_angle = self.incidence_angle
         
-        if hasattr(self, '_row_image_masked'):
+        if hasattr(self, '_image_masked'):
             image = self._image_masked
         else:
             print('No mask applied')
