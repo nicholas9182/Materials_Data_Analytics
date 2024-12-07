@@ -4,6 +4,7 @@ from setuptools import find_packages
 setup(
     name='Materials_Data_Analytics',
     version="6.2.0", 
+
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -25,6 +26,7 @@ setup(
         "pyFAI",
         "pygix",
         "holoviews"
+        "DateTime"
     ],
     scripts=[
         'cli_tools/plot_hills.py',
