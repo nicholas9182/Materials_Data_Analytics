@@ -152,6 +152,13 @@ The GausianParser class contains various attributes which can easily be accessed
  - ```heavyatomcount``` - The number of heavy atoms in the system
  - ```atoms``` - A list with the elements in the system
  - ```heavy_atoms``` - A list with the heavy atoms in the system
+ - ```time_stamp``` - The time stamp of the calculation
+ - ```n_alpha``` - The number of alpha electrons
+ - ```n_beta``` - The number of beta electrons
+ - ```n_electrons``` - The number of electrons
+ - ```homo``` - The HOMO energy level with reference to the vacuum level
+ - ```lumo``` - The LUMO energy level with reference to the vacuum level
+ - ```bandgap``` - The bandgap of the material
 
 Once created, various operations can be performed on the object. These checking the SCF energy during an optimization or checking for spin contamination:
 
@@ -176,20 +183,27 @@ bond_data = my_gaussian.get_bonds_from_coordinates(cutoff = 1.8) # get the bonds
 my_gaussian.get_optimisation_trajectory('opt_traj.pdb') # write the optimisation trajectory to a pdb file
 ```
 
-charge analysis:
+charge and spin analysis:
 
 ```python
 charge_data = my_gaussian.get_mulliken_charges() # get the mulliken charges for each atom
+spin_data = my_gaussian.get_mulliken_spin_densities() # get the spin density for each atom
 charge_data = my_gaussian.get_esp_charges() # get the esp charges for each atom
 ```
 
-or frequency analysis:
+frequency analysis:
 
 ```python
 frequency_data = my_gaussian.get_raman_frequencies() # get the raman frequencies
 raman_spectra = my_gaussian.get_raman_spectra() # get the raman spectra for the system
 ```
 
+or orbital analysis:
+
+```python 
+orbital_data = my_gaussian.get_orbitals() # get the orbital energies as a pandas dataframe
+dos_plot = my_gaussian.get_dos_plot(height=800, width=800) # get the density of states plot
+```
 
 <br><br>
 

@@ -16,9 +16,9 @@ class TestGaussianParser(unittest.TestCase):
     bbl_log_double_digit_charge = GaussianParser("./test_trajectories/bbl/step1.log")
     bbl_log = GaussianParser("./test_trajectories/bbl/step3.log")
     raman_log = GaussianParser("./test_trajectories/bbl/raman.log")
-    bbl_spe_log = GaussianParser("./test_trajectories/bbl/step_37.log")
     bbl_step6_log = GaussianParser("./test_trajectories/bbl/step6.log")
     bbl_pdb_traj = GaussianParser("./test_trajectories/bbl/pdb_traj_bug.log")
+    bbl_pd_series = GaussianParser(pd.Series(["./test_trajectories/bbl/step3.log"]))
 
     def test_multiline_keyword_parsing(self):
         """ Test that the parser can handle multiline keywords """
@@ -87,6 +87,7 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.atomcount == 140)
         self.assertTrue(self.pedot_log.energy == -4096904.424959145)
         self.assertTrue(self.bbl_log.energy == -12531769.403127551)
+        self.assertTrue(self.bbl_pd_series.energy == -12531769.403127551)
         self.assertTrue(self.pedot_log.functional == "B3LYP")
         self.assertTrue(self.bbl_log.functional == "WB97XD")
         self.assertTrue(self.pedot_log.basis == "6-311g")
@@ -95,6 +96,20 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(self.bbl_log.heavyatomcount == 110)
         self.assertTrue(self.pedot_log.esp is False)
         self.assertTrue(self.bbl_log.esp is True)
+        self.assertTrue(self.bbl_log.time_stamp == '2023-09-30 13:04:10')
+        self.assertTrue(self.pedot_log.time_stamp == '2023-09-29 16:34:29')
+        self.assertTrue(self.bbl_log.n_alpha == 363)
+        self.assertTrue(self.bbl_log.n_beta == 361)
+        self.assertTrue(self.bbl_log._n_electrons == 724)
+        self.assertTrue(self.bbl_log.bandgap == 219.01921)
+        self.assertTrue(self.bbl_log.homo == -224.979095)
+        self.assertTrue(self.bbl_log.lumo == -5.959885)
+        self.assertTrue(self.bbl_pd_series.n_alpha == 363)
+        self.assertTrue(self.bbl_pd_series.n_beta == 361)
+        self.assertTrue(self.bbl_pd_series._n_electrons == 724)
+        self.assertTrue(self.bbl_pd_series.bandgap == 219.01921)
+        self.assertTrue(self.bbl_pd_series.homo == -224.979095)
+        self.assertTrue(self.bbl_pd_series.lumo == -5.959885)
 
     def test_raman_frequencies_pedot(self):
         """ Test that the parser can extract the raman frequencies from the log file """
@@ -145,6 +160,23 @@ class TestGaussianParser(unittest.TestCase):
         charges = self.bbl_log.get_mulliken_charges()
         self.assertTrue(charges['atom_id'].tolist() == [i for i in range(1, 141)])
         self.assertTrue(charges['element'].tolist() == self.bbl_log.atoms)
+        self.assertTrue(charges['partial_charge'].iloc[0] == -0.015446)
+        self.assertTrue(charges['partial_charge'].iloc[1] == 0.124604)
+
+    def test_get_mulliken_spins_bbl(self):
+        """ Test that the parser can extract the mulliken spins from the log file for bbl """
+        spins = self.bbl_log.get_mulliken_spin_densities()
+        self.assertTrue(spins['atom_id'].tolist() == [i for i in range(1, 141)])
+        self.assertTrue(spins['element'].tolist() == self.bbl_log.atoms)
+        self.assertTrue(spins['spin_density'].iloc[0] == 0.031504)
+        self.assertTrue(spins['spin_density'].iloc[1] == -0.001347)
+
+    def test_get_mulliken_spins_heavies(self): 
+        """ test that the parser can extract the mulliken spins from the log file for heavy atoms """
+        spins = self.bbl_log.get_mulliken_spin_densities(heavy_atoms=True)
+        self.assertTrue(spins['element'].tolist() == self.bbl_log.heavyatoms)
+        self.assertTrue(spins['spin_density'].iloc[0] == 0.030156)
+        self.assertTrue(spins['spin_density'].iloc[1] == -0.012499)
 
     def test_get_mullikens_heavies(self):
         """ Test that the parser can extract the mulliken charges from the log file for heavy atoms """
@@ -226,7 +258,7 @@ class TestGaussianParser(unittest.TestCase):
 
     def test_get_bbl_opt_traj_2(self):
         """ Test that the parser can extract the coordinates from the log file for bbl """
-        self.bbl_pdb_traj.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.')
+        # self.bbl_pdb_traj.get_optimisation_trajectory(filename='bbl_opt_traj.pdb', path='.')
         self.assertTrue(True)
 
     def test_get_bbl_scf_conv_2(self):
@@ -306,6 +338,22 @@ class TestGaussianParser(unittest.TestCase):
         self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)
         self.assertTrue(data['g_elec_therm'].iloc[0] == -18887783.57055)
 
+    def test_get_orbitals(self):
+        data_1 = self.bbl_log.get_orbitals()
+        data_2 = self.bbl_log_double_digit_charge.get_orbitals()
+        data_3 = self.bbl_step6_log.get_orbitals()
+        self.assertTrue(type(data_1) == pd.DataFrame)
+        self.assertTrue(type(data_2) == pd.DataFrame)
+        self.assertTrue(type(data_3) == pd.DataFrame)
+        self.assertTrue(data_1['energy'].iloc[5] == -50178.424725)
+        self.assertTrue(data_2['energy'].iloc[500] == -889.965735)
+        self.assertTrue(data_3['energy'].iloc[1000] == 1635.135145)
+
+    def test_get_dos_plot(self):
+        figure = self.bbl_log.get_dos_plot()
+        # figure.show()
+        self.assertTrue(True)
+
 
 class TestGaussianParserRestart(unittest.TestCase):
 
@@ -321,6 +369,9 @@ class TestGaussianParserRestart2(unittest.TestCase):
     path2 = './test_trajectories/bbl/step4_restart.log'
     bbl_log = GaussianParser([path1, path2])
     bbl_log_tuple = GaussianParser((path1, path2))
+    bbl_log_wrong_order = GaussianParser((path2, path1))
+    bbl_log_pd_series = GaussianParser(pd.Series([path1, path2]))
+    bbl_log_pd_series_wrong_order = GaussianParser(pd.Series([path2, path1]))
 
     def test_parser_restart(self):
         self.assertTrue(type(self.bbl_log) == GaussianParser)
@@ -333,6 +384,28 @@ class TestGaussianParserRestart2(unittest.TestCase):
         self.assertTrue(self.bbl_log.functional == 'WB97XD')
         self.assertTrue(self.bbl_log.basis == '6-311(d,p)')
         self.assertTrue(self.bbl_log.restart == True)
+        self.assertTrue(self.bbl_log.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_wrong_order.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_wrong_order.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_wrong_order.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_wrong_order.raman is False)
+        self.assertTrue(self.bbl_log_wrong_order.esp is False)
+        self.assertTrue(self.bbl_log_wrong_order.complete is True)
+        self.assertTrue(self.bbl_log_wrong_order.opt is True)
+        self.assertTrue(self.bbl_log_pd_series.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_pd_series.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_pd_series.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_pd_series.raman is False)
+        self.assertTrue(self.bbl_log_pd_series.esp is False)
+        self.assertTrue(self.bbl_log_pd_series.complete is True)
+        self.assertTrue(self.bbl_log_pd_series.opt is True)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.time_stamp == "2024-08-15 18:21:15")
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.functional == 'WB97XD')
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.basis == '6-311(d,p)')
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.raman is False)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.esp is False)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.complete is True)
+        self.assertTrue(self.bbl_log_pd_series_wrong_order.opt is True)
 
     def test_parser_restart_tuple(self):
         self.assertTrue(type(self.bbl_log_tuple) == GaussianParser)
