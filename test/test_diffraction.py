@@ -33,18 +33,18 @@ class TestGIWAXSMeasurementPixelImage(unittest.TestCase):
         ''' Test the attributes of the GIWAXS class '''
         
         self.assertTrue(self.data_SLAC_BL113.image_row.shape == (3072, 3072))
-        self.assertTrue(self.data_SLAC_BL113.image_row[5][2] == 0.20384349112892539)
-        self.assertTrue(self.data_SLAC_BL113.image_row[15][27] == 0.18374499628887675)
-        self.assertTrue(self.data_SLAC_BL113.image_row[257][43] == 0.24183331065685545)
+        self.assertTrue(self.data_SLAC_BL113.image_row[5][2] == 51.004597211078504)
+        self.assertTrue(self.data_SLAC_BL113.image_row[15][27] == 45.97566237392315)
+        self.assertTrue(self.data_SLAC_BL113.image_row[257][43] == 60.510200909349756)
         self.assertTrue(self.data_SLAC_BL113.incidence_angle == 0.12)
         self.assertTrue(self.data_SLAC_BL113.exposure_time == 120.0)
 
     def test_mask(self):
         ''' Test the mask method of the GIWAXS class '''
         self.data_SLAC_BL113.apply_mask(maskpath='./test_trajectories/diffraction/mask.tif')
-        self.assertTrue(self.data_SLAC_BL113.image_masked[5][2] == 0.20384349112892539)
-        self.assertTrue(self.data_SLAC_BL113.image_masked[15][27] == 0.18374499628887675)
-        self.assertTrue(self.data_SLAC_BL113.image_masked[257][43] == 0.24183331065685545)
+        self.assertTrue(self.data_SLAC_BL113.image_masked[5][2] == 51.004597211078504)
+        self.assertTrue(self.data_SLAC_BL113.image_masked[15][27] == 45.97566237392315)
+        self.assertTrue(self.data_SLAC_BL113.image_masked[257][43] == 60.510200909349756)
         self.assertTrue(np.isnan(self.data_SLAC_BL113.image_masked[3000][43]))
 
     

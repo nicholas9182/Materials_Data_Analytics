@@ -26,6 +26,18 @@ class Calibrator():
                  wavelegth: float = None,
                  source: str = None, 
                  detector = None):
+        """Create a calibration object
+        :param distance: sample-detector distance in meters
+        :param poni1: coordinate of the point of normal incidence on the detector in the detector plane
+        :param poni2: coordinate of the point of normal incidence on the detector in the detector plane
+        :param rot1: rotation angle around the beam in radians
+        :param rot2: rotation angle around the detector in radians
+        :param rot3: rotation angle around the normal to the detector in radians
+        :param energy: energy of the X-ray beam in eV
+        :param wavelegth: wavelegth of the X-ray beam in meters
+        :param source: source of the calibration
+        :param detector: detector object or string
+        """
         
         if isinstance(detector, str):
             self._detector = pyFAI.detector_factory(detector)
@@ -42,9 +54,9 @@ class Calibrator():
 
         if energy is not None:
             self._energy = energy
-            self._wavelegth = 12.39842 / energy
+            self._wavelegth = 1.239842e-6 / energy
         elif wavelegth is not None:
-            self._energy = 12.39842 / wavelegth
+            self._energy = 1.239842e-6 / wavelegth
             self._wavelegth = wavelegth
         else:
             raise ValueError('One of energy or wavelegth must be provided')
@@ -126,7 +138,7 @@ class Calibrator():
     def _make_ai (self) -> pyFAI.AzimuthalIntegrator:
         return pyFAI.AzimuthalIntegrator(dist=self.distance, poni1=self.poni1, poni2=self.poni2,
                                          rot1=self.rot1, rot2=self.rot2, rot3=self.rot3, detector=self.detector, 
-                                         wavelength=self.energy)
+                                         wavelength=self.wavelegth)
     
 
 class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
@@ -187,6 +199,48 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         else:
             raise ValueError('No mask applied')
         
+    @property
+    def qxy(self):
+        if hasattr(self, '_data_reciprocal'):
+            return self._data_reciprocal['qxy'].unique()
+        else:
+            raise ValueError('No data in reciprocal space')
+        
+    @property
+    def qz(self):
+        if hasattr(self, '_data_reciprocal'):
+            return self._data_reciprocal['qz'].unique()
+        else:
+            raise ValueError('No data in reciprocal space')
+    
+    @property
+    def Intensity_reciprocal(self):
+        if hasattr(self, '_data_reciprocal'):
+            return self._data_reciprocal.pivot(index='qxy', columns='qz', values='I').to_numpy()
+        else:
+            raise ValueError('No data in reciprocal space')
+        
+    @property
+    def chi(self):
+        if hasattr(self, '_data_polar'):
+            return self._data_polar['chi'].unique()
+        else:
+            raise ValueError('No data in polar space')
+        
+    @property
+    def Q(self):
+        if hasattr(self, '_data_polar'):
+            return self._data_polar['Q'].unique()
+        else:
+            raise ValueError('No data in polar space')
+        
+    @property
+    def Intensity_polar(self):
+        if hasattr(self, '_data_polar'):
+            return self._data_polar.pivot(index='Q', columns='chi', values='I').to_numpy()
+        else:
+            raise ValueError('No data in polar space')
+                
 
     @staticmethod   
     def _read_txt_file_SLAC_BL11_3(txt_filepaths: list[str]) -> pd.DataFrame:
@@ -322,7 +376,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         for image_file, intensity in zip(image_file_list, intensity_list):
  
             image_data = GIWAXSMeasurementPixelImage._load_tif_file(image_file)
-            image_data_norm = image_data/intensity
+            image_data_norm = image_data/intensity*np.mean(intensity_list)
             # Append the image data to the list
             images_list.append(image_data_norm)
 
@@ -378,27 +432,27 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         - self: The current instance.
         """
         ai = calibrator.ai
-        pg = pygix.transform.Transform(
-            dist=ai.dist,
-            poni1=ai.poni1,
-            poni2=ai.poni2,
-            rot1=ai.rot1,
-            rot2=ai.rot2,
-            rot3=ai.rot3,
-            pixel1=ai.pixel1,
-            pixel2=ai.pixel2,
-            wavelength=ai.wavelength)
+        pg = pygix.transform.Transform().load(ai)
+            # dist=ai.dist,
+            # poni1=ai.poni1,
+            # poni2=ai.poni2,
+            # rot1=ai.rot1,
+            # rot2=ai.rot2,
+            # rot3=ai.rot3,
+            # pixel1=ai.pixel1,
+            # pixel2=ai.pixel2,
+            # wavelength=ai.wavelength)
         
-        pg.incident_angle = self.incidence_angle
-        
+        pg.incident_angle = np.deg2rad(self.incidence_angle)
+
         if hasattr(self, '_image_masked'):
-            image = self._image_masked
+            image = self.image_masked
         else:
             print('No mask applied')
-            image = self._image_row
+            image = self.image_row
 
-        
-        IntQ, qxy, qz = pg.transform_reciprocal(image,
+        qz_range = (-qz_range[0], -qz_range[1])
+        [IntQ, qxy, qz] = pg.transform_reciprocal(image,
                                                 npt = (pixel_Q, pixel_Q),
                                                 ip_range = qxy_range,
                                                 op_range = qz_range,
@@ -406,29 +460,47 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
                                                 unit = unit,
                                                 correctSolidAngle = correct_solid_angle,
                                                 polarization_factor = polarization_factor)
-    
-             
 
-        IntChiQ, Q, chi = pg.transform_polar (image,
-                                              npt = (pixel_Q, pixel_chi),
+        qz = -qz
+        sorted_indices = np.argsort(qz)
+
+        # Apply sorted indices to chi and IntQ
+        qz_sorted = qz[sorted_indices]
+        IntQ_sorted = IntQ[sorted_indices]
+
+
+        pixel_chi_corr = int(pixel_chi*360/(chi_range[1] - chi_range[0]))
+
+        [IntChiQ, Q, chi] = pg.transform_polar (image,
+                                              npt = (pixel_Q, pixel_chi_corr),
                                               q_range = q_range,
-                                              chi_range = chi_range,
+                                              chi_range = (-180, 180),
                                               correctSolidAngle = correct_solid_angle,
                                               polarization_factor = polarization_factor,
                                               unit = unit,
                                               method = 'splitbbox')
         
+        chi_corr = np.where(chi > 0, -chi + 180, -chi - 180)
+        sorted_indices = np.argsort(chi_corr)
+
+        # Apply sorted indices to chi and IntQ
+        chi_sorted = chi_corr[sorted_indices]
+        IntChiQ_sorted = IntChiQ[sorted_indices]
+
+        mask_chi = (chi_sorted >= chi_range[0]) & (chi_sorted <= chi_range[1])
+        chi_ = chi_sorted[mask_chi]
+        IntChiQ_ = IntChiQ_sorted[mask_chi]
 
         data_reciprocal = pd.DataFrame({
-            'qxy':  np.repeat(qxy, len(qz)),  # Repeat qxy values
-            'qz': np.tile(qz, len(qxy)),       # Tile qz values
-            'I': IntQ.flatten()
+            'qxy':  np.tile(qxy, len(qz_sorted)),  # Repeat qxy values
+            'qz': np.repeat(qz_sorted, len(qxy)),       # Tile qz values
+            'I': IntQ_sorted.flatten()
         })
 
         data_polar = pd.DataFrame({
-            'Q':  np.repeat(Q, len(chi)),  # Repeat Q values
-            'chi': np.tile(chi, len(Q)),       # Tile chi values
-            'I': IntChiQ.flatten()
+            'Q':  np.tile(Q, len(chi_)),  # Repeat Q values
+            'chi': np.repeat(chi_, len(Q)),       # Tile chi values
+            'I': IntChiQ_.flatten()
         })
 
         self._data_reciprocal = data_reciprocal
