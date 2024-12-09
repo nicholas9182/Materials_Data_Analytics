@@ -122,7 +122,6 @@ class Calibrator():
                    detector = poni.detector,
                    wavelegth = poni.wavelength,
                    source = poni_file)
-  
 
     def save_to_pickle(self, pickle_file: str) -> 'Calibrator':
         """Save the calibration object to a pickle file
@@ -134,14 +133,16 @@ class Calibrator():
         return self
     
     def _make_ai (self) -> pyFAI.AzimuthalIntegrator:
+        """
+        Function to return an Azimuthal Integrator class from the pyFAI class
+        """
         return pyFAI.AzimuthalIntegrator(dist=self.distance, poni1=self.poni1, poni2=self.poni2,
                                          rot1=self.rot1, rot2=self.rot2, rot3=self.rot3, detector=self.detector, 
                                          wavelength=self.wavelegth)
     
 
-class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
+class GIWAXSPixelImage(ScatteringMeasurement):
     ''' A class to store a GIWAXS measurement '''
-
     def __init__(self,
                  row_image : np.ndarray,
                  incidence_angle : float,
@@ -238,15 +239,14 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
             return self._data_polar.pivot(index='Q', columns='chi', values='I').to_numpy()
         else:
             raise ValueError('No data in polar space')
-                
 
     @staticmethod   
     def _read_txt_file_SLAC_BL11_3(txt_filepaths: list[str]) -> pd.DataFrame:
-        '''Read the txt files from SLAC BL11-3 beamline and return a pandas DataFrame
+        '''
+        Read the txt files from SLAC BL11-3 beamline and return a pandas DataFrame
         :param txt_filepaths: list of filepaths to the txt files
         :return: a pandas DataFrame with temperature, exposure time, i0, and monitor intensity
         '''       
-
         timestamp_list = []
         temperature_list = []
         exposure_time_list = []
@@ -283,13 +283,12 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
             'monitor': monitor_list,
             'Temperature [C]': temperature_list})
     
-   
     @classmethod
     def from_SLAC_BL11_3(cls,
         tif_filepaths: list[str] | str  = None,
         txt_filepaths: list[str] | str = None,
         verbose: bool = False,
-        metadata: dict = {}) -> 'GIWAXSMeasurementPixelImage':
+        metadata: dict = {}) -> 'GIWAXSPixelImage':
         """Load a GIWAXS measurement from SLAC BL11-3 beamline
         :param tif_filepaths: list of filepaths to the tif files
         :param txt_filepaths: list of filepaths to the txt files
@@ -339,7 +338,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
             return np.array(img)
                
     @staticmethod
-    def _average_multiple_tif_files (image_file_list : list[str],
+    def _average_multiple_tif_files(image_file_list : list[str],
                                     intensity_list : list[float],
                                     exposure_time_list : list[float],
                                     incidence_angle_list : list[float],
@@ -373,7 +372,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
 
         for image_file, intensity in zip(image_file_list, intensity_list):
  
-            image_data = GIWAXSMeasurementPixelImage._load_tif_file(image_file)
+            image_data = GIWAXSPixelImage._load_tif_file(image_file)
             image_data_norm = image_data/intensity*np.mean(intensity_list)
             # Append the image data to the list
             images_list.append(image_data_norm)
@@ -388,7 +387,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         return image_data_average, incidence_angle, exposure_time, N 
     
 
-    def apply_mask(self, maskpath) -> 'GIWAXSMeasurementPixelImage':
+    def apply_mask(self, maskpath) -> 'GIWAXSPixelImage':
         """ Apply a mask to the image.
         :param maskpath: path to the mask file
         :return: the masked image
@@ -396,7 +395,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
                 
         img = self._image_row
         
-        mask = GIWAXSMeasurementPixelImage._load_tif_file(maskpath)
+        mask = GIWAXSPixelImage._load_tif_file(maskpath)
         self._mask = mask
 
         img_masked = np.where(mask == 1, np.nan, img)
@@ -406,7 +405,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         return self
        
 
-    def transform (
+    def transform(
         self,
         calibrator: Calibrator,
         qxy_range = (-3, 3),
@@ -431,16 +430,6 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         """
         ai = calibrator.ai
         pg = pygix.transform.Transform().load(ai)
-            # dist=ai.dist,
-            # poni1=ai.poni1,
-            # poni2=ai.poni2,
-            # rot1=ai.rot1,
-            # rot2=ai.rot2,
-            # rot3=ai.rot3,
-            # pixel1=ai.pixel1,
-            # pixel2=ai.pixel2,
-            # wavelength=ai.wavelength)
-        
         pg.incident_angle = np.deg2rad(self.incidence_angle)
 
         if hasattr(self, '_image_masked'):
@@ -515,7 +504,7 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
                              data_polar = self._data_polar,
                              metadata = self._metadata)
 
-    def save_to_pickle(self, pickle_file: str) -> 'GIWAXSMeasurementPixelImage':
+    def save_to_pickle(self, pickle_file: str) -> 'GIWAXSPixelImage':
         """Save the GIWAXS measurement to a pickle file
         :param pickle_file: path to the pickle file
         :return: the GIWAXS measurement object
@@ -525,7 +514,6 @@ class GIWAXSMeasurementPixelImage(ScatteringMeasurement):
         return self
     
         
-
 class GIWAXSPattern(ScatteringMeasurement):
     ''' A class to store a GIWAXS measurement '''
 
@@ -636,7 +624,6 @@ class GIWAXSPattern(ScatteringMeasurement):
 
         return self
     
-
     def export_polar_data(self, export_filepath: str) -> 'GIWAXSPattern':
         """Export the polar space data to a CSV file.
         Args:
