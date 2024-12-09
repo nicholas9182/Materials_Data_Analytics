@@ -29,9 +29,9 @@ setup(
     ],
     scripts=[
         'cli_tools/plot_hills.py',
-	    'cli_tools/colvar_plotter.py',
-	    'cli_tools/get_cv_sample.py',
-	    'cli_tools/get_polymer_contacts.py'
+	      'cli_tools/colvar_plotter.py',
+	      'cli_tools/get_cv_sample.py',
+	      'cli_tools/get_polymer_contacts.py'
     ],
     classifiers=[ 
         "Programming Language :: Python :: 3",
