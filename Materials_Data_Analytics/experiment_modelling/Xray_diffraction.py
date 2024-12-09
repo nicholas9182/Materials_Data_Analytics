@@ -1,12 +1,10 @@
 from Materials_Data_Analytics.experiment_modelling.core import ScatteringMeasurement
 import os
-#import fabio
 import pandas as pd
 import numpy as np
 import pyFAI
 import pygix
 import pickle
-#import holoviews as hv
 from PIL import Image
 from datetime import datetime
 import re
