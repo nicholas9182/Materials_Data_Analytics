@@ -2,6 +2,8 @@ from Materials_Data_Analytics.materials.electrolytes import Electrolyte
 import pandas as pd
 import scipy as sp
 import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
 
 
 class Measurement():
@@ -133,6 +135,150 @@ class Measurement():
         data[x_col + '_peak'] = max_x
 
         return data
+    
+    def plot_pixel_map(self,
+                       data: pd.DataFrame,
+                       x: str,
+                       y: str,
+                       z: str,
+                       colorscale: str, 
+                       x_label: str = None,
+                       y_label: str = None,
+                       z_label: str = None,
+                       xlim: tuple = None,
+                       ylim: tuple = None,
+                       log_scale: bool = False,
+                       z_lower_cuttoff: float = None,
+                       aspect: str = 'equal',
+                       **kwargs) -> go.Figure:
+        
+        """
+        Function for plotting a pixel map of data
+        :param data: The data frame with the x, y, and z values
+        :param x_col: The column name of the x values
+        :param y_col: The column name of the y values
+        :param z_col: The column name of the z values
+        :param colorscale: The colorscale of the pixel map
+        :param x_label: The x axis label
+        :param y_label: The y axis label
+        :param z_label: The z axis label
+        :param xlim: The x limits of the plot
+        :param ylim: The y limits of the plot
+        :param width: The width of the plot
+        :param height: The height of the plot
+        :param title: The title of the plot
+        :param log_scale: Whether to plot the z values on a log scale
+        :param template: The plotly template to use
+        :return: a plotly figure of the pixel map
+        """
+        if x not in data.columns or y not in data.columns or z not in data.columns:
+            raise ValueError('The x, y, and z columns must be in the data frame')
+        
+        if z_lower_cuttoff is None and log_scale and min(data[z]) <= 0:
+            raise ValueError('The z values must be positive to plot on a log scale. Either add a z_lower_cuttoff or remove the log_scale')
+        
+        data = data.query(f'{z} > 0')
+
+        if xlim is not None:
+            data = data.query(f'{x} >= {xlim[0]} and {x} <= {xlim[1]}')
+        if ylim is not None:
+            data = data.query(f'{y} >= {ylim[0]} and {y} <= {ylim[1]}')
+        if z_lower_cuttoff is not None:
+            data = data.query(f'{z} >= {z_lower_cuttoff}')
+
+        square_data = data.pivot(index=y, columns=x, values=z)
+        square_data = square_data.fillna(z_lower_cuttoff) if z_lower_cuttoff is not None else square_data.fillna(0)
+        square_data = np.log(square_data) if log_scale else square_data
+        z_label = 'log(' + z_label + ')' if log_scale else z_label
+        
+        z_data = square_data.values
+        x_vec = square_data.columns
+        y_vec = square_data.index
+
+        figure = px.imshow(z_data, x=x_vec, y=y_vec, color_continuous_scale=colorscale, aspect=aspect, **kwargs)
+    
+        if x_label is not None:
+            figure.update_xaxes(title_text=x_label)
+        if y_label is not None:
+            figure.update_yaxes(title_text=y_label)
+        if z_label is not None:
+            figure.update_layout(coloraxis_colorbar={'title': z_label})
+
+        return figure
+        
+    
+    def plot_contour_map(self, 
+                         data: pd.DataFrame,
+                         x: str,
+                         y: str,
+                         z: str,
+                         colorscale: str,
+                         x_label: str = None,
+                         y_label: str = None,
+                         z_label: str = None,
+                         xlim: tuple = None,
+                         ylim: tuple = None,
+                         width: int = None,
+                         height: int = None,
+                         title = None,
+                         ncontours: int = 200,
+                         log_scale: bool = False, 
+                         z_lower_cuttoff: float = None,
+                         template: str = None) -> go.Figure:
+        """
+        Function for plotting a contour map of data
+        :param data: The data frame with the x, y, and z values
+        :param x_col: The column name of the x values
+        :param y_col: The column name of the y values
+        :param z_col: The column name of the z values
+        :param colorscale: The colorscale of the contour map
+        :param x_label: The x axis label
+        :param y_label: The y axis label
+        :param z_label: The z axis label
+        :param xlim: The x limits of the plot
+        :param ylim: The y limits of the plot
+        :param width: The width of the plot
+        :param height: The height of the plot
+        :param title: The title of the plot
+        :param ncontours: The number of contours to plot
+        :param template: The plotly template to use
+        :param log_scale: Whether to plot the z values on a log scale
+        :return: a plotly figure of the contour map
+        """
+        if x not in data.columns or y not in data.columns or z not in data.columns:
+            raise ValueError('The x, y, and z columns must be in the data frame')
+        
+        data = data.query(f'{z} > 0')
+
+        if xlim is not None:
+            data = data.query(f'{x} >= {xlim[0]} and {x} <= {xlim[1]}')
+        if ylim is not None:
+            data = data.query(f'{y} >= {ylim[0]} and {y} <= {ylim[1]}')
+        if z_lower_cuttoff is not None:
+            data = data.query(f'{z} >= {z_lower_cuttoff}')
+        if log_scale:
+            data[z] = np.log(data[z])
+            z_label = 'log(' + z_label + ')'
+
+        figure = go.Figure()   
+        figure.add_trace(go.Contour(x=data[x], y=data[y], z=data[z], colorscale=colorscale, contours_showlines=False, ncontours=ncontours))
+
+        if title is not None:
+            figure.update_layout(title_text=title)
+        if width is not None:
+            figure.update_layout(width=width)
+        if height is not None:
+            figure.update_layout(height=height)
+        if x_label is not None:
+            figure.update_xaxes(title_text=x_label)
+        if y_label is not None:
+            figure.update_yaxes(title_text=y_label)
+        if template is not None:
+            figure.update_layout(template=template)
+        if z_label is not None:
+            figure.update_traces(colorbar={'title': z_label})
+
+        return figure
         
 
 class ElectrochemicalMeasurement(Measurement):
