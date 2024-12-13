@@ -1,8 +1,6 @@
 import unittest
 import tracemalloc
-import holoviews as hv
 import pandas as pd
-hv.extension('bokeh')
 import numpy as np
 import plotly.graph_objects as go
 from Materials_Data_Analytics.experiment_modelling.giwaxs import Calibrator
