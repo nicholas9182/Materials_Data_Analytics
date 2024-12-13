@@ -122,7 +122,6 @@ class MicroKineticModel():
 
 
 class OxygenReductionModel(MicroKineticModel):
-    
     """
     Class for microkinetic modelling of oxygen reduction reaction in an aqueous electrolyte
     """
@@ -214,7 +213,6 @@ class ECpD(OxygenReductionModel):
         reduction_potentials = [i._formal_reduction_potential for i in self._polymer]
         E1 = max(reduction_potentials)
         E2 = self.o2._formal_reduction_potentials['O2_superoxide']
-
         return self._calculate_rate_constant(E1 = E1, E2 = E2, n1 = 1, n2 = 1)
     
     def calculate_k3(self) -> float:
@@ -223,7 +221,6 @@ class ECpD(OxygenReductionModel):
         """
         E1 = self.o2._formal_reduction_potentials['O2_superoxide']
         E2 = self.o2.calculate_formal_potential_O2_HXO2(T = self.temperature, x = self._x, pH = self.pH)
-
         return self._calculate_rate_constant(E1 = E1, E2 = E2, n1 = 2, n2 = 1)
 
     def calculate_ksf1(self, E: float, k01: float, beta: float) -> float:
@@ -304,97 +301,31 @@ class ECpD(OxygenReductionModel):
         """
         return 2 * F * v3 * Neff
     
-    def _calculate_rate_equations(self, vars, E: float, k01: float, beta: float, kf2: float, kf3: float, thetaN: float, thetaP: float, CS02: float, CS02_superoxide: float) -> tuple:
-        """
-        Function to calculate the rate equations for the ECpD model
-        :param vars: the variables to solve for
-        :param E: the applied potential
-        :param k01: the rate constant at zero overvoltage
-        :param beta: the symmetry coefficient
-        :param kf2: the rate constant of the second step
-        :param kf3: the rate constant of the third step
-        :param thetaN: the coverage of the polymer in its neutral state
-        :param thetaP: the coverage of the polymer in its polaron state
-        :param CS02: the concentration of O2 at the surface
-        :param CS02_superoxide: the concentration of O2 in the superoxide state at the surface
-        """
-        v1 = self.calculate_v1(E = E, k01 = k01, beta = beta, thetaN = thetaN, thetaP = thetaP)
-        v2 = self.calculate_v2(kf2 = kf2, thetaP = thetaP, thetaN = thetaN, CS02 = CS02, CS02_superoxide = CS02_superoxide)
-        v3 = self.calculate_v3(kf3 = kf3, CS02_superoxide = CS02_superoxide)
-        return v1, v2, v3
-    
     def solve_parameters(self, E: float, k01: float, kf2: float, kf3: float, beta: float):
         """
         Function to solve for the parameters of the ECpD model
         :param k01: the rate constant of the first step
         :param kf2: the rate constant of the second step
         :param kf3: the rate constant of the third step
-        :param thetaN: the coverage of the polymer in its neutral state
-        :param thetaP: the coverage of the polymer in its polaron state
-        :param CS02: the concentration of O2 at the surface
-        :param CS02_superoxide: the concentration of O2 in the superoxide state at the surface
+        :param beta: the symmetry coefficient
         """
         def equations(vars):
 
             thetaN, thetaP, CS02, CS02_superoxide = vars
-            
-            v1, v2, v3 = self._calculate_rate_equations(vars = vars, 
-                                                        E = E, 
-                                                        k01 = k01, 
-                                                        beta = beta, 
-                                                        kf2 = kf2, 
-                                                        kf3 = kf3, 
-                                                        thetaN = thetaN, 
-                                                        thetaP = thetaP, 
-                                                        CS02 = CS02, 
-                                                        CS02_superoxide = CS02_superoxide)
 
-            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte._concentrations[self._o2] - CS02_superoxide)
+            v1 = self.calculate_v1(E = E, k01 = k01, beta = beta, thetaN = thetaN, thetaP = thetaP)
+            v2 = self.calculate_v2(kf2 = kf2, thetaP = thetaP, thetaN = thetaN, CS02 = CS02, CS02_superoxide = CS02_superoxide)
+            v3 = self.calculate_v3(kf3 = kf3, CS02_superoxide = CS02_superoxide)
+
+            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte._concentrations[self._o2] - CS02)
             eq17 = 2*v3 - v2 + self.mass_transfer_coefficient * CS02_superoxide**2
             eq18 = v1 - v2
             eq19 = thetaN + thetaP - 1
 
             return eq16, eq17, eq18, eq19
         
-        guess = [0.5, 0.5, 0, 0]
-        solution = fsolve(equations, guess)
+        guess = [0.5, 0.5, 0.5, 0.5]
 
-        return {'thetaN': solution[0], 'thetaP': solution[1], 'CS02': solution[2], 'CS02_superoxide': solution[3]}
-    
-    def solve_parameters2(self, E: float, k01: float, kf2: float, kf3: float, beta: float):
-        """
-        Function to solve for the parameters of the ECpD model
-        :param k01: the rate constant of the first step
-        :param kf2: the rate constant of the second step
-        :param kf3: the rate constant of the third step
-        :param thetaN: the coverage of the polymer in its neutral state
-        :param thetaP: the coverage of the polymer in its polaron state
-        :param CS02: the concentration of O2 at the surface
-        :param CS02_superoxide: the concentration of O2 in the superoxide state at the surface
-        """
-        def equations(vars):
-
-            thetaN, thetaP, CS02, CS02_superoxide = vars
-            
-            v1, v2, v3 = self._calculate_rate_equations(vars = vars, 
-                                                        E = E, 
-                                                        k01 = k01, 
-                                                        beta = beta, 
-                                                        kf2 = kf2, 
-                                                        kf3 = kf3, 
-                                                        thetaN = thetaN, 
-                                                        thetaP = thetaP, 
-                                                        CS02 = CS02, 
-                                                        CS02_superoxide = CS02_superoxide)
-
-            eq16 = v2 - v3 - self.mass_transfer_coefficient * (self.electrolyte._concentrations[self._o2] - CS02_superoxide)
-            eq17 = 2*v3 - v2 + self.mass_transfer_coefficient * CS02_superoxide**2
-            eq18 = v1 - v2
-            eq19 = thetaN + thetaP - 1
-
-            return eq16, eq17, eq18, eq19
-        
-        guess = [0.5, 0.5, 0, 0]
         solution = fsolve(equations, guess)
 
         return {'thetaN': solution[0], 'thetaP': solution[1], 'CS02': solution[2], 'CS02_superoxide': solution[3]}
@@ -413,20 +344,18 @@ class ECpD(OxygenReductionModel):
         data = (pd
                 .DataFrame({'potential': np.linspace(E_min, E_max, E_n)})
                 .assign(
-                    params = lambda x: [self.solve_parameters2(E = E, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta) for E in x['potential']],
+                    params = lambda x: [self.solve_parameters(E = E, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta) for E in x['potential']],
                     thetaN = lambda x: [i['thetaN'] for i in x['params']],
                     thetaP = lambda x: [i['thetaP'] for i in x['params']],
                     CS02 = lambda x: [i['CS02'] for i in x['params']],
                     CS02_superoxide = lambda x: [i['CS02_superoxide'] for i in x['params']]
                     )
                 .assign(
-                    v1 = lambda x: [self.calculate_v1(E = x['potential'].iloc[i], k01 = k01, beta = beta, 
-                                                      thetaN = x['thetaN'].iloc[i], thetaP = x['thetaP'].iloc[i]) for i in range(len(x))],
-                    v2 = lambda x: [self.calculate_v2(kf2 = kf2, thetaP = x['thetaP'].iloc[i], thetaN = x['thetaN'].iloc[i],
-                                                        CS02 = x['CS02'].iloc[i], CS02_superoxide = x['CS02_superoxide'].iloc[i]) for i in range(len(x))],
+                    v1 = lambda x: [self.calculate_v1(E = p, k01 = k01, beta = beta, thetaN = tn, thetaP = tp) for p, tn, tp in zip(x['potential'], x['thetaN'], x['thetaP'])],
+                    v2 = lambda x: [self.calculate_v2(kf2 = kf2, thetaP = tp, thetaN = tn, CS02 = c, CS02_superoxide = cs) for tp, tn, c, cs in zip(x['thetaP'], x['thetaN'], x['CS02'], x['CS02_superoxide'])],
                     v3 = lambda x: [self.calculate_v3(kf3 = kf3, CS02_superoxide = x['CS02_superoxide'].iloc[i]) for i in range(len(x))],
-                    disk_current_density = lambda x: [self.get_disk_current_density(v1 = x['v1'].iloc[i]) for i in range(len(x))],
-                    ring_current_density = lambda x: [self.get_ring_current_density(v3 = x['v3'].iloc[i]) for i in range(len(x))]
+                    disk_current_density = lambda x: [self.get_disk_current_density(v1 = v) for v in x['v1']],
+                    ring_current_density = lambda x: [self.get_ring_current_density(v3 = v) for v in x['v3']]
                     )
                 )
                 

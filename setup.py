@@ -24,7 +24,6 @@ setup(
         "kaleido",
         "pyFAI",
         "pygix",
-        "holoviews",
         "Datetime",
     ],
     scripts=[
