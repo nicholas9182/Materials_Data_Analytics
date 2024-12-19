@@ -301,7 +301,7 @@ class ECpD(OxygenReductionModel):
         """
         return 2 * F * v3 * Neff
     
-    def solve_parameters(self, E: float, k01: float, kf2: float, kf3: float, beta: float):
+    def solve_parameters(self, E: float, k01: float, kf2: float, kf3: float, beta: float, guess=[0.5, 0.5, 0.5, 0.5]):
         """
         Function to solve for the parameters of the ECpD model
         :param k01: the rate constant of the first step
@@ -323,14 +323,12 @@ class ECpD(OxygenReductionModel):
             eq19 = thetaN + thetaP - 1
 
             return eq16, eq17, eq18, eq19
-        
-        guess = [0.5, 0.5, 0.5, 0.5]
 
         solution = fsolve(equations, guess)
 
         return {'thetaN': solution[0], 'thetaP': solution[1], 'CS02': solution[2], 'CS02_superoxide': solution[3]}
     
-    def get_e_sweep(self, E_min: float, E_max: float, E_n: 20, k01: float, kf2: float, kf3: float, beta: float):
+    def get_e_sweep(self, E_min: float, E_max: float, E_n: 20, k01: float, kf2: float, kf3: float, beta: float, guess=[0.5, 0.5, 0.5, 0.5]):
         """
         Function to get the parameters of the ECpD model for a range of potentials
         :param E_min: the minimum potential
@@ -341,23 +339,55 @@ class ECpD(OxygenReductionModel):
         :param kf3: the rate constant of the third step
         :param beta: the symmetry coefficient
         """
-        data = (pd
-                .DataFrame({'potential': np.linspace(E_min, E_max, E_n)})
-                .assign(
-                    params = lambda x: [self.solve_parameters(E = E, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta) for E in x['potential']],
-                    thetaN = lambda x: [i['thetaN'] for i in x['params']],
-                    thetaP = lambda x: [i['thetaP'] for i in x['params']],
-                    CS02 = lambda x: [i['CS02'] for i in x['params']],
-                    CS02_superoxide = lambda x: [i['CS02_superoxide'] for i in x['params']]
-                    )
-                .assign(
-                    v1 = lambda x: [self.calculate_v1(E = p, k01 = k01, beta = beta, thetaN = tn, thetaP = tp) for p, tn, tp in zip(x['potential'], x['thetaN'], x['thetaP'])],
-                    v2 = lambda x: [self.calculate_v2(kf2 = kf2, thetaP = tp, thetaN = tn, CS02 = c, CS02_superoxide = cs) for tp, tn, c, cs in zip(x['thetaP'], x['thetaN'], x['CS02'], x['CS02_superoxide'])],
-                    v3 = lambda x: [self.calculate_v3(kf3 = kf3, CS02_superoxide = x['CS02_superoxide'].iloc[i]) for i in range(len(x))],
-                    disk_current_density = lambda x: [self.get_disk_current_density(v1 = v) for v in x['v1']],
-                    ring_current_density = lambda x: [self.get_ring_current_density(v3 = v) for v in x['v3']]
-                    )
-                )
+        E = np.linspace(E_min, E_max, E_n)
+        theta_N_list = []
+        theta_P_list = []
+        CS02_list = []
+        CS02_superoxide_list = []
+        v1_list = []
+        v2_list = []
+        v3_list = []
+        disk_current_density_list = []
+        ring_current_density_list = []
+
+        for e in E:
+            parameters = self.solve_parameters(E = e, k01 = k01, kf2 = kf2, kf3 = kf3, beta = beta, guess = guess)
+            
+            theta_N = parameters['thetaN']
+            theta_P = parameters['thetaP']
+            CS02 = parameters['CS02']
+            CS02_superoxide = parameters['CS02_superoxide']
+
+            v1 = self.calculate_v1(E = e, k01 = k01, beta = beta, thetaN = theta_N, thetaP = theta_P)
+            v2 = self.calculate_v2(kf2 = kf2, thetaP = theta_P, thetaN = theta_N, CS02 = CS02, CS02_superoxide = CS02_superoxide)
+            v3 = self.calculate_v3(kf3 = kf3, CS02_superoxide = CS02_superoxide)
+            disk_current_density = self.get_disk_current_density(v1 = v1)
+            ring_current_density = self.get_ring_current_density(v3 = v3)
+
+            guess = [theta_N, theta_P, CS02, CS02_superoxide]
+
+            theta_N_list.append(theta_N)
+            theta_P_list.append(theta_P)
+            CS02_list.append(CS02)
+            CS02_superoxide_list.append(CS02_superoxide)
+            v1_list.append(v1)
+            v2_list.append(v2)
+            v3_list.append(v3)
+            disk_current_density_list.append(disk_current_density)
+            ring_current_density_list.append(ring_current_density)
+
+        data = pd.DataFrame({
+            'potential': E,
+            'thetaN': theta_N_list,
+            'thetaP': theta_P_list,
+            'CS02': CS02_list,
+            'CS02_superoxide': CS02_superoxide_list,
+            'v1': v1_list,
+            'v2': v2_list,
+            'v3': v3_list,
+            'disk_current_density': disk_current_density_list,
+            'ring_current_density': ring_current_density_list
+        })
                 
         return data
 

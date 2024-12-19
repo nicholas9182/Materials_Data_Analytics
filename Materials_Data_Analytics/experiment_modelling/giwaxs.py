@@ -30,8 +30,7 @@ class Calibrator():
                  rot2: float = 0,
                  rot3: float = 0,
                  energy: float = None,
-                 wavelegth: float = None,
-                 source: str = None, 
+                 wavelength: float = None,
                  detector = None):
         """Create a calibration object
         :param distance: sample-detector distance in meters
@@ -41,8 +40,7 @@ class Calibrator():
         :param rot2: rotation angle around the detector in radians
         :param rot3: rotation angle around the normal to the detector in radians
         :param energy: energy of the X-ray beam in eV
-        :param wavelegth: wavelegth of the X-ray beam in meters
-        :param source: source of the calibration
+        :param wavelength: wavelength of the X-ray beam in meters
         :param detector: detector object or string
         """
         
@@ -57,16 +55,15 @@ class Calibrator():
         self._rot1 = rot1
         self._rot2 = rot2
         self._rot3 = rot3
-        self._source = source
 
         if energy is not None:
             self._energy = energy
-            self._wavelegth = 1.239842e-6 / energy
-        elif wavelegth is not None:
-            self._energy = 1.239842e-6 / wavelegth
-            self._wavelegth = wavelegth
+            self._wavelength = 1.239842e-6 / energy
+        elif wavelength is not None:
+            self._energy = 1.239842e-6 / wavelength
+            self._wavelength = wavelength
         else:
-            raise ValueError('One of energy or wavelegth must be provided')
+            raise ValueError('One of energy or wavelength must be provided')
         
         self._azimuthal_integrator = self._make_azimuthal_integrator()
 
@@ -75,8 +72,8 @@ class Calibrator():
         return self._energy
     
     @property
-    def wavelegth(self):
-        return self._wavelegth
+    def wavelength(self):
+        return self._wavelength
     
     @property
     def detector(self):
@@ -105,10 +102,6 @@ class Calibrator():
     @property
     def rot3(self):
         return self._rot3
-    
-    @property
-    def source(self):
-        return self._source
 
     @classmethod
     def from_poni_file(cls, poni_file) -> 'Calibrator':
@@ -125,8 +118,7 @@ class Calibrator():
                    rot2 = poni.rot2,
                    rot3 = poni.rot3,
                    detector = poni.detector,
-                   wavelegth = poni.wavelength,
-                   source = poni_file)
+                   wavelength = poni.wavelength)
 
     def save_to_pickle(self, pickle_file: str) -> 'Calibrator':
         """Save the calibration object to a pickle file
@@ -141,9 +133,10 @@ class Calibrator():
         """
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
-        return pyFAI.AzimuthalIntegrator(dist=self.distance, poni1=self.poni1, poni2=self.poni2,
-                                         rot1=self.rot1, rot2=self.rot2, rot3=self.rot3, detector=self.detector, 
-                                         wavelength=self.wavelegth)
+        
+        return pyFAI.azimuthalIntegrator.AzimuthalIntegrator(dist=self.distance, poni1=self.poni1, poni2=self.poni2,
+                                                             rot1=self.rot1, rot2=self.rot2, rot3=self.rot3, detector=self.detector, 
+                                                             wavelength=self.wavelength)
     
 
 class GIWAXSPixelImage(ScatteringMeasurement):
@@ -559,14 +552,19 @@ class GIWAXSPattern(ScatteringMeasurement):
                                     ncontours: int = 100, 
                                     log_scale: bool = True, 
                                     template: str = 'simple_white',
+                                    intensity_lower_cuttoff: float = 0.001,
                                     **kwargs) -> go.Figure:
         """Plot the reciprocal space map.
         :param colorscale: The colorscale to use. See plotly colorscales for options
+        :param ncontours: The number of contours to use.
+        :param log_scale: Whether to use a log scale.
+        :param template: The template to use.
+        :param intensity_lower_cuttoff: The lower cuttoff for the intensity. Useful if using log values.
         :return: The plot.
         """
         data = self.data_reciprocal.copy()
-        fig = self.plot_contour_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, ncontours=ncontours, template=template,
-                                    x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', log_scale=log_scale,
+        fig = self.plot_contour_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, ncontours=ncontours, z_lower_cuttoff=intensity_lower_cuttoff,
+                                    template=template, x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', log_scale=log_scale,
                                     z_label='Intensity', **kwargs)
         return fig
     
@@ -575,13 +573,18 @@ class GIWAXSPattern(ScatteringMeasurement):
                             log_scale: bool = True,  
                             template: str = 'simple_white',
                             origin: str = 'lower',
+                            intensity_lower_cuttoff: float = 0.001,
                             **kwargs) -> go.Figure:
         """Plot the reciprocal space map.
         :param colorscale: The colorscale to use. See plotly colorscales for options
+        :param log_scale: Whether to use a log scale.
+        :param template: The template to use.
+        :param origin: The origin zero point of the plot.
+        :param intensity_lower_cuttoff: The lower cuttoff for the intensity. Useful if using log values.
         :return: The plot.
         """
         data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
-        fig = self.plot_pixel_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale,
+        fig = self.plot_pixel_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale, z_lower_cuttoff=intensity_lower_cuttoff,
                             x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', template=template, origin=origin,
                             z_label='Intensity', **kwargs)
         return fig
@@ -591,14 +594,20 @@ class GIWAXSPattern(ScatteringMeasurement):
                                ncontours: int = 100, 
                                log_scale: bool = True,
                                template: str = 'simple_white',
+                               intensity_lower_cuttoff: float = 0.001,
                                **kwargs) -> go.Figure:
         """Plot the polar space map.
         :param colorscale: The colorscale to use. See plotly colorscales for options
+        :param ncontours: The number of contours to use.
+        :param log_scale: Whether to use a log scale.
+        :param template: The template to use.
+        :param intensity_lower_cuttoff: The lower cuttoff for the intensity. Useful if using log values.
         :return: The plot.
         """
         data = self.data_polar.copy()
-        fig = self.plot_contour_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, ncontours=ncontours, log_scale=log_scale, template=template,
-                                    x_label='q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', z_label='Intensity', **kwargs)
+        fig = self.plot_contour_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, ncontours=ncontours, log_scale=log_scale, 
+                                    z_lower_cuttoff=intensity_lower_cuttoff, template=template, x_label='q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                    z_label='Intensity', **kwargs)
         return fig
     
     def plot_polar_map(self, 
@@ -606,14 +615,16 @@ class GIWAXSPattern(ScatteringMeasurement):
                        log_scale: bool = True,
                        template: str = 'simple_white',
                        origin: str = 'lower',
+                       intensity_lower_cuttoff: float = 0.001,
                        **kwargs):
         """Plot the polar space map.
         :param colorscale: The colorscale to use. See plotly colorscales for options
         :return: The plot.
         """
         data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
-        fig = self.plot_pixel_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', origin=origin, log_scale=log_scale,
-                            x_label='Q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', z_label='Intensity', template=template, **kwargs)
+        fig = self.plot_pixel_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', z_lower_cuttoff=intensity_lower_cuttoff,
+                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                  z_label='Intensity', template=template, **kwargs)
         return fig
     
     def get_linecut(self,

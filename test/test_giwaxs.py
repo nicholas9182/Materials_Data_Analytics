@@ -15,7 +15,7 @@ class TestCalibration(unittest.TestCase):
 
     def test_attributes(self):
         ''' Test the attributes of the Calibration class '''
-        self.assertEqual(self.my_calibrator._wavelegth, 9.91873587465602e-11)
+        self.assertEqual(self.my_calibrator.wavelength, 9.91873587465602e-11)
         self.assertEqual(self.my_calibrator.distance, 0.2855582907344562)
         self.assertEqual(self.my_calibrator.poni1, 0.21226031843207446)
         self.assertEqual(self.my_calibrator.poni2, 0.11560087180581186)
@@ -96,26 +96,26 @@ class TestGIWAXSPattern(unittest.TestCase):
 
     def test_plot_map_reciprocal_space_contour(self):
         ''' Test the plot_map_reciprocal_space method of the GIWAXSPattern class '''
-        figure = self.data_SLAC_BL113.plot_reciprocal_map_contour(z_lower_cuttoff = 10)
+        figure = self.data_SLAC_BL113.plot_reciprocal_map_contour(intensity_lower_cuttoff = 10)
         # figure.show()
         self.assertTrue(type(figure) == go.Figure)   
 
     def test_plot_map_reciprocal_space_image(self):
         ''' Test the plot_map_reciprocal_space method of the GIWAXSPattern class '''
-        figure = self.data_SLAC_BL113.plot_reciprocal_map(width=800, height=500, z_lower_cuttoff = 10)
+        figure = self.data_SLAC_BL113.plot_reciprocal_map(width=800, height=500, intensity_lower_cuttoff = 10)
         # figure.show()
         self.assertTrue(type(figure) == go.Figure)   
 
     def test_plot_map_polar_space_contour(self):
         ''' Test the plot_map_reciprocal_space method of the GIWAXSPattern class '''
-        figure = self.data_SLAC_BL113.plot_polar_map_contour(width=800, height=500, z_lower_cuttoff = 10)
+        figure = self.data_SLAC_BL113.plot_polar_map_contour(width=800, height=500, intensity_lower_cuttoff = 10)
         # figure.show()
         self.assertTrue(type(figure) == go.Figure)     
 
     def test_plot_map_polar_space_image(self):
         ''' Test the plot_map_reciprocal_space method of the GIWAXSPattern class '''
-        figure = self.data_SLAC_BL113.plot_polar_map(z_lower_cuttoff = 20)
-        figure.show()
+        figure = self.data_SLAC_BL113.plot_polar_map(intensity_lower_cuttoff = 20)
+        # figure.show()
         self.assertTrue(type(figure) == go.Figure)                              
 
     def test_extract_profile_with_range(self):

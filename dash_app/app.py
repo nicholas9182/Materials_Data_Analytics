@@ -1,16 +1,17 @@
 import dash as ds
-from Materials_Data_Analytics.experiment_modelling.cyclic_voltammetry import CyclicVoltammogram
+import dash_bootstrap_components as dbc
 import base64
 import io
 import pickle
 
+BOOTSTRAP_THEME = dbc.themes.FLATLY
 
-app = ds.Dash(__name__, use_pages=True)
+app = ds.Dash(__name__, use_pages=True, external_stylesheets=[BOOTSTRAP_THEME])
 app.config.suppress_callback_exceptions = True
 app.title = 'Cyclic Voltammogram Analysis'
 
 app.layout = ds.html.Div([
-    ds.html.H1('Materials characterization analytics contents'),
+    ds.html.H1('Materials Data Analytics contents'),
     ds.html.Div([
         ds.html.Div(
             ds.dcc.Link(f"{page['name']} Analysis", href=page["relative_path"])

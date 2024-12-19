@@ -188,7 +188,7 @@ class Measurement():
 
         square_data = data.pivot(index=y, columns=x, values=z)
         square_data = square_data.fillna(z_lower_cuttoff) if z_lower_cuttoff is not None else square_data.fillna(0)
-        square_data = np.log(square_data) if log_scale else square_data
+        square_data = np.log10(square_data) if log_scale else square_data
         z_label = 'log(' + z_label + ')' if log_scale else z_label
         
         z_data = square_data.values
@@ -257,7 +257,7 @@ class Measurement():
         if z_lower_cuttoff is not None:
             data = data.query(f'{z} >= {z_lower_cuttoff}')
         if log_scale:
-            data[z] = np.log(data[z])
+            data[z] = np.log10(data[z])
             z_label = 'log(' + z_label + ')'
 
         figure = go.Figure()   
