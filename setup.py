@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.1.37", 
+    version="6.2.1", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
@@ -22,13 +22,15 @@ setup(
         "MDAnalysis",
         "dash",
         "kaleido",
-        "DateTime"
+        "pyFAI",
+        "pygix",
+        "Datetime",
     ],
     scripts=[
         'cli_tools/plot_hills.py',
-	    'cli_tools/colvar_plotter.py',
-	    'cli_tools/get_cv_sample.py',
-	    'cli_tools/get_polymer_contacts.py'
+	      'cli_tools/colvar_plotter.py',
+	      'cli_tools/get_cv_sample.py',
+	      'cli_tools/get_polymer_contacts.py'
     ],
     classifiers=[ 
         "Programming Language :: Python :: 3",

@@ -61,6 +61,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
         self.assertTrue('current' in self.cv_biologic_1.data.columns)
         self.assertTrue('cycle' in self.cv_biologic_1.data.columns)
         self.assertTrue('time' in self.cv_biologic_1.data.columns)
+        self.assertTrue('segment' in self.cv_biologic_1.data.columns)
 
     def test_from_biologic_dataframe(self):
         """ Test the from_biologic method with a dataframe """
@@ -240,7 +241,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_get_peak_plot_anodic(self):
         """ Test the get_peak_plot method for anodic """
-        figure = self.cv_biologic_6.get_peak_plot(direction='oxidation', window = 0.02, width=700, height=500)
+        figure = self.cv_biologic_6.get_peak_plot(direction='oxidation', window = 0.03, width=700, height=500)
         self.assertTrue(type(figure) == go.Figure)
         self.assertTrue(len(figure.data) > 0)
         self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
@@ -249,7 +250,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_get_peak_plot_cathodic(self):
         """ Test the get_peak_plot method for cathodic for biologic6 """
-        figure = self.cv_biologic_6.get_peak_plot(direction='reduction', window = 0.02, width=700, height=500)
+        figure = self.cv_biologic_6.get_peak_plot(direction='reduction', window = 0.03, width=700, height=500)
         self.assertTrue(type(figure) == go.Figure)
         self.assertTrue(len(figure.data) > 0)
         self.assertTrue(any(trace.name.startswith("Fitted") for trace in figure.data))
@@ -270,7 +271,7 @@ class TestCyclicVoltammetry(unittest.TestCase):
 
     def test_get_plots_peaks_with_cycle(self):
         """ Test the get_plots_peaks_with_cycle method for biologic6 """
-        current_figure, potential_figure = self.cv_biologic_6.get_plots_peaks_with_cycle(polynomial_order=4, window=0.02, width=700, height=500)
+        current_figure, potential_figure = self.cv_biologic_6.get_plots_peaks_with_cycle(polynomial_order=4, window=0.03, width=700, height=500)
         self.assertTrue(type(current_figure) == go.Figure)
         self.assertTrue(type(potential_figure) == go.Figure)
         self.assertTrue(len(current_figure.data) > 0)

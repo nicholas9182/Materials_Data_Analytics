@@ -1,0 +1,11 @@
+# General info
+User: b_himmelberger, time: Sun Nov 17 17:41:57 2024
+
+# Temperature
+C
+
+# Counters
+sec=120, mon=275.86, bs=43.12, pd=0.63674, i0=252.59, mpf_top=0, mpf_bot=0.13402, mpf_eff=600.424, ccd1=0, marccd=-1, Counter 20=0, Counter 21=0, Counter 22=0, Counter 23=0, Counter 24=0, Counter 25=0, Counter 26=0, Counter 27=0, Counter 28=0, Counter 29=0, Counter 30=0, Counter 31=0, Counter 32=0, Counter 33=0, Counter 34=0, Counter 35=0
+
+# Motors
+empty00=0, monbend=184, monslit=2.49555, monang=33, m0pitch=-0.0494828, m0vert=3.15902, m0bend=5.04149, empty07=0, tablev1=0.318069, tablev2=0.318128, tyaw=-1.17005e-08, thor=-0.399949, i0v=-1, i0h=1.35286, th=0.12, phi=0, detx=3.7, dety=60, detz=299.995, platz=-10.0076, samz=0, gony=-0.02, samx=2.54636e-07, samy=0, b0v=0.374, t0v=-0.074, r0h=-5.347, l0h=6.347, v1gap=0.0497841, v1tran=1.05944, h1gap=0.149861, h1tran=-1.45161, v2gap=7.02151, v2tran=-2.28042, h2gap=8.00006, h2tran=0.469393, phy=2.66428e-06, phx=1.53624e-08, gth=0, gchi=0, gz=0.2, bsy=-0.0213365, bsx=0.115824, bsz=-3.00076, spare1=0, spare2=0, spare3=0, spare4=0, trx=116.5, try=-37, table=0.3181, tablep=0, h0gap=1, h0tran=-5.847, v0gap=0.3, v0tran=-0.224, kmotV=0, kmotI=0, tempset=-1

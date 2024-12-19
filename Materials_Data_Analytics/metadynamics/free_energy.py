@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from pandas import DataFrame
 from visualisation.themes import custom_dark_template
-from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, Kb, boltzmann_population_to_energy
+from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, KB, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
 
 
@@ -65,7 +65,7 @@ class MetaTrajectory:
         :param y_col_out:
         :return:
         """
-        new_col_args_1 = {y_col_out: lambda x: np.exp(x[y_col]/(Kb * temperature))}
+        new_col_args_1 = {y_col_out: lambda x: np.exp(x[y_col]/(KB * temperature))}
         new_col_args_2 = {y_col_out: lambda x: x[y_col_out]/max(x[y_col_out])}
         data = (data
                 .assign(**new_col_args_1)
