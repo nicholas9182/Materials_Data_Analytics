@@ -9,7 +9,7 @@ upload_button_style = {'width': '50%', 'height': '30px', 'lineHeight': '30px', '
 table_styles = {'width': '50%', 'overflowX': 'auto'}
 button_style = {'width': '30%', 'height': '30px', 'lineHeight': '15px', 'borderWidth': '2px', 'borderStyle': 'dashed', 'textAlign': 'center'}
 slider_style = {'width':'70%'}
-plotly_template = 'ggplot2'
+plotly_template = 'presentation'
 
 
 ds.register_page(__name__)
@@ -419,9 +419,9 @@ def display_peak_fitting_analysis(n_clicks, encoded_cv, polynomial_order, window
 
     the_cv = pickle_and_decode(encoded_cv)
     peak_points = the_cv.get_peaks(window=window, polynomial_order=polynomial_order, summary=True).round(7).to_dict('records')
-    peak_plot_reduction = the_cv.get_peak_plot(direction='reduction', window = window, polynomial_order = polynomial_order, width=700, height=500)
-    peak_plot_oxidation = the_cv.get_peak_plot(direction='oxidation', window = window, polynomial_order = polynomial_order, width=700, height=500)
-    current_figure, potential_figure = the_cv.get_plots_peaks_with_cycle(polynomial_order=polynomial_order, window=window, width=700, height=500)
+    peak_plot_reduction = the_cv.get_peak_plot(direction='reduction', window = window, polynomial_order = polynomial_order, width=700, height=500, template=plotly_template)
+    peak_plot_oxidation = the_cv.get_peak_plot(direction='oxidation', window = window, polynomial_order = polynomial_order, width=700, height=500, template=plotly_template)
+    current_figure, potential_figure = the_cv.get_plots_peaks_with_cycle(polynomial_order=polynomial_order, window=window, width=700, height=500, template=plotly_template)
 
     peak_points_table_summary_element = ds.html.Div([
         ds.html.H3('Peaks for each cycle'),
