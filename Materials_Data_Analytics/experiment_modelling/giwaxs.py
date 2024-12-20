@@ -73,7 +73,8 @@ class Calibrator():
     
     @property
     def wavelength(self):
-        return self._wavelength
+        wavelength_nm = self._wavelength * 1e9
+        return np.round(wavelength_nm, 5)
     
     @property
     def detector(self):
@@ -81,27 +82,27 @@ class Calibrator():
     
     @property
     def distance(self):
-        return self._distance
+        return np.round(self._distance, 5)
     
     @property
     def poni1(self):
-        return self._poni1
+        return np.round(self._poni1, 5)
     
     @property
     def poni2(self):
-        return self._poni2
+        return np.round(self._poni2, 5)
     
     @property
     def rot1(self):
-        return self._rot1
+        return np.round(self._rot1, 7)
     
     @property
     def rot2(self):
-        return self._rot2
+        return np.round(self._rot2, 7)
     
     @property
     def rot3(self):
-        return self._rot3
+        return np.round(self._rot3, 7)
 
     @classmethod
     def from_poni_file(cls, poni_file) -> 'Calibrator':
@@ -134,9 +135,9 @@ class Calibrator():
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
         
-        return pyFAI.azimuthalIntegrator.AzimuthalIntegrator(dist=self.distance, poni1=self.poni1, poni2=self.poni2,
-                                                             rot1=self.rot1, rot2=self.rot2, rot3=self.rot3, detector=self.detector, 
-                                                             wavelength=self.wavelength)
+        return pyFAI.azimuthalIntegrator.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
+                                                             rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
+                                                             wavelength=self._wavelength)
     
 
 class GIWAXSPixelImage(ScatteringMeasurement):
