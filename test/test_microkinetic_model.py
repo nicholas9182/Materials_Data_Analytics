@@ -207,6 +207,7 @@ class TestECpDModel(unittest.TestCase):
     def test_get_e_sweep(self):
         """ Test the get e sweep method """
         my_ECpD_model = ECpD(electrolyte=self.my_electrolye, polymer=self.my_polymer, rotation_rate=1600)
-        e_sweep = my_ECpD_model.get_e_sweep(E_max=1, E_min=-1, E_n=100, k01=10**(-5.906), beta=0.4999, kf2=10**(1.0807), kf3=10**(4.688))
-        # px.line(e_sweep, x='potential', y='thetaP').show()
+        e_sweep = my_ECpD_model.get_e_sweep(E_max=1, E_min=-1, E_n=200, k01=(-5.908), beta=0.5, kf2=(1.082), kf3=(4.70), guess=[1,0,0,0])
+        e_sweep = e_sweep.assign(potential = lambda x: x['potential'] + 0.059 * 14.2) # convert to RHE
+        # px.line(e_sweep, x='potential', y=['disk_current_density', 'ring_current_density']).show()
         self.assertTrue(type(e_sweep) == pd.DataFrame)
