@@ -240,7 +240,7 @@ class GaussianParser:
             lines = f.readlines()
         
         if any('Leave Link ' in l for l in lines):
-            time_line = [l for l in lines if 'Leave Link  ' in l][0]
+            time_line = [l for l in lines if 'Leave Link ' in l][0]
             year = time_line.split()[8][:-1]
             month = time_line.split()[5]
             day = time_line.split()[6]
