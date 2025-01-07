@@ -179,5 +179,15 @@ class TestGIWAXSPattern(unittest.TestCase):
     def test_plot_linecut_hv(self):
         ''' Test the plot_linecut method of the GIWAXSPattern class '''
         output = self.data_SLAC_BL113.plot_linecut_hv(chi = (20, 40), q_range = (0.2, 2))
-        output
+        self.assertTrue(type(output) == hv.Curve)
+
+    def test_plot_polar_linecut(self):
+        ''' Test the plot_polar_linecut method of the GIWAXSPattern class '''
+        output = self.data_SLAC_BL113.plot_polar_linecut(q = (0.5, 0.7), chi_range = (10, 20), template = 'presentation')
+        # output.show()
+        self.assertTrue(type(output) == pl.graph_objs._figure.Figure)
+
+    def test_plot_polar_linecut_hv(self):
+        ''' Test the plot_polar_linecut_hv method of the GIWAXSPattern class '''
+        output = self.data_SLAC_BL113.plot_polar_linecut_hv(q = (0.5, 0.7), chi_range = (10, 20))
         self.assertTrue(type(output) == hv.Curve)

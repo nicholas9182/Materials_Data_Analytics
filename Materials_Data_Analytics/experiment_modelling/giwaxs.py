@@ -622,7 +622,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         data = self.data_polar.copy()
         fig = self.plot_contour_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, ncontours=ncontours, log_scale=log_scale, 
-                                    z_lower_cuttoff=intensity_lower_cuttoff, template=template, x_label='q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                    z_lower_cuttoff=intensity_lower_cuttoff, template=template, x_label='q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
                                     z_label='Intensity', **kwargs)
         return fig
     
@@ -639,7 +639,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
         fig = self.plot_pixel_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', z_lower_cuttoff=intensity_lower_cuttoff,
-                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
                                   z_label='Intensity', template=template, **kwargs)
         return fig
     
@@ -651,7 +651,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
         figure = self.plot_pixel_map_hv(data = data, y='chi', x='q', z='intensity',
-                                     xlabel='Q [\u212B\u207B\u00B9]', ylabel='chi [\u00B0]',
+                                     xlabel='Q [\u212B\u207B\u00B9]', ylabel='\u03C7 [\u00B0]',
                                      clabel='Intensity [arb. units]', **kwargs)
         return figure
     
@@ -718,6 +718,75 @@ class GIWAXSPattern(ScatteringMeasurement):
         profile = self.get_linecut(chi, q_range)
         curve = hv.Curve(profile, kdims='q', vdims='intensity', label = label).opts(
             xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
+    
+    def get_polar_linecut(self,
+                    q : tuple | list | pd.Series | float = None,
+                    chi_range : tuple | list | pd.Series = None) -> pd.DataFrame:
+        """Extract a profile from the polar space data.
+        :param q: Range of q values or a single q value.
+        :param chi_range: chi_range.
+        """
+
+        data = self.data_polar.copy()
+
+        # check if q is iterable
+        try:
+            iter(q)
+            q_iterable = True
+            if len(q) != 2: raise ValueError('If q is a range it must be two values')
+        except TypeError:
+            q_iterable = False
+            if q < data['q'].min() or q > data['q'].max(): raise ValueError('q value out of range of the data')
+
+        # Filter the data for q
+        if q_iterable: 
+            data = data.query(f'q >= {min(q)} and q <= {max(q)}')
+        else:
+            closest_index = data['q'].sub(q).abs().idxmin()
+            closest_q = data.loc[closest_index, 'q']
+            data = data.query(f'q == {closest_q}')
+
+        # Filter the data for chi
+        if chi_range is not None: 
+            data = data.query(f'chi >= {min(chi_range)} and chi <= {max(chi_range)}')
+        
+        data = data.groupby('chi').mean().reset_index().filter(['chi', 'q', 'intensity'])
+
+        return data
+    
+    def plot_polar_linecut(self,
+                     q: tuple | list | pd.Series | float = None,
+                     chi_range: tuple | list | pd.Series = None, 
+                     **kwargs) -> px.line:
+
+        """Plot a profile extracted from the polar space data.
+        :param q: Range of q values or a single q value.
+        :param chi_range: chi_range.
+        :return: The plot.
+        """
+        profile = self.get_polar_linecut(q, chi_range)
+        figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
+        return figure
+
+    def plot_polar_linecut_hv(self,
+                     q: tuple | list | pd.Series | float = None,
+                     chi_range: tuple | list | pd.Series = None, 
+                     label: str = '',
+                     **kwargs) -> hv.Curve:
+
+        """Plot a profile extracted from the polar space data.
+        :param q: Range of q values or a single q value.
+        :param chi_range: chi_range.
+        :param label: The label for the plot.
+        :return: The hv plot.
+        """
+        profile = self.get_linecut(q, chi_range)
+        curve = hv.Curve(profile, kdims='chi', vdims='intensity', label = label).opts(
+            xlabel='\u03C7 [\u00B0]',
             ylabel='Intensity [arb. units]',
             **kwargs)
         
