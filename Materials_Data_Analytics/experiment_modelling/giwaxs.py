@@ -10,6 +10,8 @@ from datetime import datetime
 import re
 import plotly.graph_objects as go
 import plotly.express as px
+import holoviews as hv
+hv.extension('bokeh')
 
 
 class Calibrator():
@@ -590,6 +592,19 @@ class GIWAXSPattern(ScatteringMeasurement):
                             z_label='Intensity', **kwargs)
         return fig
     
+    def plot_reciprocal_map_hv(self, 
+                            **kwargs) -> go.Figure:
+       """Plot the reciprocal space map using holoviews
+       :param kwargs: additional arguments to pass to the plot
+       :return: The plot.
+       """
+       data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
+       figure = self.plot_pixel_map_hv(data = data, x='qxy', y='qz', z='intensity',
+                                     xlabel='qxy [\u212B\u207B\u00B9]',
+                                     ylabel='qz [\u212B\u207B\u00B9]',
+                                     clabel='Intensity [arb. units]', **kwargs)
+       return figure
+    
     def plot_polar_map_contour(self, 
                                colorscale: str = 'blackbody', 
                                ncontours: int = 100, 
@@ -627,6 +642,18 @@ class GIWAXSPattern(ScatteringMeasurement):
                                   origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
                                   z_label='Intensity', template=template, **kwargs)
         return fig
+    
+    def plot_polar_map_hv(self, 
+                       **kwargs):
+        """Plot the polar space map.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
+        figure = self.plot_pixel_map_hv(data = data, y='chi', x='q', z='intensity',
+                                     xlabel='Q [\u212B\u207B\u00B9]', ylabel='chi [\u00B0]',
+                                     clabel='Intensity [arb. units]', **kwargs)
+        return figure
     
     def get_linecut(self,
                     chi : tuple | list | pd.Series | float = None,
@@ -675,3 +702,21 @@ class GIWAXSPattern(ScatteringMeasurement):
         profile = self.get_linecut(chi, q_range)
         figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity'}, **kwargs)
         return figure
+
+    def plot_linecut_hv(self,
+                     chi: tuple | list | pd.Series | float = None,
+                     q_range: tuple | list | pd.Series = None, 
+                     **kwargs) -> hv.Curve:
+
+        """Plot a profile extracted from the polar space data.
+        :param chi: Range of chi values or a single chi value.
+        :param q_range: q_range.
+        :return: The hv plot.
+        """
+        profile = self.get_linecut(chi, q_range)
+        curve = hv.Curve(profile, kdims='q', vdims='intensity').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
