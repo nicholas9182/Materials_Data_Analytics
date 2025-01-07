@@ -754,7 +754,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         if chi_range is not None: 
             data = data.query(f'chi >= {min(chi_range)} and chi <= {max(chi_range)}')
         
-        data = data.groupby('chi').mean().reset_index().filter(['chi', 'q', 'intensity'])
+        data = data.groupby('chi').mean().reset_index().filter(['q', 'chi', 'intensity'])
 
         return data
     
@@ -784,7 +784,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         :param label: The label for the plot.
         :return: The hv plot.
         """
-        profile = self.get_linecut(q, chi_range)
+        profile = self.get_polar_linecut(q, chi_range)
         curve = hv.Curve(profile, kdims='chi', vdims='intensity', label = label).opts(
             xlabel='\u03C7 [\u00B0]',
             ylabel='Intensity [arb. units]',
