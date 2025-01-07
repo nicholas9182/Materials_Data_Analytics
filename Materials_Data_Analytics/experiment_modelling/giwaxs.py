@@ -1025,7 +1025,7 @@ class Linecut():
             
         result = model.fit(y, pars, x=x)
 
-        self._fitted_linecut = result
+        self._fit_results = result
         return self
 
     def plot_fitted_linecut_hv(self, **kwargs) -> hv.Curve:
@@ -1038,14 +1038,14 @@ class Linecut():
             color='black',
             **kwargs)
         
-        curve_fit = hv.Curve((self.data['q'], self._fitted_linecut.best_fit), kdims='q', vdims='intensity', label = 'Fit').opts(
+        curve_fit = hv.Curve((self.data['q'], self.fit_results.best_fit), kdims='q', vdims='intensity', label = 'Fit').opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
             color='red',
             line_width=2,
             **kwargs)
         
-        curve_peak = hv.Curve((self.data['q'], self._fitted_linecut.eval_components()['peak_']), kdims='q', vdims='intensity', label = 'Peak').opts(
+        curve_peak = hv.Curve((self.data['q'], self.fit_results.eval_components()['peak_']), kdims='q', vdims='intensity', label = 'Peak').opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
             line_dash='dashed',
@@ -1053,7 +1053,7 @@ class Linecut():
             line_width=2,
             **kwargs)
         
-        curve_bkg = hv.Curve((self.data['q'], self._fitted_linecut.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
+        curve_bkg = hv.Curve((self.data['q'], self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
             color='blue',
