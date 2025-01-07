@@ -706,15 +706,17 @@ class GIWAXSPattern(ScatteringMeasurement):
     def plot_linecut_hv(self,
                      chi: tuple | list | pd.Series | float = None,
                      q_range: tuple | list | pd.Series = None, 
+                     label: str = '',
                      **kwargs) -> hv.Curve:
 
         """Plot a profile extracted from the polar space data.
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
+        :param label: The label for the plot.
         :return: The hv plot.
         """
         profile = self.get_linecut(chi, q_range)
-        curve = hv.Curve(profile, kdims='q', vdims='intensity').opts(
+        curve = hv.Curve(profile, kdims='q', vdims='intensity', label = label).opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
             **kwargs)
