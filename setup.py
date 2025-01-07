@@ -25,7 +25,8 @@ setup(
         "pyFAI",
         "pygix",
         "Datetime",
-        "holoviews"
+        "holoviews",
+        "lmfit"
     ],
     scripts=[
         'cli_tools/plot_hills.py',

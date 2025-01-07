@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import holoviews as hv
 hv.extension('bokeh')
+import lmfit
 
 
 class Calibrator():
@@ -657,10 +658,11 @@ class GIWAXSPattern(ScatteringMeasurement):
     
     def get_linecut(self,
                     chi : tuple | list | pd.Series | float = None,
-                    q_range : tuple | list | pd.Series = None) -> pd.DataFrame:
+                    q_range : tuple | list | pd.Series = None) -> 'Linecut':
         """Extract a profile from the polar space data.
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
+        :return: The profile.
         """
         data = self.data_polar.copy()
 
@@ -686,8 +688,12 @@ class GIWAXSPattern(ScatteringMeasurement):
             data = data.query(f'q >= {min(q_range)} and q <= {max(q_range)}')
         
         data = data.groupby('q').mean().reset_index().filter(['chi', 'q', 'intensity'])
-
-        return data
+        metadata = self.metadata.copy()
+        metadata['chi'] = chi
+        metadata['q_range'] = q_range
+        
+        return Linecut(data, 
+                          metadata = self.metadata)
     
     def plot_linecut(self,
                      chi: tuple | list | pd.Series | float = None,
@@ -699,7 +705,8 @@ class GIWAXSPattern(ScatteringMeasurement):
         :param q_range: q_range.
         :return: The plot.
         """
-        profile = self.get_linecut(chi, q_range)
+        linecut = self.get_linecut(chi, q_range)
+        profile = linecut.data 
         figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity'}, **kwargs)
         return figure
 
@@ -715,12 +722,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         :param label: The label for the plot.
         :return: The hv plot.
         """
-        profile = self.get_linecut(chi, q_range)
-        curve = hv.Curve(profile, kdims='q', vdims='intensity', label = label).opts(
-            xlabel='q [\u212B\u207B\u00B9]',
-            ylabel='Intensity [arb. units]',
-            **kwargs)
-        
+        curve = self.get_linecut(chi, q_range).plot_linecut_hv(label = label, **kwargs)       
         return curve
     
     def get_polar_linecut(self,
@@ -791,3 +793,276 @@ class GIWAXSPattern(ScatteringMeasurement):
             **kwargs)
         
         return curve
+    
+
+class Linecut():
+    ''' 
+    A class to store a linecut from a GIWAXS measurement
+
+    Main contributors:
+    Arianna Magni
+
+    '''
+
+    def __init__(self,
+                 data: pd.DataFrame,
+                 metadata: dict = None):
+        
+        self._data = data
+        self._metadata = metadata
+
+    @property
+    def data(self):
+        return self._data
+    
+    @property
+    def metadata(self):
+        return self._metadata
+    
+    @property
+    def fit_results(self):
+        return self._fit_results
+    
+    @property
+    def fit_model(self):
+        return self.fit_results.model
+    
+    @property
+    def fit_params(self):
+        return self.fit_results.params
+    
+    @property
+    def fit_report(self):
+        return self.fit_results.fit_report
+    
+    
+    def plot_linecut_hv(self,
+                        label: str = '',
+                     **kwargs) -> hv.Curve:
+
+        """Plot a profile extracted from the polar space data.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The hv plot.
+        """
+        curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label).opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
+    
+    def fit_linecut(self,
+                    peak_model: str,
+                    background_model: str,
+                    q_range: tuple,
+                    peak_center_value: float,
+                    peak_center_vary: bool = True,
+                    peak_center_min: float = 0.1,
+                    peak_center_max: float = 2.5,
+
+                    peak_sigma_value: float = 0.1,
+                    peak_sigma_vary: bool = True,
+                    peak_sigma_min: float = 0.001,
+                    peak_sigma_max: float = 0.3,
+
+                    peak_amplitude_value: float = 1,
+                    peak_amplitude_vary: bool = True,
+                    peak_amplitude_min: float = 0.00001,
+                    peak_amplitude_max: float = 5000,
+
+                    bkg_slope_value: float = 0,
+                    bkg_slope_vary: bool = True,
+                    bkg_slope_min: float = -1000,
+                    bkg_slope_max: float = 1000,
+
+                    bkg_intercept_value: float = 0,
+                    bkg_intercept_vary: bool = True,
+                    bkg_intercept_min: float = -1000,
+                    bkg_intercept_max: float = 1000,
+
+                    bkg_value: float = 0,
+                    bkg_vary: bool = True,
+                    bkg_min: float = -1000,
+                    bkg_max: float = 1000,
+
+                    bkg_amplitude_value: float = 0,
+                    bkg_amplitude_vary: bool = True,
+                    bkg_amplitude_min: float = -1000,
+                    bkg_amplitude_max: float = 1000,
+
+                    bkg_decay_value: float = 0,
+                    bkg_decay_vary: bool = True,
+                    bkg_decay_min: float = -1000,
+                    bkg_decay_max: float = 1000
+
+                    ) -> 'Linecut':
+        """
+        Fit the linecut to a model
+        :param peak_model: the model to fit the peak to
+        :param background_model: the model to fit the background to
+        :param q_range: the range of q values to fit
+        :param peak_center_value: the initial value for the peak center
+        :param peak_center_vary: whether to vary the peak center
+        :param peak_center_min: the minimum value for the peak center
+        :param peak_center_max: the maximum value for the peak center
+        :param peak_sigma_value: the initial value for the peak sigma
+        :param peak_sigma_vary: whether to vary the peak sigma
+        :param peak_sigma_min: the minimum value for the peak sigma
+        :param peak_sigma_max: the maximum value for the peak sigma
+        :param peak_amplitude_value: the initial value for the peak amplitude
+        :param peak_amplitude_vary: whether to vary the peak amplitude
+        :param peak_amplitude_min: the minimum value for the peak amplitude
+        :param peak_amplitude_max: the maximum value for the peak amplitude
+        :param bkg_linear_slope_value: the initial value for the linear background slope
+        :param bkg_linear_slope_vary: whether to vary the linear background slope
+        :param bkg_linear_slope_min: the minimum value for the linear background slope
+        :param bkg_linear_slope_max: the maximum value for the linear background slope
+        :param bkg_linear_intercept_value: the initial value for the linear background intercept
+        :param bkg_linear_intercept_vary: whether to vary the linear background intercept
+        :param bkg_linear_intercept_min: the minimum value for the linear background intercept
+        :param bkg_linear_intercept_max: the maximum value for the linear background intercept
+        :param bkg_constant_value: the initial value for the constant background
+        :param bkg_constant_vary: whether to vary the constant background
+        :param bkg_constant_min: the minimum value for the constant background
+        :param bkg_constant_max: the maximum value for the constant background
+        :param bkg_exponential_amplitude_value: the initial value for the exponential background amplitude
+        :param bkg_exponential_amplitude_vary: whether to vary the exponential background amplitude
+        :param bkg_exponential_amplitude_min: the minimum value for the exponential background amplitude
+        :param bkg_exponential_amplitude_max: the maximum value for the exponential background amplitude
+        :param bkg_exponential_decay_value: the initial value for the exponential background decay
+        :param bkg_exponential_decay_vary: whether to vary the exponential background decay
+        :param bkg_exponential_decay_min: the minimum value for the exponential background decay
+        :param bkg_exponential_decay_max: the maximum value for the exponential background decay
+        :return: the fitted linecut
+        """ 
+        
+        from lmfit.models import (PowerLawModel, ExponentialModel, 
+                              PolynomialModel, QuadraticModel,
+                              PseudoVoigtModel,SkewedVoigtModel,
+                              VoigtModel, LinearModel, 
+                              ConstantModel, GaussianModel,
+                              LorentzianModel)
+        
+        # select values in q_range
+        data = self.data.query(f'q >= {q_range[0]} and q <= {q_range[1]}')
+        x = data['q']
+        y = data['intensity']
+        weights = np.ones(len(x))
+
+        if peak_model == 'GaussianModel':
+            peak_model = GaussianModel(prefix='peak_')
+        elif peak_model == 'LorentzianModel':
+            peak_model = LorentzianModel(prefix='peak_')
+        elif peak_model == 'VoigtModel':
+            peak_model = VoigtModel(prefix='peak_')
+        elif peak_model == 'PseudoVoigtModel':
+            peak_model = PseudoVoigtModel(prefix='peak_')
+        elif peak_model == 'SkewedVoigtModel':
+            peak_model = SkewedVoigtModel(prefix='peak_')
+        else:
+            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel')
+        
+      
+        if background_model == 'ExponentialModel':
+            background_model = ExponentialModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
+        elif background_model == 'LinearModel':
+            background_model = LinearModel(prefix='bkg_')
+        elif background_model == 'ConstantModel':
+            background_model = ConstantModel(prefix='bkg_')
+        else:
+            raise ValueError('background_model must be one of ExponentialModel, LinearModel, ConstantModel')
+        
+        model = peak_model + background_model
+        pars = model.make_params()
+        
+        pars['peak_center'].set(value=peak_center_value,
+                                min=peak_center_min,
+                                max=peak_center_max,
+                                vary=peak_center_vary)
+
+        pars['peak_sigma'].set(value=peak_sigma_value,
+                                 min=peak_sigma_min,
+                                 max=peak_sigma_max,
+                                 vary=peak_sigma_vary)
+    
+        pars['peak_amplitude'].set(value=peak_amplitude_value,
+                                      min=peak_amplitude_min,
+                                      max=peak_amplitude_max,
+                                      vary=peak_amplitude_vary)
+        
+        pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
+        pars.add('peak_d_spacing', expr='2*pi/peak_center')
+                 
+
+        if background_model == 'ExponentialModel':
+            pars['bkg_amplitude'].set(value=bkg_amplitude_value,
+                                                  min=self.bkg_exponential_amplitude_min,
+                                                  max=self.bkg_exponential_amplitude_max,
+                                                  vary=self.bkg_exponential_amplitude_vary)
+            pars['bkg_decay'].set(value=self.bkg_exponential_decay_value,
+                                                min=self.bkg_exponential_decay_min,
+                                                max=self.bkg_exponential_decay_max,
+                                                vary=self.bkg_exponential_decay_vary)
+            pars['bkg_'].set(value=self.bkg_constant_value,
+                                     min=self.bkg_constant_min,
+                                     max=self.bkg_constant_max,
+                                     vary=self.bkg_constant_vary)
+            
+        elif background_model == 'LinearModel':
+            pars['bkg_linear_slope'].set(value=self.bkg_linear_slope_value,
+                                         min=self.bkg_linear_slope_min,
+                                         max=self.bkg_linear_slope_max,
+                                         vary=self.bkg_linear_slope_vary)
+            pars['bkg_linear_intercept'].set(value=self.bkg_linear_intercept_value,
+                                             min=self.bkg_linear_intercept_min,
+                                             max=self.bkg_linear_intercept_max,
+                                             vary=self.bkg_linear_intercept_vary)
+        elif background_model == 'ConstantModel':
+            pars['bkg_constant'].set(value=self.bkg_constant_value,
+                                     min=self.bkg_constant_min,
+                                     max=self.bkg_constant_max,
+                                     vary=self.bkg_constant_vary)
+            
+        result = model.fit(y, pars, x=x)
+
+        self._fitted_linecut = result
+        return self
+
+    def plot_fitted_linecut_hv(self, **kwargs) -> hv.Curve:
+        """Plot the fitted linecut using holoviews
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        curve_data = self.plot_linecut_hv(label = 'Data').opts(
+            line_width=3,
+            color='black',
+            **kwargs)
+        
+        curve_fit = hv.Curve((self.data['q'], self._fitted_linecut.best_fit), kdims='q', vdims='intensity', label = 'Fit').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            color='red',
+            line_width=2,
+            **kwargs)
+        
+        curve_peak = hv.Curve((self.data['q'], self._fitted_linecut.eval_components()['peak_']), kdims='q', vdims='intensity', label = 'Peak').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            line_dash='dashed',
+            color='green',
+            line_width=2,
+            **kwargs)
+        
+        curve_bkg = hv.Curve((self.data['q'], self._fitted_linecut.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            color='blue',
+            line_dash='dashed',
+            line_width=2,
+            **kwargs)
+        
+        return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
+      
+    
+
+        
