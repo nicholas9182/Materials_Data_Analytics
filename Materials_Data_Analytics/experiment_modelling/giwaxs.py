@@ -321,7 +321,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
         for image_file, intensity_norm in zip(image_file_list, intensity_norm_list):
             image_data = GIWAXSPixelImage._load_tif_file(image_file)
-            image_data_norm = (image_data/intensity_norm) *np.mean(intensity_norm_list)
+            image_data_norm = (image_data/intensity_norm) * exposure_time
             images_list.append(image_data_norm)
 
         # Convert the list of images to a NumPy array
@@ -894,7 +894,7 @@ class Linecut():
 
                     bkg_value: float = 0,
                     bkg_vary: bool = True,
-                    bkg_min: float = -1000,
+                    bkg_min: float = 0,
                     bkg_max: float = 1000,
 
                     bkg_amplitude_value: float = 0,
@@ -902,12 +902,18 @@ class Linecut():
                     bkg_amplitude_min: float = -1000,
                     bkg_amplitude_max: float = 1000,
 
-                    bkg_decay_value: float = 0,
+                    bkg_decay_value: float = 1,
                     bkg_decay_vary: bool = True,
                     bkg_decay_min: float = -1000,
-                    bkg_decay_max: float = 1000
+                    bkg_decay_max: float = 1000,
+
+                    bkg_exponent_value: float = 1,
+                    bkg_exponent_vary: bool = True,
+                    bkg_exponent_min: float = -10,
+                    bkg_exponent_max: float = 10
 
                     ) -> 'Linecut':
+
         """
         Fit the linecut to a model
         :param peak_model: the model to fit the peak to
@@ -925,27 +931,31 @@ class Linecut():
         :param peak_amplitude_vary: whether to vary the peak amplitude
         :param peak_amplitude_min: the minimum value for the peak amplitude
         :param peak_amplitude_max: the maximum value for the peak amplitude
-        :param bkg_linear_slope_value: the initial value for the linear background slope
-        :param bkg_linear_slope_vary: whether to vary the linear background slope
-        :param bkg_linear_slope_min: the minimum value for the linear background slope
-        :param bkg_linear_slope_max: the maximum value for the linear background slope
-        :param bkg_linear_intercept_value: the initial value for the linear background intercept
-        :param bkg_linear_intercept_vary: whether to vary the linear background intercept
-        :param bkg_linear_intercept_min: the minimum value for the linear background intercept
-        :param bkg_linear_intercept_max: the maximum value for the linear background intercept
-        :param bkg_constant_value: the initial value for the constant background
-        :param bkg_constant_vary: whether to vary the constant background
-        :param bkg_constant_min: the minimum value for the constant background
-        :param bkg_constant_max: the maximum value for the constant background
-        :param bkg_exponential_amplitude_value: the initial value for the exponential background amplitude
-        :param bkg_exponential_amplitude_vary: whether to vary the exponential background amplitude
-        :param bkg_exponential_amplitude_min: the minimum value for the exponential background amplitude
-        :param bkg_exponential_amplitude_max: the maximum value for the exponential background amplitude
-        :param bkg_exponential_decay_value: the initial value for the exponential background decay
-        :param bkg_exponential_decay_vary: whether to vary the exponential background decay
-        :param bkg_exponential_decay_min: the minimum value for the exponential background decay
-        :param bkg_exponential_decay_max: the maximum value for the exponential background decay
-        :return: the fitted linecut
+        :param bkg_slope_value: the initial value for the background slope
+        :param bkg_slope_vary: whether to vary the background slope
+        :param bkg_slope_min: the minimum value for the background slope
+        :param bkg_slope_max: the maximum value for the background slope
+        :param bkg_intercept_value: the initial value for the background intercept
+        :param bkg_intercept_vary: whether to vary the background intercept
+        :param bkg_intercept_min: the minimum value for the background intercept
+        :param bkg_intercept_max: the maximum value for the background intercept
+        :param bkg_value: the initial value for the background constant
+        :param bkg_vary: whether to vary the background constant
+        :param bkg_min: the minimum value for the background constant
+        :param bkg_max: the maximum value for the background constant
+        :param bkg_amplitude_value: the initial value for the background amplitude
+        :param bkg_amplitude_vary: whether to vary the background amplitude
+        :param bkg_amplitude_min: the minimum value for the background amplitude
+        :param bkg_amplitude_max: the maximum value for the background amplitude
+        :param bkg_decay_value: the initial value for the background decay
+        :param bkg_decay_vary: whether to vary the background decay
+        :param bkg_decay_min: the minimum value for the background decay
+        :param bkg_decay_max: the maximum value for the background decay
+        :param bkg_exponent_value: the initial value for the background exponent
+        :param bkg_exponent_vary: whether to vary the background exponent
+        :param bkg_exponent_min: the minimum value for the background exponent
+        :param bkg_exponent_max: the maximum value for the background exponent
+        :return: The fitted linecut.
         """ 
         
         from lmfit.models import (ExponentialModel,
@@ -955,7 +965,8 @@ class Linecut():
                                   LinearModel,
                                   ConstantModel,
                                   GaussianModel,
-                                  LorentzianModel)
+                                  LorentzianModel,
+                                  PowerLawModel)
         
         # select values in q_range
         data = self.data.query(f'q >= {q_range[0]} and q <= {q_range[1]}')
@@ -983,6 +994,8 @@ class Linecut():
             background_model = LinearModel(prefix='bkg_')
         elif background_model == 'ConstantModel':
             background_model = ConstantModel(prefix='bkg_')
+        elif background_model == 'PowerLawModel':
+            background_model = PowerLawModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
         else:
             raise ValueError('background_model must be one of ExponentialModel, LinearModel, ConstantModel')
         
@@ -1010,32 +1023,46 @@ class Linecut():
 
         if background_model == 'ExponentialModel':
             pars['bkg_amplitude'].set(value=bkg_amplitude_value,
-                                                  min=self.bkg_exponential_amplitude_min,
-                                                  max=self.bkg_exponential_amplitude_max,
-                                                  vary=self.bkg_exponential_amplitude_vary)
-            pars['bkg_decay'].set(value=self.bkg_exponential_decay_value,
-                                                min=self.bkg_exponential_decay_min,
-                                                max=self.bkg_exponential_decay_max,
-                                                vary=self.bkg_exponential_decay_vary)
-            pars['bkg_'].set(value=self.bkg_constant_value,
-                                     min=self.bkg_constant_min,
-                                     max=self.bkg_constant_max,
-                                     vary=self.bkg_constant_vary)
-            
+                                      min=bkg_amplitude_min,
+                                      max=bkg_amplitude_max,
+                                      vary=bkg_amplitude_vary)
+            pars['bkg_decay'].set(value=bkg_decay_value,
+                                  min=bkg_decay_min,
+                                  max=bkg_decay_max,
+                                  vary=bkg_decay_vary)
+            pars['bkg_'].set(value=bkg_value,
+                             min=bkg_min,
+                             max=bkg_max,
+                             vary=bkg_vary)
+        
+        elif background_model == 'PowerLawModel':
+            pars['bkg_amplitude'].set(value=bkg_amplitude_value,
+                                      min=bkg_amplitude_min,
+                                      max=bkg_amplitude_max,
+                                      vary=bkg_amplitude_vary)
+            pars['bkg_exponent'].set(value=bkg_exponent_value,
+                                    min=bkg_exponent_min,
+                                    max=bkg_exponent_max,
+                                    vary=bkg_exponent_vary)
+            pars['bkg_'].set(value=bkg_value,
+                             min=bkg_min,
+                             max=bkg_max,
+                             vary=bkg_vary)
+                        
         elif background_model == 'LinearModel':
-            pars['bkg_linear_slope'].set(value=self.bkg_linear_slope_value,
-                                         min=self.bkg_linear_slope_min,
-                                         max=self.bkg_linear_slope_max,
-                                         vary=self.bkg_linear_slope_vary)
-            pars['bkg_linear_intercept'].set(value=self.bkg_linear_intercept_value,
-                                             min=self.bkg_linear_intercept_min,
-                                             max=self.bkg_linear_intercept_max,
-                                             vary=self.bkg_linear_intercept_vary)
+            pars['bkg_slope'].set(value=bkg_slope_value,
+                                         min=bkg_slope_min,
+                                         max=bkg_slope_max,
+                                         vary=bkg_slope_vary)
+            pars['bkg_intercept'].set(value=bkg_intercept_value,
+                                             min=bkg_intercept_min,
+                                             max=bkg_intercept_max,
+                                             vary=bkg_intercept_vary)
         elif background_model == 'ConstantModel':
-            pars['bkg_constant'].set(value=self.bkg_constant_value,
-                                     min=self.bkg_constant_min,
-                                     max=self.bkg_constant_max,
-                                     vary=self.bkg_constant_vary)
+            pars['bkg_'].set(value=bkg_value,
+                             min=bkg_min,
+                             max=bkg_max,
+                             vary=bkg_vary)
             
         result = model.fit(y, pars, x=x)
         self._x = x
