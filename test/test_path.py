@@ -8,10 +8,11 @@ from Materials_Data_Analytics.metadynamics.path_analysis import SurfacePath
 
 class TestPath(unittest.TestCase):
 
-    mep = pd.DataFrame({
-        "CM6": [f for f in np.linspace(0, 8, 10, endpoint=False)],
-        "CM7": [f for f in np.linspace(8, 0, 10, endpoint=True)]
-    })
+    def setUp(self):
+        self.mep = pd.DataFrame({
+            "CM6": [f for f in np.linspace(0, 8, 10, endpoint=False)],
+            "CM7": [f for f in np.linspace(8, 0, 10, endpoint=True)]
+        })
 
     def test_path(self):
         """ Test the Path class """

@@ -5,11 +5,13 @@ from Materials_Data_Analytics.core.coordinate_transformer import CoordinateTrans
 
 class TestCoordinateTransformer(unittest.TestCase):
 
-    data = pd.DataFrame({
-        'x': [-0.931, -0.468, -2.329, -2.972],
-        'y': [2.537, 3.513, 2.402, 3.270],
-        'z': [0, 0, 0, 0]
-    })
+    def setUp(self):
+
+        self.data = pd.DataFrame({
+            'x': [-0.931, -0.468, -2.329, -2.972],
+            'y': [2.537, 3.513, 2.402, 3.270],
+            'z': [0, 0, 0, 0]
+            })
 
     def test_rotate_x(self):
         """ Test the rotation of the x axis """
