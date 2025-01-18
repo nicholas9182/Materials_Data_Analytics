@@ -705,9 +705,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         :param q_range: q_range.
         :return: The plot.
         """
-        linecut = self.get_linecut(chi, q_range)
-        profile = linecut.data 
-        figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity'}, **kwargs)
+        figure = self.get_linecut(chi, q_range).plot(**kwargs)
         return figure
 
     def plot_linecut_hv(self,
@@ -722,7 +720,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         :param label: The label for the plot.
         :return: The hv plot.
         """
-        curve = self.get_linecut(chi, q_range).plot_linecut_hv(label = label, **kwargs)       
+        curve = self.get_linecut(chi, q_range).plot_hv(label = label, **kwargs)       
         return curve
     
     def get_polar_linecut(self,
@@ -821,19 +819,31 @@ class Linecut():
     
     @property
     def fit_results(self):
-        return self._fit_results
+        try:
+            return self._fit_results
+        except:
+            raise AttributeError('No fit has been ran.')
     
     @property
     def fit_model(self):
-        return self.fit_results.model
+        try:
+            return self.fit_results.model
+        except:
+            raise AttributeError('No fit model has been set.')
     
     @property
     def fit_params(self):
-        return self.fit_results.params
+        try:
+            return self.fit_results.params
+        except:
+            raise AttributeError('No fit has been ran.')
     
     @property
     def fit_report(self):
-        return self.fit_results.fit_report
+        try:
+            return self.fit_results.fit_report
+        except:
+            raise AttributeError('No fit has been ran.')
     
     @property
     def x(self):
@@ -845,14 +855,18 @@ class Linecut():
     
     @property
     def y_fit(self):
-        return self.fit_results.best_fit
+        try:
+            return self.fit_results.best_fit
+        except:
+            raise AttributeError('No fit has been ran.')
     
     
-    def plot_linecut_hv(self,
+    def plot_hv(self,
                         label: str = '',
                      **kwargs) -> hv.Curve:
 
-        """Plot a profile extracted from the polar space data.
+        """Plot the profile.
+        :param label: The label for the plot.
         :param kwargs: additional arguments to pass to the plot
         :return: The hv plot.
         """
@@ -863,101 +877,95 @@ class Linecut():
         
         return curve
     
+    def plot(self, 
+             **kwargs) -> px.line:
+
+        profile = self.data
+        figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
+        return figure
+    
     def fit_linecut(self,
                     peak_model: str,
                     background_model: str,
                     q_range: tuple,
-                    peak_center_value: float,
-                    peak_center_vary: bool = True,
-                    peak_center_min: float = 0.1,
-                    peak_center_max: float = 2.5,
+                    initial_parameters: dict = {}) -> 'Linecut':
+                    
+        """Fit the linecut to a model
+        :param peak_model: The peak model to use. Options are 'GaussianModel', 'LorentzianModel', 'VoigtModel', 'PseudoVoigtModel', 'SkewedVoigtModel'
+        :param background_model: The background model to use. Options are 'ExponentialModel', 'LinearModel', 'ConstantModel', PowerLawModel
+        :param q_range: The range of q values to fit
+        :param initial_parameters: The initial parameters for the fit
+        :return: The fit results.
+        """        
 
-                    peak_sigma_value: float = 0.1,
-                    peak_sigma_vary: bool = True,
-                    peak_sigma_min: float = 0.001,
-                    peak_sigma_max: float = 0.3,
+        initial_params = {
+            'peak center_value': 1.0,
+            'peak_center_vary': True,
+            'peak_center_min': 0.1,
+            'peak_center_max': 2.5,
 
-                    peak_amplitude_value: float = 1,
-                    peak_amplitude_vary: bool = True,
-                    peak_amplitude_min: float = 0.00001,
-                    peak_amplitude_max: float = 5000,
+            'peak_sigma_value': 0.1,
+            'peak_sigma_vary': True,
+            'peak_sigma_min': 0.001,
+            'peak_sigma_max': 0.3,
 
-                    bkg_slope_value: float = 0,
-                    bkg_slope_vary: bool = True,
-                    bkg_slope_min: float = -1000,
-                    bkg_slope_max: float = 1000,
+            'peak_amplitude_value': 1,
+            'peak_amplitude_vary': True,
+            'peak_amplitude_min': 0.00001,
+            'peak_amplitude_max': 5000,
 
-                    bkg_intercept_value: float = 0,
-                    bkg_intercept_vary: bool = True,
-                    bkg_intercept_min: float = -1000,
-                    bkg_intercept_max: float = 1000,
+            'peak_gamma_value': 0.1,
+            'peak_gamma_vary': True,
+            'peak_gamma_min': 0.001,
+            'peak_gamma_max': 0.3,
 
-                    bkg_value: float = 0,
-                    bkg_vary: bool = True,
-                    bkg_min: float = 0,
-                    bkg_max: float = 1000,
+            'peak_fraction_value': 0.5,
+            'peak_fraction_vary': True,
+            'peak_fraction_min': 0.000,
+            'peak_fraction_max': 1.0,
 
-                    bkg_amplitude_value: float = 0,
-                    bkg_amplitude_vary: bool = True,
-                    bkg_amplitude_min: float = -1000,
-                    bkg_amplitude_max: float = 1000,
+            'peak_skew_value': 0,
+            'peak_skew_vary': True,
+            'peak_skew_min': -1000,
+            'peak_skew_max': 1000,
+            
+            'bkg_slope_value': 0,
+            'bkg_slope_vary': True,
+            'bkg_slope_min': -1000,
+            'bkg_slope_max': 1000,
 
-                    bkg_decay_value: float = 1,
-                    bkg_decay_vary: bool = True,
-                    bkg_decay_min: float = -1000,
-                    bkg_decay_max: float = 1000,
+            'bkg_intercept_value': 0,
+            'bkg_intercept_vary': True,
+            'bkg_intercept_min': -1000,
+            'bkg_intercept_max': 1000,
 
-                    bkg_exponent_value: float = 1,
-                    bkg_exponent_vary: bool = True,
-                    bkg_exponent_min: float = -10,
-                    bkg_exponent_max: float = 10
+            'bkg_value': 0,
+            'bkg_vary': True,
+            'bkg_min': 0,
+            'bkg_max': 1000,
 
-                    ) -> 'Linecut':
+            'bkg_amplitude_value': 0,
+            'bkg_amplitude_vary': True,
+            'bkg_amplitude_min': -1000,
+            'bkg_amplitude_max': 1000,
 
-        """
-        Fit the linecut to a model
-        :param peak_model: the model to fit the peak to
-        :param background_model: the model to fit the background to
-        :param q_range: the range of q values to fit
-        :param peak_center_value: the initial value for the peak center
-        :param peak_center_vary: whether to vary the peak center
-        :param peak_center_min: the minimum value for the peak center
-        :param peak_center_max: the maximum value for the peak center
-        :param peak_sigma_value: the initial value for the peak sigma
-        :param peak_sigma_vary: whether to vary the peak sigma
-        :param peak_sigma_min: the minimum value for the peak sigma
-        :param peak_sigma_max: the maximum value for the peak sigma
-        :param peak_amplitude_value: the initial value for the peak amplitude
-        :param peak_amplitude_vary: whether to vary the peak amplitude
-        :param peak_amplitude_min: the minimum value for the peak amplitude
-        :param peak_amplitude_max: the maximum value for the peak amplitude
-        :param bkg_slope_value: the initial value for the background slope
-        :param bkg_slope_vary: whether to vary the background slope
-        :param bkg_slope_min: the minimum value for the background slope
-        :param bkg_slope_max: the maximum value for the background slope
-        :param bkg_intercept_value: the initial value for the background intercept
-        :param bkg_intercept_vary: whether to vary the background intercept
-        :param bkg_intercept_min: the minimum value for the background intercept
-        :param bkg_intercept_max: the maximum value for the background intercept
-        :param bkg_value: the initial value for the background constant
-        :param bkg_vary: whether to vary the background constant
-        :param bkg_min: the minimum value for the background constant
-        :param bkg_max: the maximum value for the background constant
-        :param bkg_amplitude_value: the initial value for the background amplitude
-        :param bkg_amplitude_vary: whether to vary the background amplitude
-        :param bkg_amplitude_min: the minimum value for the background amplitude
-        :param bkg_amplitude_max: the maximum value for the background amplitude
-        :param bkg_decay_value: the initial value for the background decay
-        :param bkg_decay_vary: whether to vary the background decay
-        :param bkg_decay_min: the minimum value for the background decay
-        :param bkg_decay_max: the maximum value for the background decay
-        :param bkg_exponent_value: the initial value for the background exponent
-        :param bkg_exponent_vary: whether to vary the background exponent
-        :param bkg_exponent_min: the minimum value for the background exponent
-        :param bkg_exponent_max: the maximum value for the background exponent
-        :return: The fitted linecut.
-        """ 
-        
+            'bkg_decay_value': 1,
+            'bkg_decay_vary': True,
+            'bkg_decay_min': -1000,
+            'bkg_decay_max': 1000,
+
+            'bkg_exponent_value': 1,
+            'bkg_exponent_vary': True,
+            'bkg_exponent_min': -1000,
+            'bkg_exponent_max': 1000
+        }
+
+        for key in initial_parameters.keys():
+            if key not in initial_params.keys():
+                raise ValueError(f'{key} is not a valid parameter. Available parameters are {initial_params.keys()}')
+   
+        initial_params.update(initial_parameters)
+                
         from lmfit.models import (ExponentialModel,
                                   PseudoVoigtModel,
                                   SkewedVoigtModel,
@@ -972,8 +980,7 @@ class Linecut():
         data = self.data.query(f'q >= {q_range[0]} and q <= {q_range[1]}')
         x = data['q']
         y = data['intensity']
-        weights = np.ones(len(x))
-
+        
         if peak_model == 'GaussianModel':
             peak_model = GaussianModel(prefix='peak_')
         elif peak_model == 'LorentzianModel':
@@ -1002,67 +1009,92 @@ class Linecut():
         model = peak_model + background_model
         pars = model.make_params()
         
-        pars['peak_center'].set(value=peak_center_value,
-                                min=peak_center_min,
-                                max=peak_center_max,
-                                vary=peak_center_vary)
-
-        pars['peak_sigma'].set(value=peak_sigma_value,
-                                 min=peak_sigma_min,
-                                 max=peak_sigma_max,
-                                 vary=peak_sigma_vary)
+        pars['peak_center'].set(value=initial_params['peak_center_value'],
+                                min=initial_params['peak_center_min'],
+                                max=initial_params['peak_center_max'],
+                                vary=initial_params['peak_center_vary'])
+                                       
+        pars['peak_sigma'].set(value=initial_params['peak_sigma_value'],
+                               min=initial_params['peak_sigma_min'],
+                               max=initial_params['peak_sigma_max'],
+                               vary=initial_params['peak_sigma_vary'])
     
-        pars['peak_amplitude'].set(value=peak_amplitude_value,
-                                      min=peak_amplitude_min,
-                                      max=peak_amplitude_max,
-                                      vary=peak_amplitude_vary)
-        
+        pars['peak_amplitude'].set(value=initial_params['peak_amplitude_value'],
+                                   min=initial_params['peak_amplitude_min'],
+                                   max=initial_params['peak_amplitude_max'],
+                                   vary=initial_params['peak_amplitude_vary'])
+
+        if peak_model == 'PseudoVoigtModel':
+            pars['peak_fraction'].set(value=initial_params['peak_fraction_value'],
+                                   min=initial_params['peak_fraction_min'],
+                                   max=initial_params['peak_fraction_max'],
+                                   vary=initial_params['peak_fraction_vary'])
+                                   
+        elif (peak_model == 'VoigtModel') or (peak_model == 'SkewedVoigtModel'):
+            pars['peak_gamma'].set(value=initial_params['peak_gamma_value'],
+                                   min=initial_params['peak_gamma_min'],
+                                   max=initial_params['peak_gamma_max'],
+                                   vary=initial_params['peak_gamma_vary'])
+
+            if peak_model == 'SkewedVoigtModel':
+                pars['peak_skew'].set(value=initial_params['peak_skew_value'],
+                                   min=initial_params['peak_skew_min'],
+                                   max=initial_params['peak_skew_max'],
+                                   vary=initial_params['peak_skew_vary'])
+
+
         pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
         pars.add('peak_d_spacing', expr='2*pi/peak_center')
                  
 
         if background_model == 'ExponentialModel':
-            pars['bkg_amplitude'].set(value=bkg_amplitude_value,
-                                      min=bkg_amplitude_min,
-                                      max=bkg_amplitude_max,
-                                      vary=bkg_amplitude_vary)
-            pars['bkg_decay'].set(value=bkg_decay_value,
-                                  min=bkg_decay_min,
-                                  max=bkg_decay_max,
-                                  vary=bkg_decay_vary)
-            pars['bkg_'].set(value=bkg_value,
-                             min=bkg_min,
-                             max=bkg_max,
-                             vary=bkg_vary)
+            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
+                                      min=initial_params['bkg_amplitude_min'],
+                                      max=initial_params['bkg_amplitude_max'],
+                                      vary=initial_params['bkg_amplitude_vary'])    
+
+            pars['bkg_decay'].set(value=initial_params['bkg_decay_value'],
+                                    min=initial_params['bkg_decay_min'],
+                                    max=initial_params['bkg_decay_max'],
+                                    vary=initial_params['bkg_decay_vary'])
+
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
         
         elif background_model == 'PowerLawModel':
-            pars['bkg_amplitude'].set(value=bkg_amplitude_value,
-                                      min=bkg_amplitude_min,
-                                      max=bkg_amplitude_max,
-                                      vary=bkg_amplitude_vary)
-            pars['bkg_exponent'].set(value=bkg_exponent_value,
-                                    min=bkg_exponent_min,
-                                    max=bkg_exponent_max,
-                                    vary=bkg_exponent_vary)
-            pars['bkg_'].set(value=bkg_value,
-                             min=bkg_min,
-                             max=bkg_max,
-                             vary=bkg_vary)
+            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
+                                      min=initial_params['bkg_amplitude_min'],
+                                      max=initial_params['bkg_amplitude_max'],
+                                      vary=initial_params['bkg_amplitude_vary'])
+
+            pars['bkg_exponent'].set(value=initial_params['bkg_exponent_value'],
+                                    min=initial_params['bkg_exponent_min'],
+                                    max=initial_params['bkg_exponent_max'],
+                                    vary=initial_params['bkg_exponent_vary'])
+
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
                         
         elif background_model == 'LinearModel':
-            pars['bkg_slope'].set(value=bkg_slope_value,
-                                         min=bkg_slope_min,
-                                         max=bkg_slope_max,
-                                         vary=bkg_slope_vary)
-            pars['bkg_intercept'].set(value=bkg_intercept_value,
-                                             min=bkg_intercept_min,
-                                             max=bkg_intercept_max,
-                                             vary=bkg_intercept_vary)
+            pars['bkg_slope'].set(value=initial_params['bkg_slope_value'],
+                                  min=initial_params['bkg_slope_min'],
+                                  max=initial_params['bkg_slope_max'],
+                                  vary=initial_params['bkg_slope_vary'])
+
+            pars['bkg_intercept'].set(value=initial_params['bkg_intercept_value'],
+                                      min=initial_params['bkg_intercept_min'],
+                                      max=initial_params['bkg_intercept_max'],
+                                      vary=initial_params['bkg_intercept_vary'])
+        
         elif background_model == 'ConstantModel':
-            pars['bkg_'].set(value=bkg_value,
-                             min=bkg_min,
-                             max=bkg_max,
-                             vary=bkg_vary)
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
             
         result = model.fit(y, pars, x=x)
         self._x = x
@@ -1075,7 +1107,7 @@ class Linecut():
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
-        curve_data = self.plot_linecut_hv(label = 'Data').opts(
+        curve_data = self.plot_hv(label = 'Data').opts(
             line_width=3,
             color='black',
             **kwargs)
@@ -1104,7 +1136,3 @@ class Linecut():
             **kwargs)
         
         return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
-      
-    
-
-        
