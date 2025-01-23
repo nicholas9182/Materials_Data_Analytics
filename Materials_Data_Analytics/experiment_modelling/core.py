@@ -4,8 +4,6 @@ import scipy as sp
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import holoviews as hv
-hv.extension('bokeh')
 
 
 class Measurement():
@@ -138,7 +136,7 @@ class Measurement():
 
         return data
     
-    def plot_pixel_map(self,
+    def plot_pixel_map_px(self,
                        data: pd.DataFrame,
                        x: str,
                        y: str,
@@ -215,7 +213,7 @@ class Measurement():
                        z: str,
                        log_scale: bool = False,
                        aspect: str = 'equal',
-                       **kwargs) -> hv.Image:
+                       **kwargs):
         
         """
         Function for plotting a pixel map of data
@@ -226,7 +224,10 @@ class Measurement():
         :param log_scale: Whether to plot the z values on a log scale
         :param aspect: The aspect ratio of the plot
         :return: a holoviews image of the pixel map
-        """        
+        """
+
+        import holoviews as hv
+        hv.extension('bokeh')        
         
         if x not in data.columns or y not in data.columns or z not in data.columns:
             raise ValueError('The x, y, and z columns must be in the data frame')

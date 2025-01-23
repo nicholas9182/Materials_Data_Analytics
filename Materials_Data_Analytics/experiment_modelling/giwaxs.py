@@ -10,8 +10,6 @@ from datetime import datetime
 import re
 import plotly.graph_objects as go
 import plotly.express as px
-import holoviews as hv
-hv.extension('bokeh')
 import lmfit
 
 
@@ -571,8 +569,24 @@ class GIWAXSPattern(ScatteringMeasurement):
                                     template=template, x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', log_scale=log_scale,
                                     z_label='Intensity', **kwargs)
         return fig
-    
-    def plot_reciprocal_map(self, 
+
+    def plot_reciprocal_map(self,
+                            engine:str = 'px',
+                            **kwargs):
+        """Plot the reciprocal space map.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_reciprocal_map_px(**kwargs)
+
+        elif engine == 'hv':
+            return self._plot_reciprocal_map_hv(**kwargs)
+
+        else:
+            raise ValueError('engine must be either px or hv')
+
+    def _plot_reciprocal_map_px(self, 
                             colorscale: str = 'blackbody',
                             log_scale: bool = True,  
                             template: str = 'simple_white',
@@ -588,17 +602,18 @@ class GIWAXSPattern(ScatteringMeasurement):
         :return: The plot.
         """
         data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
-        fig = self.plot_pixel_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale, z_lower_cuttoff=intensity_lower_cuttoff,
+        fig = self.plot_pixel_map_px(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale, z_lower_cuttoff=intensity_lower_cuttoff,
                             x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', template=template, origin=origin,
                             z_label='Intensity', **kwargs)
         return fig
     
-    def plot_reciprocal_map_hv(self, 
+    def _plot_reciprocal_map_hv(self, 
                             **kwargs) -> go.Figure:
        """Plot the reciprocal space map using holoviews
        :param kwargs: additional arguments to pass to the plot
        :return: The plot.
        """
+
        data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
        figure = self.plot_pixel_map_hv(data = data, x='qxy', y='qz', z='intensity',
                                      xlabel='qxy [\u212B\u207B\u00B9]',
@@ -606,7 +621,8 @@ class GIWAXSPattern(ScatteringMeasurement):
                                      clabel='Intensity [arb. units]', **kwargs)
        return figure
     
-    def plot_polar_map_contour(self, 
+
+    def _plot_polar_map_contour_px(self, 
                                colorscale: str = 'blackbody', 
                                ncontours: int = 100, 
                                log_scale: bool = True,
@@ -627,7 +643,20 @@ class GIWAXSPattern(ScatteringMeasurement):
                                     z_label='Intensity', **kwargs)
         return fig
     
-    def plot_polar_map(self, 
+    def plot_polar_map(self,
+                          engine:str = 'px', **kwargs):
+        """Plot the polar space map.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_polar_map_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_polar_map_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+    
+    def _plot_polar_map_px(self, 
                        colorscale: str = 'blackbody', 
                        log_scale: bool = True,
                        template: str = 'simple_white',
@@ -644,7 +673,7 @@ class GIWAXSPattern(ScatteringMeasurement):
                                   z_label='Intensity', template=template, **kwargs)
         return fig
     
-    def plot_polar_map_hv(self, 
+    def _plot_polar_map_hv(self, 
                        **kwargs):
         """Plot the polar space map.
         :param kwargs: additional arguments to pass to the plot
@@ -662,7 +691,7 @@ class GIWAXSPattern(ScatteringMeasurement):
         """Extract a profile from the polar space data.
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
-        :return: The profile.
+        :return: Lincut object.
         """
         data = self.data_polar.copy()
 
@@ -694,41 +723,14 @@ class GIWAXSPattern(ScatteringMeasurement):
         
         return Linecut(data, 
                           metadata = self.metadata)
-    
-    def plot_linecut(self,
-                     chi: tuple | list | pd.Series | float = None,
-                     q_range: tuple | list | pd.Series = None, 
-                     **kwargs) -> px.line:
-
-        """Plot a profile extracted from the polar space data.
-        :param chi: Range of chi values or a single chi value.
-        :param q_range: q_range.
-        :return: The plot.
-        """
-        figure = self.get_linecut(chi, q_range).plot(**kwargs)
-        return figure
-
-    def plot_linecut_hv(self,
-                     chi: tuple | list | pd.Series | float = None,
-                     q_range: tuple | list | pd.Series = None, 
-                     label: str = '',
-                     **kwargs) -> hv.Curve:
-
-        """Plot a profile extracted from the polar space data.
-        :param chi: Range of chi values or a single chi value.
-        :param q_range: q_range.
-        :param label: The label for the plot.
-        :return: The hv plot.
-        """
-        curve = self.get_linecut(chi, q_range).plot_hv(label = label, **kwargs)       
-        return curve
-    
+      
     def get_polar_linecut(self,
                     q : tuple | list | pd.Series | float = None,
-                    chi_range : tuple | list | pd.Series = None) -> pd.DataFrame:
+                    chi_range : tuple | list | pd.Series = None) -> 'Polar_linecut':
         """Extract a profile from the polar space data.
         :param q: Range of q values or a single q value.
         :param chi_range: chi_range.
+        :return: Polar_linecut object.
         """
 
         data = self.data_polar.copy()
@@ -755,42 +757,13 @@ class GIWAXSPattern(ScatteringMeasurement):
             data = data.query(f'chi >= {min(chi_range)} and chi <= {max(chi_range)}')
         
         data = data.groupby('chi').mean().reset_index().filter(['q', 'chi', 'intensity'])
-
-        return data
-    
-    def plot_polar_linecut(self,
-                     q: tuple | list | pd.Series | float = None,
-                     chi_range: tuple | list | pd.Series = None, 
-                     **kwargs) -> px.line:
-
-        """Plot a profile extracted from the polar space data.
-        :param q: Range of q values or a single q value.
-        :param chi_range: chi_range.
-        :return: The plot.
-        """
-        profile = self.get_polar_linecut(q, chi_range)
-        figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
-        return figure
-
-    def plot_polar_linecut_hv(self,
-                     q: tuple | list | pd.Series | float = None,
-                     chi_range: tuple | list | pd.Series = None, 
-                     label: str = '',
-                     **kwargs) -> hv.Curve:
-
-        """Plot a profile extracted from the polar space data.
-        :param q: Range of q values or a single q value.
-        :param chi_range: chi_range.
-        :param label: The label for the plot.
-        :return: The hv plot.
-        """
-        profile = self.get_polar_linecut(q, chi_range)
-        curve = hv.Curve(profile, kdims='chi', vdims='intensity', label = label).opts(
-            xlabel='\u03C7 [\u00B0]',
-            ylabel='Intensity [arb. units]',
-            **kwargs)
+        metadata = self.metadata.copy()
+        metadata['chi_range'] = chi_range
+        metadata['q'] = q
         
-        return curve
+        return Polar_linecut(data,
+                       metadata = self.metadata)
+         
     
 
 class Linecut():
@@ -816,6 +789,13 @@ class Linecut():
     @property
     def metadata(self):
         return self._metadata
+    
+    @property
+    def chi(self):
+        try:
+            return self.metadata['chi']
+        except:
+            raise AttributeError('No chi value has been set.')
     
     @property
     def fit_results(self):
@@ -860,16 +840,31 @@ class Linecut():
         except:
             raise AttributeError('No fit has been ran.')
     
-    
-    def plot_hv(self,
-                        label: str = '',
-                     **kwargs) -> hv.Curve:
-
+    def plot(self,
+             engine: str = 'px',
+                **kwargs) -> px.line:
+        """Plot the profile.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _plot_hv(self,
+                label: str = '',
+                **kwargs):
         """Plot the profile.
         :param label: The label for the plot.
         :param kwargs: additional arguments to pass to the plot
         :return: The hv plot.
         """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
         curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label).opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
@@ -877,9 +872,12 @@ class Linecut():
         
         return curve
     
-    def plot(self, 
+    def _plot_px(self, 
              **kwargs) -> px.line:
-
+        """Plot the profile.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
         profile = self.data
         figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
         return figure
@@ -888,8 +886,7 @@ class Linecut():
                     peak_model: str,
                     background_model: str,
                     q_range: tuple,
-                    initial_parameters: dict = {}) -> 'Linecut':
-                    
+                    initial_parameters: dict = {}) -> 'Linecut':          
         """Fit the linecut to a model
         :param peak_model: The peak model to use. Options are 'GaussianModel', 'LorentzianModel', 'VoigtModel', 'PseudoVoigtModel', 'SkewedVoigtModel'
         :param background_model: The background model to use. Options are 'ExponentialModel', 'LinearModel', 'ConstantModel', PowerLawModel
@@ -897,7 +894,6 @@ class Linecut():
         :param initial_parameters: The initial parameters for the fit
         :return: The fit results.
         """        
-
         initial_params = {
             'peak center_value': 1.0,
             'peak_center_vary': True,
@@ -1102,11 +1098,28 @@ class Linecut():
         self._fit_results = result
         return self
 
-    def plot_fitted_linecut_hv(self, **kwargs) -> hv.Curve:
+    def plot_fitted(self,
+                    engine: str = 'px',
+                    **kwargs):
+        """Plot the fitted linecut
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_fitted_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_fitted_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+            
+    def _plot_fitted_hv(self, **kwargs):
         """Plot the fitted linecut using holoviews
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
+        import holoviews as hv
+        hv.extension('bokeh')
+
         curve_data = self.plot_hv(label = 'Data').opts(
             line_width=3,
             color='black',
@@ -1136,3 +1149,97 @@ class Linecut():
             **kwargs)
         
         return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
+    
+    def _plot_fitted_px(self, **kwargs) -> px.line:
+        """Plot the fitted linecut using plotly express
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        data = self.data
+        data['fitted'] = self.fit_results.best_fit
+        data['peak'] = self.fit_results.eval_components()['peak_']
+        data['bkg'] = self.fit_results.eval_components()['bkg_']
+        figure = px.line(data, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
+        return figure
+    
+
+class Polar_linecut():
+    ''' 
+    A class to store a polar linecut from a GIWAXS measurement
+
+    Main contributors:
+    Arianna Magni
+
+    '''
+
+    def __init__(self,
+                 data: pd.DataFrame,
+                 metadata: dict = None):
+        
+        self._data = data
+        self._metadata = metadata
+
+    @property
+    def data(self):
+        return self._data
+    
+    @property
+    def metadata(self):
+        return self._metadata
+    
+    @property
+    def q(self):
+        try:
+            return self.metadata['q']
+        except:
+            raise AttributeError('No q value has been set.')
+    
+    @property
+    def chi(self):
+        return self.data['chi']
+
+    @property
+    def intensity(self):
+        return self.data['intensity']   
+
+    def plot(self,
+             engine: str = 'px',
+                **kwargs) -> px.line:
+        """Plot the profile.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _plot_hv(self,
+                label: str = '',
+                **kwargs):
+        """Plot the profile.
+        :param label: The label for the plot.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The hv plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
+        curve = hv.Curve(self.data, kdims='chi', vdims='intensity', label = label).opts(
+            xlabel='\u03C7 [\u00B0]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
+    
+    def _plot_px(self, 
+             **kwargs) -> px.line:
+        """Plot the profile.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        profile = self.data
+        figure = px.line(profile, x='q', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
+        return figure

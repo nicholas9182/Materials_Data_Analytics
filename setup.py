@@ -25,7 +25,6 @@ setup(
         "pyFAI",
         "pygix",
         "Datetime",
-        "holoviews",
         "lmfit"
     ],
     scripts=[
