@@ -374,7 +374,11 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         int_current = current_data.query('direction == @direction')['current'].to_numpy()
         int_time = current_data.query('direction == @direction')['time'].to_numpy()
-        integral = abs(integrate.simpson(int_current, x=int_time))
+
+        if len(int_current) == 0 or len(int_current) == 1:
+            return 0
+        else:
+            integral = abs(integrate.simpson(int_current, x=int_time))
 
         return integral
 

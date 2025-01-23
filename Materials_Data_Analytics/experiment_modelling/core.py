@@ -103,8 +103,11 @@ class Measurement():
         x_max = data[x_col].max()
         x_range = (x_min, x_max)
 
-        # get the coefficients and covariance matrix of the polynomial fit
-        coefficients = np.polyfit(data[x_col], data[y_col], polynomial_order, cov=True)[0]
+        try:
+            # get the coefficients and covariance matrix of the polynomial fit
+            coefficients = np.polyfit(data[x_col], data[y_col], polynomial_order, cov=True)[0]
+        except np.linalg.LinAlgError:
+            raise ValueError('The polynomial fit failed. Increase the window size or decrease polynomial order')
 
         # create a polymonial object and its derivative from those coefficients
         polynomial = np.poly1d(coefficients)
