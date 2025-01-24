@@ -339,8 +339,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                          timestamp: datetime = None,
                          metadata: dict = {})-> 'GIWAXSPixelImage':
         if isinstance(filepaths, list) and len(filepaths) == 1:
-            filepath = filepaths[0]
-            
+            filepaths = filepaths[0]
+
         if isinstance(filepaths, str):
             # single image
             metadata = cls._get_NSLS_II_CMS_parameters(filepaths, verbose=verbose)
@@ -379,7 +379,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                 raise ValueError('Not all files have the same x position. Files cannot be averaged.')
             
             if 'pos' in metadata_df.columns:
-                if (len(metadata_df) == 2) and (metadata_df['pos'].nunique() == 2) and (metadata_df['pos'].unique().sorted == [1,2]):
+                if (len(metadata_df) == 2) and (metadata_df['pos'].nunique() == 2) and (1 in metadata_df['pos'].values) and (2 in metadata_df['pos'].values):
                     filename1 = metadata_df[metadata_df['pos'] == 1]['filepath'].values[0]
                     filename2 = metadata_df[metadata_df['pos'] == 2]['filepath'].values[0]
                     image = cls._stitch_images(filename1, filename2, offset = stiching_offset)
@@ -387,10 +387,14 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                     metadata = {'sample': sample,
 
                                'filepaths': [filename1, filename2],
-                               'relative humidity': metadata_df['relative humidity'].mean().values[0],
-                               'x_position': metadata_df['x_position'].mean().values[0]
+                               'relative humidity': metadata_df['relative humidity'].values.mean(),
+                               'x_position': metadata_df['x_position'].values.mean()
                     }
                 else:
+                    print('len(metadata_df) == 2', len(metadata_df) == 2) 
+                    print('metadata_df[\'pos\'].nunique()', metadata_df['pos'].nunique())
+                    print('(1 in metadata_df[\'pos\'])', (1 in metadata_df['pos'].values))
+                    print('(2 in metadata_df[\'pos\'])', (2 in metadata_df['pos'].values))
                     raise ValueError("It seems like you need to stitch the files, but they are not compatible.")
                 
             else:
@@ -408,8 +412,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
                 metadata = {'sample': sample,
                             'filepaths': filepaths,
-                            'relative humidity': metadata_df['relative humidity'].mean().values[0],
-                            'x_position': metadata_df['x_position'].values[0],
+                            'relative humidity': metadata_df['relative humidity'].values.mean(),
+                            'x_position': metadata_df['x_position'].values,
                 }
                     
         metadata['source'] = 'NSLS_II_CMS'
@@ -438,7 +442,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         time_duration = time_matches[-1] if time_matches else None
         if time_duration is not None:
             time_duration = float(time_duration[:-1])
-            parameters_from_file_name['exposure time_s'] = time_duration
+            parameters_from_file_name['exposure_time_s'] = time_duration
 
         # Extract angle (th)
         th_match = re.search(r"th(\d+\.\d+)", filename)
@@ -610,6 +614,41 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         with open(pickle_file, 'wb') as file:
             pickle.dump(self, file)
         return self
+    
+    def show(self, 
+            engine:str = 'px', 
+            **kwargs):
+        """Plot the image.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._show_px(**kwargs)
+
+        elif engine == 'hv':
+            return self._show_hv(**kwargs)
+
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _show_px(self, **kwargs):
+        """Plot the image using plotly express.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        fig = px.imshow(self._image, **kwargs)
+        return fig
+    
+    def _show_hv(self, **kwargs):
+        """Plot the image using holoviews.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
+        img = hv.Image(self._image, kdims=['x', 'y']).opts(**kwargs)
+        return img
     
         
 class GIWAXSPattern(ScatteringMeasurement):
