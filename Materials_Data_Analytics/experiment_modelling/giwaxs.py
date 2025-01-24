@@ -331,6 +331,199 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
         return image_data_average, incidence_angle, exposure_time, N 
     
+    @classmethod
+    def from_NSLS_II_CMS(cls,
+                         filepaths: list[str] | str  = None,
+                         verbose: bool = False,
+                         stiching_offset: int = 30,
+                         timestamp: datetime = None,
+                         metadata: dict = {})-> 'GIWAXSPixelImage':
+        
+        if isinstance(filepaths, str):
+            # single image
+            metadata = cls._get_NSLS_II_CMS_parameters(filepaths, verbose=verbose)
+            image = cls._load_tif_file(filepaths)
+            incidence_angle = metadata['incidence_angle']
+            exposure_time = metadata['exposure_time_s']
+            timestamp = timestamp
+            N = 1
+
+        
+        else:
+            # multiple images
+            metadata_List = []
+            for file in filepaths:
+                #create a df from the metadata dictionaries
+                metadata = cls._get_NSLS_II_CMS_parameters(file, verbose=verbose)
+                metadata_List.append(metadata)
+            metadata_df = pd.DataFrame(metadata_List)
+
+            if metadata_df['sample'].nunique() > 1:
+                raise ValueError('Not all files have the same sample. Files cannot be averaged.')
+            else:
+                sample = metadata_df['sample'].unique()[0]
+
+            if metadata_df['incidence_angle_deg'].nunique() > 1:
+                raise ValueError('Not all files have the same incidence angle. Files cannot be averaged.')
+            else:
+                incidence_angle = metadata_df['incidence_angle_deg'].unique()[0]
+
+            if metadata_df['exposure_time_s'].nunique() > 1:
+                raise ValueError('Not all files have the same exposure time. Files cannot be averaged.')
+            else:
+                exposure_time = metadata_df['exposure_time_s'].unique()[0]
+
+            if metadata_df['x_position'].nunique() > 1:
+                raise ValueError('Not all files have the same x position. Files cannot be averaged.')
+            
+            if 'pos' in metadata_df.columns:
+                if (len(metadata_df) == 2) and (metadata_df['pos'].nunique() == 2) and (metadata_df['pos'].unique().sorted == [1,2]):
+                    filename1 = metadata_df[metadata_df['pos'] == 1]['filepath'].values[0]
+                    filename2 = metadata_df[metadata_df['pos'] == 2]['filepath'].values[0]
+                    image = cls._stitch_images(filename1, filename2, offset = stiching_offset)
+                    N = 1
+                    metadata = {'sample': sample,
+
+                               'filepaths': [filename1, filename2],
+                               'relative humidity': metadata_df['relative humidity'].mean().values[0],
+                               'x_position': metadata_df['x_position'].mean().values[0]
+                    }
+                else:
+                    raise ValueError("It seems like you need to stitch the files, but they are not compatible.")
+                
+            else:
+                images_list = []
+                for filepath in filepaths:
+                    image_data = cls._load_tif_file(filepath)
+                    images_list.append(image_data)
+
+                # Convert the list of images to a NumPy array
+                images_array = np.array(images_list)
+
+                # Calculate the average over all the images
+                image = np.squeeze(np.mean(images_array, axis=0))
+                N = len(images_list)
+
+                metadata = {'sample': sample,
+                            'filepaths': filepaths,
+                            'relative humidity': metadata_df['relative humidity'].mean().values[0],
+                            'x_position': metadata_df['x_position'].values[0],
+                }
+                    
+        metadata['source'] = 'NSLS_II_CMS'
+        return cls(image,
+                   incidence_angle,
+                   exposure_time,
+                   timestamp,
+                   metadata = metadata,
+                   number_of_averaged_images = N)
+
+    @staticmethod
+    def _get_NSLS_II_CMS_parameters(filepath: str,
+                                    verbose:bool = False) -> dict:
+        """Get the parameters from the NSLS-II CMS beamline
+        :param filepath: path to the image file
+        :param verbose: whether to print the output
+        :return: a dictionary with the parameters
+        """
+        filename = os.path.basename(filepath)
+        
+        parameters_from_file_name = {}
+        parameters_from_file_name['filepath'] = filepath
+
+        #Extract time duration
+        time_matches = re.findall(r"\d+\.\d+s", filename)
+        time_duration = time_matches[-1] if time_matches else None
+        if time_duration is not None:
+            time_duration = float(time_duration[:-1])
+            parameters_from_file_name['exposure time_s'] = time_duration
+
+        # Extract angle (th)
+        th_match = re.search(r"th(\d+\.\d+)", filename)
+        th_angle = float(th_match.group(1)) if th_match else None
+        if th_angle is not None:
+            parameters_from_file_name['incidence_angle'] = th_angle
+        else:
+            raise ValueError('Incidence angle not found in the file name')
+
+        # Extract x position
+        x_match = re.search(r"x(-?\d+\.\d+)", filename)
+        x_position = float(x_match.group(1)) if x_match else None
+        if x_position is not None:
+            parameters_from_file_name['x_position'] = x_position
+
+        # Extract pos
+        pos_match = re.search(r"_pos(\d+)", filename)
+        pos = int(pos_match.group(1)) if pos_match else None
+        if pos is not None:
+            parameters_from_file_name['pos'] = pos
+
+        # Extract RH
+        rh_match = re.search(r"RH(\d+\.\d+)", filename)
+        rh = float(rh_match.group(1)) if rh_match else None
+        if rh is not None:
+            parameters_from_file_name['relative humidity'] = rh
+
+        # Extract series number
+        series_match = re.search(r"_series_(\d+)_", filename)
+        series = int(series_match.group(1)) if series_match else None
+        if series is not None:
+            # find progressive number
+            prog_match = re.search(r"_(\d+)_waxs", filename)
+            prog = int(prog_match.group(1)) if prog_match else None
+            parameters_from_file_name['series'] = series
+            parameters_from_file_name['progressive'] = prog
+        else:
+            prog = None
+
+        # Extract sample name. This is the first part of the file name before am underscore which is followed by a number, "series", "pos", or "waxs"
+        sample_match = re.search(r"^(.*?)_(?=\d+|series|pos|waxs)", filename)
+        sample = sample_match.group(1) if sample_match else None
+        if sample is not None:
+            parameters_from_file_name['sample'] = sample
+
+        if verbose:
+            print("Sample:", sample)
+            print("Time Duration:", time_duration)
+            print("Angle (th):", th_angle)
+            print("X Position:", x_position)
+            print("Pos:", pos)
+            print("RH:", rh)
+            print("Series Number:", series)
+            print("Progressive Number:", prog)
+        
+        return parameters_from_file_name
+
+       
+    @staticmethod
+    def _stitch_images(file1: str,
+                      file2:str,
+                      offset:int = 30):
+        """Merge two images with an offset # pixels in the y direction
+        :param file1: path to the first image file
+        :param file2: path to the second image file
+        :param offset: offset in pixels in the y direction
+        :return: the merged image as a NumPy array
+        """
+      
+        array1 = GIWAXSPixelImage._load_tif_file(file1)
+        array2 = GIWAXSPixelImage._load_tif_file(file2)
+        merged_image = np.zeros_like(array1)
+
+        # Loop through each row index i in array1
+        for i in range(array1.shape[0]-offset):
+            # Calculate the corresponding index in array2 (i + 10)
+            j = i + offset
+
+            for k in range(array1[i].size):
+                if array1[i][k] == -1:
+                    merged_image[i][k] = array2[j][k]
+                elif array2[j][k] == -1:
+                    merged_image[i][k] = array1[i][k]
+                else:
+                    merged_image[i][k] = (array1[i][k] + array2[j][k])/2
+        return merged_image
+
 
     def apply_mask(self, mask_path: str) -> 'GIWAXSPixelImage':
         """ Apply a mask to the image.
@@ -895,7 +1088,7 @@ class Linecut():
         :return: The fit results.
         """        
         initial_params = {
-            'peak center_value': 1.0,
+            'peak_center_value': 1.0,
             'peak_center_vary': True,
             'peak_center_min': 0.1,
             'peak_center_max': 2.5,
