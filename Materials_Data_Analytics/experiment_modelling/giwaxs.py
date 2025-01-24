@@ -338,7 +338,9 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                          stiching_offset: int = 30,
                          timestamp: datetime = None,
                          metadata: dict = {})-> 'GIWAXSPixelImage':
-        
+        if isinstance(filepaths, list) and len(filepaths) == 1:
+            filepath = filepaths[0]
+            
         if isinstance(filepaths, str):
             # single image
             metadata = cls._get_NSLS_II_CMS_parameters(filepaths, verbose=verbose)
@@ -363,10 +365,10 @@ class GIWAXSPixelImage(ScatteringMeasurement):
             else:
                 sample = metadata_df['sample'].unique()[0]
 
-            if metadata_df['incidence_angle_deg'].nunique() > 1:
+            if metadata_df['incidence_angle'].nunique() > 1:
                 raise ValueError('Not all files have the same incidence angle. Files cannot be averaged.')
             else:
-                incidence_angle = metadata_df['incidence_angle_deg'].unique()[0]
+                incidence_angle = metadata_df['incidence_angle'].unique()[0]
 
             if metadata_df['exposure_time_s'].nunique() > 1:
                 raise ValueError('Not all files have the same exposure time. Files cannot be averaged.')
