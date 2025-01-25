@@ -139,7 +139,7 @@ class Measurement():
 
         return data
     
-    def plot_pixel_map(self,
+    def plot_pixel_map_px(self,
                        data: pd.DataFrame,
                        x: str,
                        y: str,
@@ -206,6 +206,44 @@ class Measurement():
             figure.update_yaxes(title_text=y_label)
         if z_label is not None:
             figure.update_layout(coloraxis_colorbar={'title': z_label})
+
+        return figure
+    
+    def plot_pixel_map_hv(self,
+                       data: pd.DataFrame,
+                       x: str,
+                       y: str,
+                       z: str,
+                       log_scale: bool = False,
+                       aspect: str = 'equal',
+                       **kwargs):
+        
+        """
+        Function for plotting a pixel map of data
+        ùparam data: The data frame with the x, y, and z values
+        :param x_col: The column name of the x values
+        :param y_col: The column name of the y values
+        :param z_col: The column name of the z values
+        :param log_scale: Whether to plot the z values on a log scale
+        :param aspect: The aspect ratio of the plot
+        :return: a holoviews image of the pixel map
+        """
+
+        import holoviews as hv
+        hv.extension('bokeh')        
+        
+        if x not in data.columns or y not in data.columns or z not in data.columns:
+            raise ValueError('The x, y, and z columns must be in the data frame')
+     
+
+        square_data = data.pivot(index=y, columns=x, values=z)
+        
+        z_data = square_data.values
+        x_vec = square_data.columns
+        y_vec = square_data.index
+        figure = hv.Image((x_vec, y_vec, z_data), kdims=['x', 'y'], vdims=['z']).opts(aspect = aspect,
+                                                                                      logz = log_scale,
+                                                                                      **kwargs)
 
         return figure
         

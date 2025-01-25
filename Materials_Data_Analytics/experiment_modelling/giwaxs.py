@@ -10,6 +10,7 @@ from datetime import datetime
 import re
 import plotly.graph_objects as go
 import plotly.express as px
+import lmfit
 
 
 class Calibrator():
@@ -318,7 +319,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
         for image_file, intensity_norm in zip(image_file_list, intensity_norm_list):
             image_data = GIWAXSPixelImage._load_tif_file(image_file)
-            image_data_norm = (image_data/intensity_norm) *np.mean(intensity_norm_list)
+            image_data_norm = (image_data/intensity_norm) * exposure_time
             images_list.append(image_data_norm)
 
         # Convert the list of images to a NumPy array
@@ -330,6 +331,205 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
         return image_data_average, incidence_angle, exposure_time, N 
     
+    @classmethod
+    def from_NSLS_II_CMS(cls,
+                         filepaths: list[str] | str  = None,
+                         verbose: bool = False,
+                         stiching_offset: int = 30,
+                         timestamp: datetime = None,
+                         metadata: dict = {})-> 'GIWAXSPixelImage':
+        if isinstance(filepaths, list) and len(filepaths) == 1:
+            filepaths = filepaths[0]
+
+        if isinstance(filepaths, str):
+            # single image
+            metadata = cls._get_NSLS_II_CMS_parameters(filepaths, verbose=verbose)
+            image = cls._load_tif_file(filepaths)
+            incidence_angle = metadata['incidence_angle']
+            exposure_time = metadata['exposure_time_s']
+            timestamp = timestamp
+            N = 1
+
+        
+        else:
+            # multiple images
+            metadata_List = []
+            for file in filepaths:
+                #create a df from the metadata dictionaries
+                metadata = cls._get_NSLS_II_CMS_parameters(file, verbose=verbose)
+                metadata_List.append(metadata)
+            metadata_df = pd.DataFrame(metadata_List)
+
+            if metadata_df['sample'].nunique() > 1:
+                raise ValueError('Not all files have the same sample. Files cannot be averaged.')
+            else:
+                sample = metadata_df['sample'].unique()[0]
+
+            if metadata_df['incidence_angle'].nunique() > 1:
+                raise ValueError('Not all files have the same incidence angle. Files cannot be averaged.')
+            else:
+                incidence_angle = metadata_df['incidence_angle'].unique()[0]
+
+            if metadata_df['exposure_time_s'].nunique() > 1:
+                raise ValueError('Not all files have the same exposure time. Files cannot be averaged.')
+            else:
+                exposure_time = metadata_df['exposure_time_s'].unique()[0]
+
+            if metadata_df['x_position'].nunique() > 1:
+                raise ValueError('Not all files have the same x position. Files cannot be averaged.')
+            
+            if 'pos' in metadata_df.columns:
+                if (len(metadata_df) == 2) and (metadata_df['pos'].nunique() == 2) and (1 in metadata_df['pos'].values) and (2 in metadata_df['pos'].values):
+                    filename1 = metadata_df[metadata_df['pos'] == 1]['filepath'].values[0]
+                    filename2 = metadata_df[metadata_df['pos'] == 2]['filepath'].values[0]
+                    image = cls._stitch_images(filename1, filename2, offset = stiching_offset)
+                    N = 1
+                    metadata = {'sample': sample,
+
+                               'filepaths': [filename1, filename2],
+                               'relative humidity': metadata_df['relative humidity'].values.mean(),
+                               'x_position': metadata_df['x_position'].values.mean()
+                    }
+                else:
+                    print('len(metadata_df) == 2', len(metadata_df) == 2) 
+                    print('metadata_df[\'pos\'].nunique()', metadata_df['pos'].nunique())
+                    print('(1 in metadata_df[\'pos\'])', (1 in metadata_df['pos'].values))
+                    print('(2 in metadata_df[\'pos\'])', (2 in metadata_df['pos'].values))
+                    raise ValueError("It seems like you need to stitch the files, but they are not compatible.")
+                
+            else:
+                images_list = []
+                for filepath in filepaths:
+                    image_data = cls._load_tif_file(filepath)
+                    images_list.append(image_data)
+
+                # Convert the list of images to a NumPy array
+                images_array = np.array(images_list)
+
+                # Calculate the average over all the images
+                image = np.squeeze(np.mean(images_array, axis=0))
+                N = len(images_list)
+
+                metadata = {'sample': sample,
+                            'filepaths': filepaths,
+                            'relative humidity': metadata_df['relative humidity'].values.mean(),
+                            'x_position': metadata_df['x_position'].values,
+                }
+                    
+        metadata['source'] = 'NSLS_II_CMS'
+        return cls(image,
+                   incidence_angle,
+                   exposure_time,
+                   timestamp,
+                   metadata = metadata,
+                   number_of_averaged_images = N)
+
+    @staticmethod
+    def _get_NSLS_II_CMS_parameters(filepath: str,
+                                    verbose:bool = False) -> dict:
+        """Get the parameters from the NSLS-II CMS beamline
+        :param filepath: path to the image file
+        :param verbose: whether to print the output
+        :return: a dictionary with the parameters
+        """
+        filename = os.path.basename(filepath)
+        
+        parameters_from_file_name = {}
+        parameters_from_file_name['filepath'] = filepath
+
+        #Extract time duration
+        time_matches = re.findall(r"\d+\.\d+s", filename)
+        time_duration = time_matches[-1] if time_matches else None
+        if time_duration is not None:
+            time_duration = float(time_duration[:-1])
+            parameters_from_file_name['exposure_time_s'] = time_duration
+
+        # Extract angle (th)
+        th_match = re.search(r"th(\d+\.\d+)", filename)
+        th_angle = float(th_match.group(1)) if th_match else None
+        if th_angle is not None:
+            parameters_from_file_name['incidence_angle'] = th_angle
+        else:
+            raise ValueError('Incidence angle not found in the file name')
+
+        # Extract x position
+        x_match = re.search(r"x(-?\d+\.\d+)", filename)
+        x_position = float(x_match.group(1)) if x_match else None
+        if x_position is not None:
+            parameters_from_file_name['x_position'] = x_position
+
+        # Extract pos
+        pos_match = re.search(r"_pos(\d+)", filename)
+        pos = int(pos_match.group(1)) if pos_match else None
+        if pos is not None:
+            parameters_from_file_name['pos'] = pos
+
+        # Extract RH
+        rh_match = re.search(r"RH(\d+\.\d+)", filename)
+        rh = float(rh_match.group(1)) if rh_match else None
+        if rh is not None:
+            parameters_from_file_name['relative humidity'] = rh
+
+        # Extract series number
+        series_match = re.search(r"_series_(\d+)_", filename)
+        series = int(series_match.group(1)) if series_match else None
+        if series is not None:
+            # find progressive number
+            prog_match = re.search(r"_(\d+)_waxs", filename)
+            prog = int(prog_match.group(1)) if prog_match else None
+            parameters_from_file_name['series'] = series
+            parameters_from_file_name['progressive'] = prog
+        else:
+            prog = None
+
+        # Extract sample name. This is the first part of the file name before am underscore which is followed by a number, "series", "pos", or "waxs"
+        sample_match = re.search(r"^(.*?)_(?=\d+|series|pos|waxs)", filename)
+        sample = sample_match.group(1) if sample_match else None
+        if sample is not None:
+            parameters_from_file_name['sample'] = sample
+
+        if verbose:
+            print("Sample:", sample)
+            print("Time Duration:", time_duration)
+            print("Angle (th):", th_angle)
+            print("X Position:", x_position)
+            print("Pos:", pos)
+            print("RH:", rh)
+            print("Series Number:", series)
+            print("Progressive Number:", prog)
+        
+        return parameters_from_file_name
+
+       
+    @staticmethod
+    def _stitch_images(file1: str,
+                      file2:str,
+                      offset:int = 30):
+        """Merge two images with an offset # pixels in the y direction
+        :param file1: path to the first image file
+        :param file2: path to the second image file
+        :param offset: offset in pixels in the y direction
+        :return: the merged image as a NumPy array
+        """
+      
+        array1 = GIWAXSPixelImage._load_tif_file(file1)
+        array2 = GIWAXSPixelImage._load_tif_file(file2)
+        merged_image = np.zeros_like(array1)
+
+        # Loop through each row index i in array1
+        for i in range(array1.shape[0]-offset):
+            # Calculate the corresponding index in array2 (i + 10)
+            j = i + offset
+
+            for k in range(array1[i].size):
+                if array1[i][k] == -1:
+                    merged_image[i][k] = array2[j][k]
+                elif array2[j][k] == -1:
+                    merged_image[i][k] = array1[i][k]
+                else:
+                    merged_image[i][k] = (array1[i][k] + array2[j][k])/2
+        return merged_image
+
 
     def apply_mask(self, mask_path: str) -> 'GIWAXSPixelImage':
         """ Apply a mask to the image.
@@ -414,6 +614,41 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         with open(pickle_file, 'wb') as file:
             pickle.dump(self, file)
         return self
+    
+    def show(self, 
+            engine:str = 'px', 
+            **kwargs):
+        """Plot the image.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._show_px(**kwargs)
+
+        elif engine == 'hv':
+            return self._show_hv(**kwargs)
+
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _show_px(self, **kwargs):
+        """Plot the image using plotly express.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        fig = px.imshow(self._image, **kwargs)
+        return fig
+    
+    def _show_hv(self, **kwargs):
+        """Plot the image using holoviews.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
+        img = hv.Image(self._image, kdims=['x', 'y']).opts(**kwargs)
+        return img
     
         
 class GIWAXSPattern(ScatteringMeasurement):
@@ -568,8 +803,24 @@ class GIWAXSPattern(ScatteringMeasurement):
                                     template=template, x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', log_scale=log_scale,
                                     z_label='Intensity', **kwargs)
         return fig
-    
-    def plot_reciprocal_map(self, 
+
+    def plot_reciprocal_map(self,
+                            engine:str = 'px',
+                            **kwargs):
+        """Plot the reciprocal space map.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_reciprocal_map_px(**kwargs)
+
+        elif engine == 'hv':
+            return self._plot_reciprocal_map_hv(**kwargs)
+
+        else:
+            raise ValueError('engine must be either px or hv')
+
+    def _plot_reciprocal_map_px(self, 
                             colorscale: str = 'blackbody',
                             log_scale: bool = True,  
                             template: str = 'simple_white',
@@ -585,12 +836,27 @@ class GIWAXSPattern(ScatteringMeasurement):
         :return: The plot.
         """
         data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
-        fig = self.plot_pixel_map(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale, z_lower_cuttoff=intensity_lower_cuttoff,
+        fig = self.plot_pixel_map_px(data = data, x='qxy', y='qz', z='intensity', colorscale=colorscale, log_scale=log_scale, z_lower_cuttoff=intensity_lower_cuttoff,
                             x_label='qxy [\u212B\u207B\u00B9]', y_label='qz [\u212B\u207B\u00B9]', template=template, origin=origin,
                             z_label='Intensity', **kwargs)
         return fig
     
-    def plot_polar_map_contour(self, 
+    def _plot_reciprocal_map_hv(self, 
+                            **kwargs) -> go.Figure:
+       """Plot the reciprocal space map using holoviews
+       :param kwargs: additional arguments to pass to the plot
+       :return: The plot.
+       """
+
+       data = self.data_reciprocal.copy().sort_values(by=['qxy', 'qz'], ascending=[True, False])
+       figure = self.plot_pixel_map_hv(data = data, x='qxy', y='qz', z='intensity',
+                                     xlabel='qxy [\u212B\u207B\u00B9]',
+                                     ylabel='qz [\u212B\u207B\u00B9]',
+                                     clabel='Intensity [arb. units]', **kwargs)
+       return figure
+    
+
+    def _plot_polar_map_contour_px(self, 
                                colorscale: str = 'blackbody', 
                                ncontours: int = 100, 
                                log_scale: bool = True,
@@ -607,11 +873,24 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         data = self.data_polar.copy()
         fig = self.plot_contour_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, ncontours=ncontours, log_scale=log_scale, 
-                                    z_lower_cuttoff=intensity_lower_cuttoff, template=template, x_label='q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                    z_lower_cuttoff=intensity_lower_cuttoff, template=template, x_label='q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
                                     z_label='Intensity', **kwargs)
         return fig
     
-    def plot_polar_map(self, 
+    def plot_polar_map(self,
+                          engine:str = 'px', **kwargs):
+        """Plot the polar space map.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_polar_map_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_polar_map_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+    
+    def _plot_polar_map_px(self, 
                        colorscale: str = 'blackbody', 
                        log_scale: bool = True,
                        template: str = 'simple_white',
@@ -624,16 +903,29 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
         fig = self.plot_pixel_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', z_lower_cuttoff=intensity_lower_cuttoff,
-                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='chi [\u00B0]', 
+                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
                                   z_label='Intensity', template=template, **kwargs)
         return fig
     
+    def _plot_polar_map_hv(self, 
+                       **kwargs):
+        """Plot the polar space map.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
+        figure = self.plot_pixel_map_hv(data = data, y='chi', x='q', z='intensity',
+                                     xlabel='Q [\u212B\u207B\u00B9]', ylabel='\u03C7 [\u00B0]',
+                                     clabel='Intensity [arb. units]', **kwargs)
+        return figure
+    
     def get_linecut(self,
                     chi : tuple | list | pd.Series | float = None,
-                    q_range : tuple | list | pd.Series = None) -> pd.DataFrame:
+                    q_range : tuple | list | pd.Series = None) -> 'Linecut':
         """Extract a profile from the polar space data.
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
+        :return: Lincut object.
         """
         data = self.data_polar.copy()
 
@@ -659,19 +951,529 @@ class GIWAXSPattern(ScatteringMeasurement):
             data = data.query(f'q >= {min(q_range)} and q <= {max(q_range)}')
         
         data = data.groupby('q').mean().reset_index().filter(['chi', 'q', 'intensity'])
+        metadata = self.metadata.copy()
+        metadata['chi'] = chi
+        metadata['q_range'] = q_range
+        
+        return Linecut(data, 
+                          metadata = self.metadata)
+      
+    def get_polar_linecut(self,
+                    q : tuple | list | pd.Series | float = None,
+                    chi_range : tuple | list | pd.Series = None) -> 'Polar_linecut':
+        """Extract a profile from the polar space data.
+        :param q: Range of q values or a single q value.
+        :param chi_range: chi_range.
+        :return: Polar_linecut object.
+        """
 
-        return data
+        data = self.data_polar.copy()
+
+        # check if q is iterable
+        try:
+            iter(q)
+            q_iterable = True
+            if len(q) != 2: raise ValueError('If q is a range it must be two values')
+        except TypeError:
+            q_iterable = False
+            if q < data['q'].min() or q > data['q'].max(): raise ValueError('q value out of range of the data')
+
+        # Filter the data for q
+        if q_iterable: 
+            data = data.query(f'q >= {min(q)} and q <= {max(q)}')
+        else:
+            closest_index = data['q'].sub(q).abs().idxmin()
+            closest_q = data.loc[closest_index, 'q']
+            data = data.query(f'q == {closest_q}')
+
+        # Filter the data for chi
+        if chi_range is not None: 
+            data = data.query(f'chi >= {min(chi_range)} and chi <= {max(chi_range)}')
+        
+        data = data.groupby('chi').mean().reset_index().filter(['q', 'chi', 'intensity'])
+        metadata = self.metadata.copy()
+        metadata['chi_range'] = chi_range
+        metadata['q'] = q
+        
+        return Polar_linecut(data,
+                       metadata = self.metadata)
+         
     
-    def plot_linecut(self,
-                     chi: tuple | list | pd.Series | float = None,
-                     q_range: tuple | list | pd.Series = None, 
-                     **kwargs) -> px.line:
 
-        """Plot a profile extracted from the polar space data.
-        :param chi: Range of chi values or a single chi value.
-        :param q_range: q_range.
+class Linecut():
+    ''' 
+    A class to store a linecut from a GIWAXS measurement
+
+    Main contributors:
+    Arianna Magni
+
+    '''
+
+    def __init__(self,
+                 data: pd.DataFrame,
+                 metadata: dict = None):
+        
+        self._data = data
+        self._metadata = metadata
+
+    @property
+    def data(self):
+        return self._data
+    
+    @property
+    def metadata(self):
+        return self._metadata
+    
+    @property
+    def chi(self):
+        try:
+            return self.metadata['chi']
+        except:
+            raise AttributeError('No chi value has been set.')
+    
+    @property
+    def fit_results(self):
+        try:
+            return self._fit_results
+        except:
+            raise AttributeError('No fit has been ran.')
+    
+    @property
+    def fit_model(self):
+        try:
+            return self.fit_results.model
+        except:
+            raise AttributeError('No fit model has been set.')
+    
+    @property
+    def fit_params(self):
+        try:
+            return self.fit_results.params
+        except:
+            raise AttributeError('No fit has been ran.')
+    
+    @property
+    def fit_report(self):
+        try:
+            return self.fit_results.fit_report
+        except:
+            raise AttributeError('No fit has been ran.')
+    
+    @property
+    def x(self):
+        return self._x
+    
+    @property
+    def y(self):
+        return self._y
+    
+    @property
+    def y_fit(self):
+        try:
+            return self.fit_results.best_fit
+        except:
+            raise AttributeError('No fit has been ran.')
+    
+    def plot(self,
+             engine: str = 'px',
+                **kwargs) -> px.line:
+        """Plot the profile.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
         """
-        profile = self.get_linecut(chi, q_range)
-        figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity'}, **kwargs)
+        if engine == 'px':
+            return self._plot_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _plot_hv(self,
+                label: str = '',
+                **kwargs):
+        """Plot the profile.
+        :param label: The label for the plot.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The hv plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
+        curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label).opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
+    
+    def _plot_px(self, 
+             **kwargs) -> px.line:
+        """Plot the profile.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        profile = self.data
+        figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
+        return figure
+    
+    def fit_linecut(self,
+                    peak_model: str,
+                    background_model: str,
+                    q_range: tuple,
+                    initial_parameters: dict = {}) -> 'Linecut':          
+        """Fit the linecut to a model
+        :param peak_model: The peak model to use. Options are 'GaussianModel', 'LorentzianModel', 'VoigtModel', 'PseudoVoigtModel', 'SkewedVoigtModel'
+        :param background_model: The background model to use. Options are 'ExponentialModel', 'LinearModel', 'ConstantModel', PowerLawModel
+        :param q_range: The range of q values to fit
+        :param initial_parameters: The initial parameters for the fit
+        :return: The fit results.
+        """        
+        initial_params = {
+            'peak_center_value': 1.0,
+            'peak_center_vary': True,
+            'peak_center_min': 0.1,
+            'peak_center_max': 2.5,
+
+            'peak_sigma_value': 0.1,
+            'peak_sigma_vary': True,
+            'peak_sigma_min': 0.001,
+            'peak_sigma_max': 0.3,
+
+            'peak_amplitude_value': 1,
+            'peak_amplitude_vary': True,
+            'peak_amplitude_min': 0.00001,
+            'peak_amplitude_max': 5000,
+
+            'peak_gamma_value': 0.1,
+            'peak_gamma_vary': True,
+            'peak_gamma_min': 0.001,
+            'peak_gamma_max': 0.3,
+
+            'peak_fraction_value': 0.5,
+            'peak_fraction_vary': True,
+            'peak_fraction_min': 0.000,
+            'peak_fraction_max': 1.0,
+
+            'peak_skew_value': 0,
+            'peak_skew_vary': True,
+            'peak_skew_min': -1000,
+            'peak_skew_max': 1000,
+            
+            'bkg_slope_value': 0,
+            'bkg_slope_vary': True,
+            'bkg_slope_min': -1000,
+            'bkg_slope_max': 1000,
+
+            'bkg_intercept_value': 0,
+            'bkg_intercept_vary': True,
+            'bkg_intercept_min': -1000,
+            'bkg_intercept_max': 1000,
+
+            'bkg_value': 0,
+            'bkg_vary': True,
+            'bkg_min': 0,
+            'bkg_max': 1000,
+
+            'bkg_amplitude_value': 0,
+            'bkg_amplitude_vary': True,
+            'bkg_amplitude_min': -1000,
+            'bkg_amplitude_max': 1000,
+
+            'bkg_decay_value': 1,
+            'bkg_decay_vary': True,
+            'bkg_decay_min': -1000,
+            'bkg_decay_max': 1000,
+
+            'bkg_exponent_value': 1,
+            'bkg_exponent_vary': True,
+            'bkg_exponent_min': -1000,
+            'bkg_exponent_max': 1000
+        }
+
+        for key in initial_parameters.keys():
+            if key not in initial_params.keys():
+                raise ValueError(f'{key} is not a valid parameter. Available parameters are {initial_params.keys()}')
+   
+        initial_params.update(initial_parameters)
+                
+        from lmfit.models import (ExponentialModel,
+                                  PseudoVoigtModel,
+                                  SkewedVoigtModel,
+                                  VoigtModel,
+                                  LinearModel,
+                                  ConstantModel,
+                                  GaussianModel,
+                                  LorentzianModel,
+                                  PowerLawModel)
+        
+        # select values in q_range
+        data = self.data.query(f'q >= {q_range[0]} and q <= {q_range[1]}')
+        x = data['q']
+        y = data['intensity']
+        
+        if peak_model == 'GaussianModel':
+            peak_model = GaussianModel(prefix='peak_')
+        elif peak_model == 'LorentzianModel':
+            peak_model = LorentzianModel(prefix='peak_')
+        elif peak_model == 'VoigtModel':
+            peak_model = VoigtModel(prefix='peak_')
+        elif peak_model == 'PseudoVoigtModel':
+            peak_model = PseudoVoigtModel(prefix='peak_')
+        elif peak_model == 'SkewedVoigtModel':
+            peak_model = SkewedVoigtModel(prefix='peak_')
+        else:
+            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel')
+        
+      
+        if background_model == 'ExponentialModel':
+            background_model = ExponentialModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
+        elif background_model == 'LinearModel':
+            background_model = LinearModel(prefix='bkg_')
+        elif background_model == 'ConstantModel':
+            background_model = ConstantModel(prefix='bkg_')
+        elif background_model == 'PowerLawModel':
+            background_model = PowerLawModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
+        else:
+            raise ValueError('background_model must be one of ExponentialModel, LinearModel, ConstantModel')
+        
+        model = peak_model + background_model
+        pars = model.make_params()
+        
+        pars['peak_center'].set(value=initial_params['peak_center_value'],
+                                min=initial_params['peak_center_min'],
+                                max=initial_params['peak_center_max'],
+                                vary=initial_params['peak_center_vary'])
+                                       
+        pars['peak_sigma'].set(value=initial_params['peak_sigma_value'],
+                               min=initial_params['peak_sigma_min'],
+                               max=initial_params['peak_sigma_max'],
+                               vary=initial_params['peak_sigma_vary'])
+    
+        pars['peak_amplitude'].set(value=initial_params['peak_amplitude_value'],
+                                   min=initial_params['peak_amplitude_min'],
+                                   max=initial_params['peak_amplitude_max'],
+                                   vary=initial_params['peak_amplitude_vary'])
+
+        if peak_model == 'PseudoVoigtModel':
+            pars['peak_fraction'].set(value=initial_params['peak_fraction_value'],
+                                   min=initial_params['peak_fraction_min'],
+                                   max=initial_params['peak_fraction_max'],
+                                   vary=initial_params['peak_fraction_vary'])
+                                   
+        elif (peak_model == 'VoigtModel') or (peak_model == 'SkewedVoigtModel'):
+            pars['peak_gamma'].set(value=initial_params['peak_gamma_value'],
+                                   min=initial_params['peak_gamma_min'],
+                                   max=initial_params['peak_gamma_max'],
+                                   vary=initial_params['peak_gamma_vary'])
+
+            if peak_model == 'SkewedVoigtModel':
+                pars['peak_skew'].set(value=initial_params['peak_skew_value'],
+                                   min=initial_params['peak_skew_min'],
+                                   max=initial_params['peak_skew_max'],
+                                   vary=initial_params['peak_skew_vary'])
+
+
+        pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
+        pars.add('peak_d_spacing', expr='2*pi/peak_center')
+                 
+
+        if background_model == 'ExponentialModel':
+            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
+                                      min=initial_params['bkg_amplitude_min'],
+                                      max=initial_params['bkg_amplitude_max'],
+                                      vary=initial_params['bkg_amplitude_vary'])    
+
+            pars['bkg_decay'].set(value=initial_params['bkg_decay_value'],
+                                    min=initial_params['bkg_decay_min'],
+                                    max=initial_params['bkg_decay_max'],
+                                    vary=initial_params['bkg_decay_vary'])
+
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
+        
+        elif background_model == 'PowerLawModel':
+            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
+                                      min=initial_params['bkg_amplitude_min'],
+                                      max=initial_params['bkg_amplitude_max'],
+                                      vary=initial_params['bkg_amplitude_vary'])
+
+            pars['bkg_exponent'].set(value=initial_params['bkg_exponent_value'],
+                                    min=initial_params['bkg_exponent_min'],
+                                    max=initial_params['bkg_exponent_max'],
+                                    vary=initial_params['bkg_exponent_vary'])
+
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
+                        
+        elif background_model == 'LinearModel':
+            pars['bkg_slope'].set(value=initial_params['bkg_slope_value'],
+                                  min=initial_params['bkg_slope_min'],
+                                  max=initial_params['bkg_slope_max'],
+                                  vary=initial_params['bkg_slope_vary'])
+
+            pars['bkg_intercept'].set(value=initial_params['bkg_intercept_value'],
+                                      min=initial_params['bkg_intercept_min'],
+                                      max=initial_params['bkg_intercept_max'],
+                                      vary=initial_params['bkg_intercept_vary'])
+        
+        elif background_model == 'ConstantModel':
+            pars['bkg_'].set(value=initial_params['bkg_value'],
+                             min=initial_params['bkg_min'],
+                             max=initial_params['bkg_max'],
+                             vary=initial_params['bkg_vary'])
+            
+        result = model.fit(y, pars, x=x)
+        self._x = x
+        self._y = y
+        self._fit_results = result
+        return self
+
+    def plot_fitted(self,
+                    engine: str = 'px',
+                    **kwargs):
+        """Plot the fitted linecut
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_fitted_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_fitted_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+            
+    def _plot_fitted_hv(self, **kwargs):
+        """Plot the fitted linecut using holoviews
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+
+        curve_data = self.plot_hv(label = 'Data').opts(
+            line_width=3,
+            color='black',
+            **kwargs)
+        
+        curve_fit = hv.Curve((self.x, self.y_fit), kdims='q', vdims='intensity', label = 'Fit').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            color='red',
+            line_width=2,
+            **kwargs)
+        
+        curve_peak = hv.Curve((self.x, self.fit_results.eval_components()['peak_']), kdims='q', vdims='intensity', label = 'Peak').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            line_dash='dashed',
+            color='green',
+            line_width=2,
+            **kwargs)
+        
+        curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
+            xlabel='q [\u212B\u207B\u00B9]',
+            ylabel='Intensity [arb. units]',
+            color='blue',
+            line_dash='dashed',
+            line_width=2,
+            **kwargs)
+        
+        return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
+    
+    def _plot_fitted_px(self, **kwargs) -> px.line:
+        """Plot the fitted linecut using plotly express
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        data = self.data
+        data['fitted'] = self.fit_results.best_fit
+        data['peak'] = self.fit_results.eval_components()['peak_']
+        data['bkg'] = self.fit_results.eval_components()['bkg_']
+        figure = px.line(data, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
+        return figure
+    
+
+class Polar_linecut():
+    ''' 
+    A class to store a polar linecut from a GIWAXS measurement
+
+    Main contributors:
+    Arianna Magni
+
+    '''
+
+    def __init__(self,
+                 data: pd.DataFrame,
+                 metadata: dict = None):
+        
+        self._data = data
+        self._metadata = metadata
+
+    @property
+    def data(self):
+        return self._data
+    
+    @property
+    def metadata(self):
+        return self._metadata
+    
+    @property
+    def q(self):
+        try:
+            return self.metadata['q']
+        except:
+            raise AttributeError('No q value has been set.')
+    
+    @property
+    def chi(self):
+        return self.data['chi']
+
+    @property
+    def intensity(self):
+        return self.data['intensity']   
+
+    def plot(self,
+             engine: str = 'px',
+                **kwargs) -> px.line:
+        """Plot the profile.
+        :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :return: The plot.
+        """
+        if engine == 'px':
+            return self._plot_px(**kwargs)
+        elif engine == 'hv':
+            return self._plot_hv(**kwargs)
+        else:
+            raise ValueError('engine must be either px or hv')
+        
+    def _plot_hv(self,
+                label: str = '',
+                **kwargs):
+        """Plot the profile.
+        :param label: The label for the plot.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The hv plot.
+        """
+        import holoviews as hv
+        hv.extension('bokeh')
+        
+        curve = hv.Curve(self.data, kdims='chi', vdims='intensity', label = label).opts(
+            xlabel='\u03C7 [\u00B0]',
+            ylabel='Intensity [arb. units]',
+            **kwargs)
+        
+        return curve
+    
+    def _plot_px(self, 
+             **kwargs) -> px.line:
+        """Plot the profile.
+        :param kwargs: additional arguments to pass to the plot
+        :return: The plot.
+        """
+        profile = self.data
+        figure = px.line(profile, x='q', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
         return figure
