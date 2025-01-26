@@ -184,8 +184,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         return self._number_of_averaged_images
     
     @property
-    def meta_data(self):
-        return self._meta_data
+    def metadata(self):
+        return self._metadata
             
     @property
     def image(self):
@@ -729,8 +729,8 @@ class GIWAXSPattern(ScatteringMeasurement):
         return q
     
     @property
-    def meta_data(self):
-        return self._meta_data
+    def metadata(self):
+        return self._metadata
     
     def export_reciprocal_data(self, export_filepath: str, format: str = 'wide') -> 'GIWAXSPattern':
         """Export the reciprocal space data to a CSV file.
