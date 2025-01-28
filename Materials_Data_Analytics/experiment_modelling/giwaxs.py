@@ -184,8 +184,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         return self._number_of_averaged_images
     
     @property
-    def meta_data(self):
-        return self._meta_data
+    def metadata(self):
+        return self._metadata
             
     @property
     def image(self):
@@ -729,8 +729,8 @@ class GIWAXSPattern(ScatteringMeasurement):
         return q
     
     @property
-    def meta_data(self):
-        return self._meta_data
+    def metadata(self):
+        return self._metadata
     
     def export_reciprocal_data(self, export_filepath: str, format: str = 'wide') -> 'GIWAXSPattern':
         """Export the reciprocal space data to a CSV file.
@@ -1074,47 +1074,147 @@ class Linecut():
         except:
             raise AttributeError('No fit has been ran.')
     
+    def subtract_background(self,
+                            background,
+                            background_metadata: dict = {}) -> 'Linecut':
+        """Subtract the background from the linecut.
+        :param background: The background data as a pandas DataFrame or Linecut object
+        :param background_metadata: The metadata for the background data.
+        :return: The linecut with the background subtracted.
+        """
+        if isinstance(background, Linecut):
+            background_metadata.update(background.metadata)
+            background_df = background.data
+        elif isinstance(background, pd.DataFrame):
+            background_df = background.copy()
+        else:
+            raise ValueError('background must be a pandas DataFrame or Linecut object')
+        
+        data = self.data.copy()
+        #check background has q and intensity columns
+        if 'q' not in background_df.columns or 'intensity' not in background_df.columns:
+            raise ValueError('background must have q and intensity columns')
+        
+        #make sure the background has the same q values as the linecut, if not interpolate values
+        if not set(self.data['q']).issubset(set(background_df['q'])):
+            background_df = background_df.set_index('q').reindex(data['q']).reset_index().interpolate()
+               
+        background_df = background_df.rename(columns={'intensity': 'background_intensity'})
+        data = data.merge(background_df, on='q', how='left')
+        data['intensity_raw'] = data['intensity']
+        data['intensity'] = data['intensity'] - data['background_intensity']
+        self._data = data
+        self._metadata['background_metadata'] = background_metadata
+        return self
+
     def plot(self,
              engine: str = 'px',
+             show_background: bool = False,
                 **kwargs) -> px.line:
         """Plot the profile.
         :param engine: The engine to use for plotting. Either plotly or hvplot.
+        :param show_background: Whether to show the background.
         :return: The plot.
         """
         if engine == 'px':
-            return self._plot_px(**kwargs)
+            return self._plot_px(show_background, **kwargs)
         elif engine == 'hv':
-            return self._plot_hv(**kwargs)
+            return self._plot_hv(show_background, **kwargs)
         else:
             raise ValueError('engine must be either px or hv')
         
     def _plot_hv(self,
+                 show_background: bool = False,
                 label: str = '',
                 **kwargs):
         """Plot the profile.
+        :param show_background: Whether to show the background.
         :param label: The label for the plot.
         :param kwargs: additional arguments to pass to the plot
         :return: The hv plot.
         """
         import holoviews as hv
         hv.extension('bokeh')
-        
-        curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label).opts(
-            xlabel='q [\u212B\u207B\u00B9]',
-            ylabel='Intensity [arb. units]',
+
+        if show_background:
+            if 'background_intensity' not in self.data.columns:
+                raise ValueError('No background has been subtracted.')
+            background_curve = hv.Curve(self.data, kdims='q', vdims='background_intensity', label = label + ' background').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                color = 'black',
+                **kwargs)
+            
+            row_curve = hv.Curve(self.data, kdims='q', vdims='intensity_raw', label = label + ' raw').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                color = 'blue',
+                **kwargs)
+            
+            curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label + ' after background subtraction').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                color = 'red',
+                **kwargs)
+            
+            return hv.Overlay([row_curve, background_curve, curve])
+
+        else:
+            curve = hv.Curve(self.data, kdims='q', vdims='intensity', label = label).opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
             **kwargs)
-        
-        return curve
+            return curve
     
     def _plot_px(self, 
-             **kwargs) -> px.line:
+                    show_background: bool = False,
+                    **kwargs) -> px.line:
         """Plot the profile.
+        :param show_background: Whether to show the background.
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
         profile = self.data
-        figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
+        
+        if show_background:
+            if 'background_intensity' not in profile.columns:
+                raise ValueError('No background has been subtracted.')
+            profile_melted = profile.melt(id_vars="q", var_name="Linecut", value_name="Intensity")
+            figure = px.line(profile_melted, x="q", y="Intensity", color="Linecut", labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
+        else:
+            figure = px.line(profile, x='q', y='intensity', labels={'q': 'q [\u212B\u207B\u00B9]', 'intensity': 'Intensity [arb. units]'}, **kwargs)
+        
         return figure
+    
+    def remove_spikes(self,
+                       q_range: tuple = None,
+                       threshold: float = None,
+                       window: int = 3) -> 'Linecut':
+        """Remove cosmic rays from the linecut.
+        :param q_range: The range of q values to consider.
+        :param threshold: The threshold for the z-score.
+        :param window: The window size for the rolling mean.
+        """
+        data = self.data.copy()
+        if q_range is None:
+            q_range = (data['q'].min(), data['q'].max())
+        data_q_range = data.query(f'q >= {q_range[0]} and q <= {q_range[1]}')
+        
+        data_q_range.loc[:, 'intensity_mean'] = data_q_range['intensity'].rolling(window, center=True).mean()
+        data_q_range.loc[:, 'z_score'] = (data_q_range['intensity'] - data_q_range['intensity_mean']) 
+    
+        # Mask for keeping only non-spikes (z-score within threshold)
+        mask = data_q_range['z_score'].abs() <= threshold
+        data_filtered__q_range = data_q_range[mask]
+
+        #remove newly created colums
+        data_filtered__q_range = data_filtered__q_range.drop(columns=['intensity_mean', 'z_score'])
+
+        # Update the data, keep everything outside the q_range the same
+        data_ext_q_range = data[~data['q'].isin(data_q_range['q'])]
+        data_filtered = pd.concat([data_ext_q_range, data_filtered__q_range]).sort_values(by='q')
+        self._data = data_filtered    
+        return self
     
     def fit_linecut(self,
                     peak_model: str,
@@ -1128,7 +1228,7 @@ class Linecut():
         :param initial_parameters: The initial parameters for the fit
         :return: The fit results.
         """        
-        initial_params = {
+        default_fit_parameters = {
             'peak_center_value': 1.0,
             'peak_center_vary': True,
             'peak_center_min': 0.1,
@@ -1191,10 +1291,10 @@ class Linecut():
         }
 
         for key in initial_parameters.keys():
-            if key not in initial_params.keys():
-                raise ValueError(f'{key} is not a valid parameter. Available parameters are {initial_params.keys()}')
+            if key not in default_fit_parameters.keys():
+                raise ValueError(f'{key} is not a valid parameter. Available parameters are {default_fit_parameters.keys()}')
    
-        initial_params.update(initial_parameters)
+        default_fit_parameters.update(initial_parameters)
                 
         from lmfit.models import (ExponentialModel,
                                   PseudoVoigtModel,
@@ -1211,125 +1311,136 @@ class Linecut():
         x = data['q']
         y = data['intensity']
         
-        if peak_model == 'GaussianModel':
-            peak_model = GaussianModel(prefix='peak_')
-        elif peak_model == 'LorentzianModel':
-            peak_model = LorentzianModel(prefix='peak_')
-        elif peak_model == 'VoigtModel':
-            peak_model = VoigtModel(prefix='peak_')
-        elif peak_model == 'PseudoVoigtModel':
-            peak_model = PseudoVoigtModel(prefix='peak_')
-        elif peak_model == 'SkewedVoigtModel':
-            peak_model = SkewedVoigtModel(prefix='peak_')
-        else:
+        peak_model_dict = {
+            'GaussianModel': GaussianModel(prefix='peak_'),
+            'LorentzianModel': LorentzianModel(prefix='peak_'),
+            'VoigtModel': VoigtModel(prefix='peak_'),
+            'PseudoVoigtModel': PseudoVoigtModel(prefix='peak_'),
+            'SkewedVoigtModel': SkewedVoigtModel(prefix='peak_')
+        }
+
+        if peak_model not in peak_model_dict:
             raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel')
+
+        selected_peak_model = peak_model_dict[peak_model]
         
-      
-        if background_model == 'ExponentialModel':
-            background_model = ExponentialModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
-        elif background_model == 'LinearModel':
-            background_model = LinearModel(prefix='bkg_')
-        elif background_model == 'ConstantModel':
-            background_model = ConstantModel(prefix='bkg_')
-        elif background_model == 'PowerLawModel':
-            background_model = PowerLawModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
-        else:
-            raise ValueError('background_model must be one of ExponentialModel, LinearModel, ConstantModel')
+        background_model_dict = {
+            'ExponentialModel': ExponentialModel(prefix='bkg_') + ConstantModel(prefix='bkg_'),
+            'LinearModel': LinearModel(prefix='bkg_'),
+            'ConstantModel': ConstantModel(prefix='bkg_'),
+            'PowerLawModel': PowerLawModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
+        }
+
+        if background_model not in background_model_dict:
+            raise ValueError('background_model must be one of ExponentialModel, LinearModel, ConstantModel, PowerLawModel')
+
+        selected_background_model = background_model_dict[background_model]
         
-        model = peak_model + background_model
+        model = selected_peak_model + selected_background_model
         pars = model.make_params()
         
-        pars['peak_center'].set(value=initial_params['peak_center_value'],
-                                min=initial_params['peak_center_min'],
-                                max=initial_params['peak_center_max'],
-                                vary=initial_params['peak_center_vary'])
+        pars['peak_center'].set(value=default_fit_parameters['peak_center_value'],
+                                min=default_fit_parameters['peak_center_min'],
+                                max=default_fit_parameters['peak_center_max'],
+                                vary=default_fit_parameters['peak_center_vary'])
                                        
-        pars['peak_sigma'].set(value=initial_params['peak_sigma_value'],
-                               min=initial_params['peak_sigma_min'],
-                               max=initial_params['peak_sigma_max'],
-                               vary=initial_params['peak_sigma_vary'])
+        pars['peak_sigma'].set(value=default_fit_parameters['peak_sigma_value'],
+                               min=default_fit_parameters['peak_sigma_min'],
+                               max=default_fit_parameters['peak_sigma_max'],
+                               vary=default_fit_parameters['peak_sigma_vary'])
     
-        pars['peak_amplitude'].set(value=initial_params['peak_amplitude_value'],
-                                   min=initial_params['peak_amplitude_min'],
-                                   max=initial_params['peak_amplitude_max'],
-                                   vary=initial_params['peak_amplitude_vary'])
+        pars['peak_amplitude'].set(value=default_fit_parameters['peak_amplitude_value'],
+                                   min=default_fit_parameters['peak_amplitude_min'],
+                                   max=default_fit_parameters['peak_amplitude_max'],
+                                   vary=default_fit_parameters['peak_amplitude_vary'])
 
         if peak_model == 'PseudoVoigtModel':
-            pars['peak_fraction'].set(value=initial_params['peak_fraction_value'],
-                                   min=initial_params['peak_fraction_min'],
-                                   max=initial_params['peak_fraction_max'],
-                                   vary=initial_params['peak_fraction_vary'])
+            pars['peak_fraction'].set(value=default_fit_parameters['peak_fraction_value'],
+                                   min=default_fit_parameters['peak_fraction_min'],
+                                   max=default_fit_parameters['peak_fraction_max'],
+                                   vary=default_fit_parameters['peak_fraction_vary'])
                                    
         elif (peak_model == 'VoigtModel') or (peak_model == 'SkewedVoigtModel'):
-            pars['peak_gamma'].set(value=initial_params['peak_gamma_value'],
-                                   min=initial_params['peak_gamma_min'],
-                                   max=initial_params['peak_gamma_max'],
-                                   vary=initial_params['peak_gamma_vary'])
+            pars['peak_gamma'].set(value=default_fit_parameters['peak_gamma_value'],
+                                   min=default_fit_parameters['peak_gamma_min'],
+                                   max=default_fit_parameters['peak_gamma_max'],
+                                   vary=default_fit_parameters['peak_gamma_vary'])
 
             if peak_model == 'SkewedVoigtModel':
-                pars['peak_skew'].set(value=initial_params['peak_skew_value'],
-                                   min=initial_params['peak_skew_min'],
-                                   max=initial_params['peak_skew_max'],
-                                   vary=initial_params['peak_skew_vary'])
+                pars['peak_skew'].set(value=default_fit_parameters['peak_skew_value'],
+                                   min=default_fit_parameters['peak_skew_min'],
+                                   max=default_fit_parameters['peak_skew_max'],
+                                   vary=default_fit_parameters['peak_skew_vary'])
 
-
-        pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
         pars.add('peak_d_spacing', expr='2*pi/peak_center')
+        if peak_model != 'SkewedVoigtModel':
+            pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
                  
-
         if background_model == 'ExponentialModel':
-            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
-                                      min=initial_params['bkg_amplitude_min'],
-                                      max=initial_params['bkg_amplitude_max'],
-                                      vary=initial_params['bkg_amplitude_vary'])    
+            pars['bkg_amplitude'].set(value=default_fit_parameters['bkg_amplitude_value'],
+                                      min=default_fit_parameters['bkg_amplitude_min'],
+                                      max=default_fit_parameters['bkg_amplitude_max'],
+                                      vary=default_fit_parameters['bkg_amplitude_vary'])    
 
-            pars['bkg_decay'].set(value=initial_params['bkg_decay_value'],
-                                    min=initial_params['bkg_decay_min'],
-                                    max=initial_params['bkg_decay_max'],
-                                    vary=initial_params['bkg_decay_vary'])
+            pars['bkg_decay'].set(value=default_fit_parameters['bkg_decay_value'],
+                                    min=default_fit_parameters['bkg_decay_min'],
+                                    max=default_fit_parameters['bkg_decay_max'],
+                                    vary=default_fit_parameters['bkg_decay_vary'])
 
-            pars['bkg_'].set(value=initial_params['bkg_value'],
-                             min=initial_params['bkg_min'],
-                             max=initial_params['bkg_max'],
-                             vary=initial_params['bkg_vary'])
+            pars['bkg_'].set(value=default_fit_parameters['bkg_value'],
+                             min=default_fit_parameters['bkg_min'],
+                             max=default_fit_parameters['bkg_max'],
+                             vary=default_fit_parameters['bkg_vary'])
         
         elif background_model == 'PowerLawModel':
-            pars['bkg_amplitude'].set(value=initial_params['bkg_amplitude_value'],
-                                      min=initial_params['bkg_amplitude_min'],
-                                      max=initial_params['bkg_amplitude_max'],
-                                      vary=initial_params['bkg_amplitude_vary'])
+            pars['bkg_amplitude'].set(value=default_fit_parameters['bkg_amplitude_value'],
+                                      min=default_fit_parameters['bkg_amplitude_min'],
+                                      max=default_fit_parameters['bkg_amplitude_max'],
+                                      vary=default_fit_parameters['bkg_amplitude_vary'])
 
-            pars['bkg_exponent'].set(value=initial_params['bkg_exponent_value'],
-                                    min=initial_params['bkg_exponent_min'],
-                                    max=initial_params['bkg_exponent_max'],
-                                    vary=initial_params['bkg_exponent_vary'])
+            pars['bkg_exponent'].set(value=default_fit_parameters['bkg_exponent_value'],
+                                    min=default_fit_parameters['bkg_exponent_min'],
+                                    max=default_fit_parameters['bkg_exponent_max'],
+                                    vary=default_fit_parameters['bkg_exponent_vary'])
 
-            pars['bkg_'].set(value=initial_params['bkg_value'],
-                             min=initial_params['bkg_min'],
-                             max=initial_params['bkg_max'],
-                             vary=initial_params['bkg_vary'])
+            pars['bkg_'].set(value=default_fit_parameters['bkg_value'],
+                             min=default_fit_parameters['bkg_min'],
+                             max=default_fit_parameters['bkg_max'],
+                             vary=default_fit_parameters['bkg_vary'])
                         
         elif background_model == 'LinearModel':
-            pars['bkg_slope'].set(value=initial_params['bkg_slope_value'],
-                                  min=initial_params['bkg_slope_min'],
-                                  max=initial_params['bkg_slope_max'],
-                                  vary=initial_params['bkg_slope_vary'])
+            pars['bkg_slope'].set(value=default_fit_parameters['bkg_slope_value'],
+                                  min=default_fit_parameters['bkg_slope_min'],
+                                  max=default_fit_parameters['bkg_slope_max'],
+                                  vary=default_fit_parameters['bkg_slope_vary'])
 
-            pars['bkg_intercept'].set(value=initial_params['bkg_intercept_value'],
-                                      min=initial_params['bkg_intercept_min'],
-                                      max=initial_params['bkg_intercept_max'],
-                                      vary=initial_params['bkg_intercept_vary'])
+            pars['bkg_intercept'].set(value=default_fit_parameters['bkg_intercept_value'],
+                                      min=default_fit_parameters['bkg_intercept_min'],
+                                      max=default_fit_parameters['bkg_intercept_max'],
+                                      vary=default_fit_parameters['bkg_intercept_vary'])
         
         elif background_model == 'ConstantModel':
-            pars['bkg_'].set(value=initial_params['bkg_value'],
-                             min=initial_params['bkg_min'],
-                             max=initial_params['bkg_max'],
-                             vary=initial_params['bkg_vary'])
+            pars['bkg_'].set(value=default_fit_parameters['bkg_value'],
+                             min=default_fit_parameters['bkg_min'],
+                             max=default_fit_parameters['bkg_max'],
+                             vary=default_fit_parameters['bkg_vary'])
             
         result = model.fit(y, pars, x=x)
+
+        if peak_model == 'SkewedVoigtModel':   
+            fitted_y = result.best_fit
+            half_max = max(fitted_y) / 2
+            indices = np.where(fitted_y >= half_max)[0]
+            fwhm = x.to_numpy()[indices[-1]] - x.to_numpy()[indices[0]]
+            # Add calculated FWHM to the parameters
+            result.params.add('peak_fwhm', value=fwhm, vary=False)
+            result.params.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
+
         self._x = x
         self._y = y
         self._fit_results = result
+
+        
         return self
 
     def plot_fitted(self,
@@ -1354,7 +1465,7 @@ class Linecut():
         import holoviews as hv
         hv.extension('bokeh')
 
-        curve_data = self.plot_hv(label = 'Data').opts(
+        curve_data = self._plot_hv(label = 'Data').opts(
             line_width=3,
             color='black',
             **kwargs)
