@@ -671,11 +671,11 @@ class GIWAXSPattern(ScatteringMeasurement):
     ''' 
     A class to store a GIWAXS measurement 
 
-    Main contributors:
+    Main contributors: 
     Arianna Magni
 
     Contributors:
-    Nicholas Siemons
+    Nicholas Siemons 
     '''
 
     def __init__(self,
