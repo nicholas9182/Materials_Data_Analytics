@@ -2,15 +2,13 @@ from Materials_Data_Analytics.experiment_modelling.core import ScatteringMeasure
 import os
 import pandas as pd
 import numpy as np
-import pyFAI
-import pygix
 import pickle
-from PIL import Image
 from datetime import datetime
 import re
 import plotly.graph_objects as go
 import plotly.express as px
 import lmfit
+import importlib.util
 
 
 class Calibrator():
@@ -44,7 +42,11 @@ class Calibrator():
         :param wavelength: wavelength of the X-ray beam in meters
         :param detector: detector object or string
         """
-        
+        if importlib.util.find_spec('pyFAI') is None:
+            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+        else:
+            import pyFAI
+
         if isinstance(detector, str):
             self._detector = pyFAI.detector_factory(detector)
         else:
@@ -111,6 +113,11 @@ class Calibrator():
         :param poni_file: path to the .poni file
         :return: an instance of the Calibrator class
         """
+        if importlib.util.find_spec('pyFAI') is None:
+            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+        else:
+            import pyFAI
+
         poni = pyFAI.load(poni_file)
 
         return cls(distance = poni.dist,
@@ -131,11 +138,15 @@ class Calibrator():
             pickle.dump(self, file)
         return self
     
-    def _make_azimuthal_integrator (self) -> pyFAI.AzimuthalIntegrator:
+    def _make_azimuthal_integrator (self):
         """
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
-        
+        if importlib.util.find_spec('pyFAI') is None:
+            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+        else:
+            import pyFAI
+
         return pyFAI.azimuthalIntegrator.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
                                                              rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
                                                              wavelength=self._wavelength)
@@ -281,6 +292,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         :param filepath: path to the TIFF file
         :return: the image data as a np.ndarray
         """
+        if importlib.util.find_spec('PIL') is None:
+            raise ImportError('PIL is required to run this function. Please install PIL using pip install PIL')
+        else:
+            from PIL import Image
+
         with Image.open(filepath) as img:
             return np.array(img)
                
@@ -338,6 +354,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                          stiching_offset: int = 30,
                          timestamp: datetime = None,
                          metadata: dict = {})-> 'GIWAXSPixelImage':
+        
         if isinstance(filepaths, list) and len(filepaths) == 1:
             filepaths = filepaths[0]
 
@@ -349,16 +366,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
             exposure_time = metadata['exposure_time_s']
             timestamp = timestamp
             N = 1
-
         
         else:
             # multiple images
-            metadata_List = []
-            for file in filepaths:
-                #create a df from the metadata dictionaries
-                metadata = cls._get_NSLS_II_CMS_parameters(file, verbose=verbose)
-                metadata_List.append(metadata)
-            metadata_df = pd.DataFrame(metadata_List)
+            metadata_list = [cls._get_NSLS_II_CMS_parameters(file, verbose=verbose) for file in filepaths]
+            metadata_df = pd.DataFrame(metadata_list)
 
             if metadata_df['sample'].nunique() > 1:
                 raise ValueError('Not all files have the same sample. Files cannot be averaged.')
@@ -385,28 +397,23 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                     image = cls._stitch_images(filename1, filename2, offset = stiching_offset)
                     N = 1
                     metadata = {'sample': sample,
-
                                'filepaths': [filename1, filename2],
                                'relative humidity': metadata_df['relative humidity'].values.mean(),
                                'x_position': metadata_df['x_position'].values.mean()
                     }
+                    
                 else:
-                    print('len(metadata_df) == 2', len(metadata_df) == 2) 
-                    print('metadata_df[\'pos\'].nunique()', metadata_df['pos'].nunique())
-                    print('(1 in metadata_df[\'pos\'])', (1 in metadata_df['pos'].values))
-                    print('(2 in metadata_df[\'pos\'])', (2 in metadata_df['pos'].values))
-                    raise ValueError("It seems like you need to stitch the files, but they are not compatible.")
+                    raise ValueError(f"""
+                                     It seems like you need to stitch the files, but they are not compatible. \n
+                                     The length of your metadata is {len(metadata_df)} and it should be 2 \n
+                                     You may be trying to load more than two files to stitch together \n
+                                     The files you are trying to stitch are {metadata_df['filepath'].values()} \n
+                                     Each image needs to have 'pos1' and 'pos2' in the file name \n
+                                     """)
                 
             else:
-                images_list = []
-                for filepath in filepaths:
-                    image_data = cls._load_tif_file(filepath)
-                    images_list.append(image_data)
-
-                # Convert the list of images to a NumPy array
+                images_list = [cls._load_tif_file(f) for f in filepaths]
                 images_array = np.array(images_list)
-
-                # Calculate the average over all the images
                 image = np.squeeze(np.mean(images_array, axis=0))
                 N = len(images_list)
 
@@ -414,9 +421,10 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                             'filepaths': filepaths,
                             'relative humidity': metadata_df['relative humidity'].values.mean(),
                             'x_position': metadata_df['x_position'].values,
-                }
-                    
+                            }
+
         metadata['source'] = 'NSLS_II_CMS'
+
         return cls(image,
                    incidence_angle,
                    exposure_time,
@@ -425,15 +433,13 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                    number_of_averaged_images = N)
 
     @staticmethod
-    def _get_NSLS_II_CMS_parameters(filepath: str,
-                                    verbose:bool = False) -> dict:
+    def _get_NSLS_II_CMS_parameters(filepath: str, verbose: bool = False) -> dict:
         """Get the parameters from the NSLS-II CMS beamline
         :param filepath: path to the image file
         :param verbose: whether to print the output
         :return: a dictionary with the parameters
         """
         filename = os.path.basename(filepath)
-        
         parameters_from_file_name = {}
         parameters_from_file_name['filepath'] = filepath
 
@@ -489,22 +495,23 @@ class GIWAXSPixelImage(ScatteringMeasurement):
             parameters_from_file_name['sample'] = sample
 
         if verbose:
-            print("Sample:", sample)
-            print("Time Duration:", time_duration)
-            print("Angle (th):", th_angle)
-            print("X Position:", x_position)
-            print("Pos:", pos)
-            print("RH:", rh)
-            print("Series Number:", series)
-            print("Progressive Number:", prog)
+            print(f"""
+            Sample: {sample} \n
+            Time Duration: {time_duration} \n
+            Angle (th): {th_angle} \n
+            X Position: {x_position} \n
+            Pos: {pos} \n
+            RH: {rh} \n
+            Series Number: {series} \n
+            Progressive Number: {prog} 
+            """)
         
         return parameters_from_file_name
 
-       
     @staticmethod
     def _stitch_images(file1: str,
-                      file2:str,
-                      offset:int = 30):
+                       file2:str,
+                       offset:int = 30):
         """Merge two images with an offset # pixels in the y direction
         :param file1: path to the first image file
         :param file2: path to the second image file
@@ -528,8 +535,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                     merged_image[i][k] = array1[i][k]
                 else:
                     merged_image[i][k] = (array1[i][k] + array2[j][k])/2
-        return merged_image
 
+        return merged_image
 
     def apply_mask(self, mask_path: str) -> 'GIWAXSPixelImage':
         """ Apply a mask to the image.
@@ -570,6 +577,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         :param verbose: whether to print the output
         :return: an instance of the GIWAXSPattern class
         """
+        if importlib.util.find_spec('pygix') is None:
+            raise ImportError('pygix is required to run this function. Please install pygix using pip install pygix')
+        else:
+            import pygix
+
         azimuthal_integrator = calibrator._azimuthal_integrator
         transformer = pygix.transform.Transform().load(azimuthal_integrator)
         transformer.incident_angle = np.deg2rad(self.incidence_angle)
@@ -615,9 +627,10 @@ class GIWAXSPixelImage(ScatteringMeasurement):
             pickle.dump(self, file)
         return self
     
+    # Nick fix this
     def show(self, 
-            engine:str = 'px', 
-            **kwargs):
+             engine:str = 'px', 
+             **kwargs):
         """Plot the image.
         :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
@@ -644,8 +657,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
-        import holoviews as hv
-        hv.extension('bokeh')
+        if importlib.util.find_spec('holoviews') is None:
+            raise ImportError('holoviews is required to run this function. Please install holoviews using pip install holoviews')
+        else:
+            import holoviews as hv
+            hv.extension('bokeh')
         
         img = hv.Image(self._image, kdims=['x', 'y']).opts(**kwargs)
         return img
@@ -877,8 +893,7 @@ class GIWAXSPattern(ScatteringMeasurement):
                                     z_label='Intensity', **kwargs)
         return fig
     
-    def plot_polar_map(self,
-                          engine:str = 'px', **kwargs):
+    def plot_polar_map(self, engine:str = 'px', **kwargs):
         """Plot the polar space map.
         :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
@@ -891,20 +906,21 @@ class GIWAXSPattern(ScatteringMeasurement):
             raise ValueError('engine must be either px or hv')
     
     def _plot_polar_map_px(self, 
-                       colorscale: str = 'blackbody', 
-                       log_scale: bool = True,
-                       template: str = 'simple_white',
-                       origin: str = 'lower',
-                       intensity_lower_cuttoff: float = 0.001,
-                       **kwargs):
+                            colorscale: str = 'blackbody', 
+                            log_scale: bool = True,
+                            template: str = 'simple_white',
+                            origin: str = 'lower',
+                            intensity_lower_cuttoff: float = 0.001,
+                            **kwargs):
         """Plot the polar space map.
         :param colorscale: The colorscale to use. See plotly colorscales for options
         :return: The plot.
         """
         data = self.data_polar.copy().sort_values(by=['q', 'chi'], ascending=[True, False])
-        fig = self.plot_pixel_map(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', z_lower_cuttoff=intensity_lower_cuttoff,
-                                  origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
-                                  z_label='Intensity', template=template, **kwargs)
+
+        fig = self.plot_pixel_map_px(data = data, y='chi', x='q', z='intensity', colorscale=colorscale, aspect='auto', z_lower_cuttoff=intensity_lower_cuttoff,
+                                     origin=origin, log_scale=log_scale,x_label='Q [\u212B\u207B\u00B9]', y_label='\u03C7 [\u00B0]', 
+                                     z_label='Intensity', template=template, **kwargs)
         return fig
     
     def _plot_polar_map_hv(self, 
@@ -951,12 +967,12 @@ class GIWAXSPattern(ScatteringMeasurement):
             data = data.query(f'q >= {min(q_range)} and q <= {max(q_range)}')
         
         data = data.groupby('q').mean().reset_index().filter(['chi', 'q', 'intensity'])
+
         metadata = self.metadata.copy()
         metadata['chi'] = chi
         metadata['q_range'] = q_range
         
-        return Linecut(data, 
-                          metadata = self.metadata)
+        return Linecut(data, metadata = metadata)
       
     def get_polar_linecut(self,
                     q : tuple | list | pd.Series | float = None,
@@ -991,12 +1007,12 @@ class GIWAXSPattern(ScatteringMeasurement):
             data = data.query(f'chi >= {min(chi_range)} and chi <= {max(chi_range)}')
         
         data = data.groupby('chi').mean().reset_index().filter(['q', 'chi', 'intensity'])
+
         metadata = self.metadata.copy()
         metadata['chi_range'] = chi_range
         metadata['q'] = q
         
-        return Polar_linecut(data,
-                       metadata = self.metadata)
+        return Polar_linecut(data, metadata = metadata)
          
     
 
@@ -1006,7 +1022,6 @@ class Linecut():
 
     Main contributors:
     Arianna Magni
-
     '''
 
     def __init__(self,
@@ -1033,9 +1048,9 @@ class Linecut():
     
     @property
     def fit_results(self):
-        try:
+        if hasattr(self, '_fit_results'):
             return self._fit_results
-        except:
+        else:
             raise AttributeError('No fit has been ran.')
     
     @property
@@ -1091,11 +1106,13 @@ class Linecut():
             raise ValueError('background must be a pandas DataFrame or Linecut object')
         
         data = self.data.copy()
+
         #check background has q and intensity columns
         if 'q' not in background_df.columns or 'intensity' not in background_df.columns:
             raise ValueError('background must have q and intensity columns')
         
-        #make sure the background has the same q values as the linecut, if not interpolate values
+        # make sure the background has the same q values as the linecut, if not interpolate values
+        # Nick look into this 
         if not set(self.data['q']).issubset(set(background_df['q'])):
             background_df = background_df.set_index('q').reindex(data['q']).reset_index().interpolate()
                
@@ -1105,6 +1122,7 @@ class Linecut():
         data['intensity'] = data['intensity'] - data['background_intensity']
         self._data = data
         self._metadata['background_metadata'] = background_metadata
+
         return self
 
     def plot(self,
@@ -1133,8 +1151,11 @@ class Linecut():
         :param kwargs: additional arguments to pass to the plot
         :return: The hv plot.
         """
-        import holoviews as hv
-        hv.extension('bokeh')
+        if importlib.util.find_spec('holoviews') is None:
+            raise ImportError('holoviews is required to run this function. Please install holoviews using pip install holoviews')
+        else:
+            import holoviews as hv
+            hv.extension('bokeh')
 
         if show_background:
             if 'background_intensity' not in self.data.columns:
@@ -1214,6 +1235,7 @@ class Linecut():
         data_ext_q_range = data[~data['q'].isin(data_q_range['q'])]
         data_filtered = pd.concat([data_ext_q_range, data_filtered__q_range]).sort_values(by='q')
         self._data = data_filtered    
+
         return self
     
     def fit_linecut(self,
@@ -1462,8 +1484,11 @@ class Linecut():
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
-        import holoviews as hv
-        hv.extension('bokeh')
+        if importlib.util.find_spec('holoviews') is None:
+            raise ImportError('holoviews is required to run this function. Please install holoviews using pip install holoviews')
+        else:
+            import holoviews as hv
+            hv.extension('bokeh')
 
         curve_data = self._plot_hv(label = 'Data').opts(
             line_width=3,
@@ -1569,8 +1594,11 @@ class Polar_linecut():
         :param kwargs: additional arguments to pass to the plot
         :return: The hv plot.
         """
-        import holoviews as hv
-        hv.extension('bokeh')
+        if importlib.util.find_spec('holoviews') is None:
+            raise ImportError('holoviews is required to run this function. Please install holoviews using pip install holoviews')
+        else:
+            import holoviews as hv
+            hv.extension('bokeh')
         
         curve = hv.Curve(self.data, kdims='chi', vdims='intensity', label = label).opts(
             xlabel='\u03C7 [\u00B0]',

@@ -22,8 +22,6 @@ setup(
         "MDAnalysis",
         "dash",
         "kaleido",
-        "pyFAI",
-        "pygix",
         "Datetime",
         "lmfit"
     ],
