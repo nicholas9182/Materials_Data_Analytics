@@ -147,9 +147,9 @@ class Calibrator():
         else:
             import pyFAI
 
-        return pyFAI.azimuthalIntegrator.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
-                                                             rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
-                                                             wavelength=self._wavelength)
+        return pyFAI.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
+                                         rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
+                                         wavelength=self._wavelength)
     
 
 class GIWAXSPixelImage(ScatteringMeasurement):

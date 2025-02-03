@@ -1,10 +1,9 @@
 import unittest
 import tracemalloc
-import torch
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from Materials_Data_Analytics.continuum_modelling.microkinetic_modelling import MicroKineticModel, OxygenReductionModel, ECpD
+from Materials_Data_Analytics.continuum_modelling.microkinetic_modelling import OxygenReductionModel, ECpD
 from Materials_Data_Analytics.materials.electrolytes import Electrolyte
 from Materials_Data_Analytics.materials.solutes import Solute, MolecularOxygen
 from Materials_Data_Analytics.materials.ions import Cation, Anion

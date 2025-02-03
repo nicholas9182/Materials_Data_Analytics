@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
-import torch
 from Materials_Data_Analytics.laws_and_constants import R, F
 from Materials_Data_Analytics.materials.electrolytes import Electrolyte
 from Materials_Data_Analytics.materials.polymers import Polymer, NType
 from Materials_Data_Analytics.materials.solutes import Solute
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve 
 
 
 class MicroKineticModel():
@@ -193,7 +192,7 @@ class OxygenReductionModel(MicroKineticModel):
 class ECpD(OxygenReductionModel):
 
     """
-    Class to model an ORR reaction with a polymer in the electrolyte following an ECpD mechanism
+    Class to model an ORR reaction with a polymer in the electrolyte following an ECpD mechanism.
     """
 
     def __init__(self, 
