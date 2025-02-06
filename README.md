@@ -59,7 +59,6 @@ For usage instructions, see the README.md files in the module folders.
 - typer
 - click
 - numpy
-- torch
 - networkx
 - MDAnalysis
 - dash
