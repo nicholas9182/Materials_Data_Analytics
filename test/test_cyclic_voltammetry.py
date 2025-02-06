@@ -9,6 +9,7 @@ import base64
 import mimetypes
 from plotly import graph_objects as go
 from copy import copy
+from datetime import datetime as dt
 
 
 class TestBiologic1(unittest.TestCase):
@@ -56,6 +57,8 @@ class TestBiologic1(unittest.TestCase):
         self.assertTrue('segment' in self.cv.data.columns)
         self.assertTrue('scan_rate' in self.cv.data.columns)
         self.assertTrue('instrument' in self.cv.data.columns)
+        self.assertTrue(type(self.cv._object_creation_time) == dt)
+        self.assertTrue(type(self.cv.object_creation_time) == str)
 
     def test_drop_cycles(self):
         """ Test the drop_cycles method """
