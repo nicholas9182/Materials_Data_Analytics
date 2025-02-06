@@ -4,7 +4,7 @@ import scipy as sp
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-
+from datetime import datetime as dt
 
 class Measurement():
     """
@@ -16,6 +16,11 @@ class Measurement():
     def __init__(self, metadata: dict = None) -> None:
         self._data = pd.DataFrame()
         self._metadata = metadata if metadata is not None else {}
+        self._object_creation_time = dt.now()
+
+    @property
+    def object_creation_time(self) -> str:
+        return self._object_creation_time.strftime('%Y-%m-%d %H:%M:%S')
 
     @property
     def metadata(self) -> dict:
