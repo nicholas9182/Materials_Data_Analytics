@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.2.5", 
+    version="6.2.6", 
     description='Data analysis package for materials characterisation at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
