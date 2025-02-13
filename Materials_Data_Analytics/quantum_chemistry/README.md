@@ -18,7 +18,7 @@ All energies are returned in eV, and distances in Angstroms.
 from Materials_Data_Analytics.quantum_chemistry.gaussian import GaussianParser
 
 my_gaussian = GaussianParser('path/to/logfile.log')
-my_gaussian = GaussianParser(['path/to/logfile1.log', 'path/to/logfile2.log'])
+my_gaussian = GaussianParser(['path/to/logfile1.log', 'path/to/logfile2.log']) 
 ```
 
 ### Attributes
