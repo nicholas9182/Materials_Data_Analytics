@@ -582,6 +582,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         else:
             import pygix
 
+        source = self.metadata['source']
+
         azimuthal_integrator = calibrator._azimuthal_integrator
         transformer = pygix.transform.Transform().load(azimuthal_integrator)
         transformer.incident_angle = np.deg2rad(self.incidence_angle)
@@ -596,6 +598,9 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                                                                            polarization_factor = polarization_factor)
 
         qz = -qz
+        
+        if source == 'NSLS_II_CMS':
+            qxy = -qxy
 
         pixel_chi_corr = int(pixel_chi*360/(chi_range[1] - chi_range[0]))
 
@@ -609,6 +614,8 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                                                                 method = 'splitbbox')
         
         chi = np.where(chi > 0, -chi + 180, -chi - 180)
+        if source == 'NSLS_II_CMS':
+            chi = -chi
 
         return GIWAXSPattern.from_numpy_arrays(qxy = qxy, 
                                                qz = qz, 
@@ -684,8 +691,23 @@ class GIWAXSPattern(ScatteringMeasurement):
                  metadata: dict = None):
         
         super().__init__(metadata=metadata)
-        self._data_reciprocal = data_reciprocal
-        self._data_polar = data_polar
+        #check data_reciprocal contains qxy, qz, intensity
+        if not all(col in data_reciprocal.columns for col in ['qxy', 'qz', 'intensity']):
+            raise ValueError('data_reciprocal must contain columns qxy, qz, and intensity')
+        
+        #check data_polar contains q, chi, intensity
+        if not all(col in data_polar.columns for col in ['q', 'chi', 'intensity']):
+            raise ValueError('data_polar must contain columns q, chi, and intensity')
+        
+        #drop rows with NaN values in intensity
+        data_reciprocal_reduced = data_reciprocal.dropna(subset=['intensity'])
+        data_reciprocal_reduced = data_reciprocal_reduced[data_reciprocal_reduced['intensity'] != 0]
+
+        data_polar_reduced = data_polar.dropna(subset=['intensity'])
+        data_polar_reduced = data_polar_reduced[data_polar_reduced['intensity'] != 0]
+        
+        self._data_reciprocal = data_reciprocal_reduced
+        self._data_polar = data_polar_reduced
         
     @classmethod
     def from_numpy_arrays(cls,
@@ -1026,8 +1048,10 @@ class Linecut():
 
     def __init__(self,
                  data: pd.DataFrame,
-                 metadata: dict = None):
-        
+                 metadata: dict = {}):
+        #check data contains q, intensity
+        if not all(col in data.columns for col in ['q', 'intensity']):
+            raise ValueError('data must contain columns q and intensity')
         self._data = data
         self._metadata = metadata
 
@@ -1070,7 +1094,7 @@ class Linecut():
     @property
     def fit_report(self):
         try:
-            return self.fit_results.fit_report
+            return self.fit_results.fit_report()
         except:
             raise AttributeError('No fit has been ran.')
     
@@ -1098,8 +1122,8 @@ class Linecut():
         :return: The linecut with the background subtracted.
         """
         if isinstance(background, Linecut):
-            background_metadata.update(background.metadata)
             background_df = background.data
+            background_metadata.update(background.metadata)
         elif isinstance(background, pd.DataFrame):
             background_df = background.copy()
         else:
@@ -1121,8 +1145,9 @@ class Linecut():
         data['intensity_raw'] = data['intensity']
         data['intensity'] = data['intensity'] - data['background_intensity']
         self._data = data
+        
         self._metadata['background_metadata'] = background_metadata
-
+     
         return self
 
     def plot(self,
@@ -1546,6 +1571,10 @@ class Polar_linecut():
                  data: pd.DataFrame,
                  metadata: dict = None):
         
+        # check data contains chi, intensity
+        if not all(col in data.columns for col in ['chi', 'intensity']):
+            raise ValueError('data must contain columns chi and intensity')
+        
         self._data = data
         self._metadata = metadata
 
@@ -1614,5 +1643,5 @@ class Polar_linecut():
         :return: The plot.
         """
         profile = self.data
-        figure = px.line(profile, x='q', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
+        figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
         return figure
