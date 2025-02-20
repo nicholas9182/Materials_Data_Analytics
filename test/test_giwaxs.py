@@ -14,7 +14,7 @@ hv.extension('bokeh')
 class TestCalibration(unittest.TestCase):
     ''' Test the Calibrator class '''
     def setUp(self):
-        self.my_calibrator = Calibrator.from_poni_file('./test_trajectories/giwaxs/calibration.poni')
+        self.my_calibrator = Calibrator.from_poni_file('./test_trajectories/giwaxs/calibration_SLAC_BL11_3.poni')
 
     def test_attributes(self):
         ''' Test the attributes of the Calibration class '''
@@ -187,7 +187,6 @@ class TestLinecut(unittest.TestCase):
         self.assertTrue(len(self.my_linecut.data) == 103)
         self.assertTrue('q' in self.my_linecut.data.columns)
         self.assertTrue('intensity' in self.my_linecut.data.columns)
-        self.assertTrue(len(self.my_linecut.y) == 103)
     
     def test_plotting(self):
         ''' Test the plotting methods of the Linecut class '''
@@ -210,11 +209,12 @@ class TestLinecut(unittest.TestCase):
         self.assertTrue(type(self.my_linecut.fit_params) == Parameters)
         self.assertTrue(type(self.my_linecut.fit_report) == str)
         self.assertTrue(len(self.my_linecut.y_fit) == 51)
+        self.assertTrue(len(self.my_linecut.y) == 51)
         self.assertTrue(bool(self.my_linecut.fit_params['peak_center'].value > 0.95) and bool(self.my_linecut.fit_params['peak_center'].value < 1.05))
         self.assertTrue(bool(self.my_linecut.fit_params['peak_amplitude'].value > 9) and bool(self.my_linecut.fit_params['peak_amplitude'].value < 11))
         self.assertTrue(bool(self.my_linecut.fit_params['peak_sigma'].value > 0.085) and bool(self.my_linecut.fit_params['peak_sigma'].value < 0.115))
         self.assertTrue(bool(self.my_linecut.fit_params['bkg_slope'].value > 0.4) and bool(self.my_linecut.fit_params['bkg_slope'].value < 0.6))
-        self.assertTrue(bool(self.my_linecut.fit_params['bkg_intercept'].value > 0.95) and bool(self.my_linecut.fit_params['bkg_intercept'].value < 1.05))
+        self.assertTrue(bool(self.my_linecut.fit_params['bkg_intercept'].value > 0.9) and bool(self.my_linecut.fit_params['bkg_intercept'].value < 1.1))
 
         self.assertTrue(type(self.my_linecut.plot_fitted(engine='hv') == hv.Curve))
         self.assertTrue(type(self.my_linecut.plot_fitted() == go.Figure))

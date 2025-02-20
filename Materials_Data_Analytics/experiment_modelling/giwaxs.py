@@ -1550,11 +1550,13 @@ class Linecut():
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
-        data = self.data
-        data['fitted'] = self.fit_results.best_fit
-        data['peak'] = self.fit_results.eval_components()['peak_']
-        data['bkg'] = self.fit_results.eval_components()['bkg_']
-        figure = px.line(data, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
+        toplot = pd.DataFrame()
+        toplot['q'] = self.x
+        toplot['intensity'] = self.y
+        toplot['fitted'] = self.fit_results.best_fit
+        toplot['peak'] = self.fit_results.eval_components()['peak_']
+        toplot['bkg'] = self.fit_results.eval_components()['bkg_']
+        figure = px.line(toplot, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
         return figure
     
 
