@@ -35,8 +35,8 @@ class TestGIWAXSPixelImage(unittest.TestCase):
         self.ai_NSLS_II_CMS = Calibrator.from_poni_file('./test_trajectories/giwaxs/calibration_NSLS_II_CMS.poni')
 
         self.data_NSLS_II_CMS_stiched = GIWAXSPixelImage.from_NSLS_II_CMS(filepaths= [
-            r'./test_trajectories\giwaxs\GIWAXS_image_NSLS_II_CMS_pos1_31_1563.0s_RH1.396_x-1.500_th0.100_10.00s_1711351_waxs.tiff',
-            r'.\test_trajectories\giwaxs\GIWAXS_image_NSLS_II_CMS_pos2_36_1641.3s_RH1.028_x-1.500_th0.100_10.00s_1711356_waxs.tiff'])
+            r'./test_trajectories/giwaxs/GIWAXS_image_NSLS_II_CMS_pos1_31_1563.0s_RH1.396_x-1.500_th0.100_10.00s_1711351_waxs.tiff',
+            r'./test_trajectories/giwaxs/GIWAXS_image_NSLS_II_CMS_pos2_36_1641.3s_RH1.028_x-1.500_th0.100_10.00s_1711356_waxs.tiff'])
 
     def test_from_SLAC_BL113(self):
         ''' Test the attributes of the GIWAXS class '''
