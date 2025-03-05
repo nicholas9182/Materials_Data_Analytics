@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import click
 from datetime import datetime
 from Materials_Data_Analytics.metadynamics.free_energy import FreeEnergySpace
@@ -11,7 +11,8 @@ from glob import glob
 @click.option("--time_resolution", "-tr", default=6, help="Number of decimal places for time values", type=int)
 @click.option("--height_power", "-hp", default=1, help="Power to raise height of _hills for easier visualisation", type=float)
 @click.option("--bias_exchange", "-be", is_flag=True, default=False, help="Is this a bias-exchange simulation?")
-def main(file: str, output: str, time_resolution: int, height_power: float, bias_exchange: bool = False):
+@click.option("--show", "-s", is_flag=True, default=False, help="Show the figures in a window")
+def main(file: str, output: str, time_resolution: int, height_power: float, bias_exchange: bool = False, show: bool = False):
     """
     cli tool to plot hill heights for all walkers, as well as the value of their CV. It also plots the average and max _hills deposited
     :param file: the location of the HILLS file
@@ -23,6 +24,7 @@ def main(file: str, output: str, time_resolution: int, height_power: float, bias
     """
     if bias_exchange is True:
         file = [f for f in glob(file+"*")]
+
     landscape = FreeEnergySpace(file)
     figures = landscape.get_hills_figures(time_resolution=time_resolution, height_power=height_power)
 
@@ -33,12 +35,15 @@ def main(file: str, output: str, time_resolution: int, height_power: float, bias
         value.write_image(save_dir, scale=2)
         current_time = datetime.now().strftime("%H:%M:%S")
         click.echo(f"{current_time}: Made Walker_{key}.pdf in {output}", err=True)
+        if show:
+            value.show()
 
     (landscape
      .get_average_hills_figure(time_resolution=time_resolution)
      .update_traces(line_color='white')
      .write_image(output + "/" + "hills_mean.pdf", scale=2)
      )
+    
     current_time = datetime.now().strftime("%H:%M:%S")
     click.echo(f"{current_time}: Made hills_mean.pdf in {output}", err=True)
 

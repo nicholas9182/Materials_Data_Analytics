@@ -726,10 +726,11 @@ class FreeEnergySpace:
                           )
 
         long_hills = (long_hills
-                      .assign(time=lambda x: x['time'].round(time_resolution))
-                      .groupby(['time', 'walker', 'variable'], group_keys=False)
-                      .mean()
+                      .assign(time=lambda x: x['time'].round(time_resolution).astype('category'))
+                      .groupby(['time', 'walker', 'variable'], group_keys=False, observed=True)
+                      .agg('mean')
                       .reset_index()
+                      .assign(time = lambda x: x['time'].astype(float))
                       )
 
         return long_hills
@@ -738,7 +739,9 @@ class FreeEnergySpace:
         """
         Function to get a dictionary of plotly figure objects summarising the dynamics and _hills for each walker in a
         metadynamics simulation.
-        :return:
+
+        :param kwargs: arguments to pass to the get_long_hills function
+        :return figs: dictionary of plotly figures
         """
 
         if self._hills is None:
