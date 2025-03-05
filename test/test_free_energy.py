@@ -392,7 +392,6 @@ class TestFreeEnergySpace(unittest.TestCase):
         self.assertTrue(figures[1]._validate)
 
         figure = self.landscape.get_average_hills_figure()
-        figure.show()
         self.assertTrue(figure._validate)
 
     def test_fes_adder_checks_work(self):
