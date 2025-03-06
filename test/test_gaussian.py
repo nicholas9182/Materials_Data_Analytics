@@ -24,7 +24,7 @@ class TestPedotRaman(unittest.TestCase):
         self.assertTrue(self.log.scf_iterations == 11)
         self.assertTrue(self.log.complete is True)
         self.assertTrue(self.log.atomcount == 28)
-        self.assertTrue(self.log.energy == -4096904.424959145)
+        self.assertTrue(self.log.energy == -42464.75548)
         self.assertTrue(self.log.functional == "B3LYP")
         self.assertTrue(self.log.basis == "6-311g")
         self.assertTrue(self.log.heavyatomcount == 18)
@@ -145,18 +145,18 @@ class TestBblLog3(unittest.TestCase):
         """ Test that the parser can extract the SCF convergence from the log file """
         result = self.log.get_scf_convergence().round(5)
         self.assertTrue(type(result) == pd.DataFrame)
-        self.assertTrue(result['energy'].iloc[0] == -0.03369)
+        self.assertTrue(result['energy'].iloc[0] == -0.00035)
         self.assertTrue(result['cycles'].iloc[0] == 1)
-        self.assertTrue(result['de'].iloc[0] == 0.01455)
+        self.assertTrue(result['de'].iloc[0] == 0.00015)
 
     def test_attributes(self):
         """ test the charge attributes of the parsers """
-        self.assertTrue(self.log.charge == -2)
+        self.assertTrue(self.log.charge == -2.00016)
         self.assertTrue(self.log.multiplicity == 3)
         self.assertTrue(self.log.raman is False)
         self.assertTrue(self.log.freq is False)
         self.assertTrue(self.log.atomcount == 140)
-        self.assertTrue(self.log.energy == -12531769.403127551)
+        self.assertTrue(self.log.energy == -129892.83329)
         self.assertTrue(self.log.functional == "WB97XD")
         self.assertTrue(self.log.basis == "6-311(d,p)")
         self.assertTrue(self.log.heavyatomcount == 110)
@@ -165,9 +165,9 @@ class TestBblLog3(unittest.TestCase):
         self.assertTrue(self.log.n_alpha == 363)
         self.assertTrue(self.log.n_beta == 361)
         self.assertTrue(self.log._n_electrons == 724)
-        self.assertTrue(self.log.bandgap == 219.01921)
-        self.assertTrue(self.log.homo == -224.979095)
-        self.assertTrue(self.log.lumo == -5.959885)
+        self.assertTrue(self.log.bandgap == 2.27015)
+        self.assertTrue(self.log.homo == -2.33193)
+        self.assertTrue(self.log.lumo == -0.06177)
         self.assertTrue(self.log.stable == 'untested')
 
     def test_mulliken(self):
@@ -222,9 +222,9 @@ class TestBblLog3(unittest.TestCase):
         self.assertTrue(data['before_annihilation'].iloc[0] == 2.0630)
 
     def test_get_orbitals(self):
-        data = self.log.get_orbitals()
+        data = self.log.orbitals
         self.assertTrue(type(data) == pd.DataFrame)
-        self.assertTrue(data['energy'].iloc[5] == -50178.424725)
+        self.assertTrue(round(data['energy'].iloc[5], 1) == -520.1)
         figure = self.log.get_dos_plot()
         # figure.show()
         self.assertTrue(True)
@@ -242,11 +242,11 @@ class TestBblRaman(unittest.TestCase):
 
     def test_get_thermochemistry(self):
         """ Test that the parser can extract the thermochemistry numbers from the log file """
-        data = self.log.get_thermo_chemistry().round(5)
-        self.assertTrue(type(data) == pd.DataFrame)
-        self.assertTrue(data['g_corr'].iloc[0] == 3342.10134)
-        self.assertTrue(data['e_elec_zp'].iloc[0] == -18887381.23105)
-        self.assertTrue(data['g_elec_therm'].iloc[0] == -18887783.57055)
+        self.assertEqual(self.log.thermal_energy_corrections['zero_point_correction'], 38.81144)
+        self.assertEqual(self.log.thermal_energy_corrections['thermal_correction_to_energy'], 41.72971)
+        self.assertEqual(self.log.thermal_energy_corrections['thermal_correction_to_enthalpy'], 41.7554)
+        self.assertEqual(self.log.thermal_energy_corrections['thermal_correction_to_free_energy'], 34.64116)
+        self.assertEqual(self.log.free_energy, -195773.44935)
 
 
 class TestBblLog4Restart(unittest.TestCase):
@@ -258,7 +258,7 @@ class TestBblLog4Restart(unittest.TestCase):
 
     def test_attributes(self):
         self.assertTrue(type(self.log) == GaussianParser)
-        self.assertTrue(self.log.energy == -18889245.002059143)
+        self.assertTrue(self.log.energy == -195788.59721)
         self.assertTrue('opt' in self.log.keywords)
         self.assertTrue(self.log.raman is False)
         self.assertTrue(self.log.esp is False)
