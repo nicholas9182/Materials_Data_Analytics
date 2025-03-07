@@ -2100,7 +2100,7 @@ class Polar_linecut():
         :return: The plot.
         """
         profile = self.data
-        figure = px.line(profile, x='q', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
+        figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
         return figure
     
     def __str__(self):
