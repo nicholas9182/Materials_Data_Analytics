@@ -5,7 +5,6 @@ import os
 import plotly.graph_objects as go
 import plotly.express as px
 from pandas import DataFrame
-from visualisation.themes import custom_dark_template
 from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, KB, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
 
@@ -807,7 +806,7 @@ class FreeEnergySpace:
         log_y = True if not self._opes else False
 
         av_hills = self.get_hills_average_across_walkers(**kwargs)
-        figure = px.line(av_hills, x='time', y='height', log_y=log_y, template=custom_dark_template,
+        figure = px.line(av_hills, x='time', y='height', log_y=log_y, template='plotly_dark',
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'}
                          )
         figure.update_traces(line=dict(width=1))
@@ -849,7 +848,7 @@ class FreeEnergySpace:
         log_y = True if not self._opes else False
 
         max_hills = self.get_hills_max_across_walkers(**kwargs)
-        figure = px.line(max_hills, x='time', y='height', log_y=log_y, template=custom_dark_template,
+        figure = px.line(max_hills, x='time', y='height', log_y=log_y, template='plotly_dark',
                          labels={'time': 'Time [ns]', 'height': 'Energy [kJ/mol]'})
         figure.update_traces(line=dict(width=1))
 

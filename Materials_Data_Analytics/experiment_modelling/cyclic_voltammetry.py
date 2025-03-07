@@ -141,6 +141,10 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
             data[k] = self.metadata[k]
 
         return data
+    
+    @property
+    def steps_per_cycle(self) -> int:
+        return self._data.query('segment == 0')['time'].count()
 
     @classmethod
     def from_html_base64(cls, file_contents, source, scan_rate = None, **kwargs):
