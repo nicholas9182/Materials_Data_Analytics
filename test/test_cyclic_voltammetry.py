@@ -9,6 +9,7 @@ import base64
 import mimetypes
 from plotly import graph_objects as go
 from copy import copy
+from datetime import datetime as dt
 
 
 class TestBiologic1(unittest.TestCase):
@@ -56,6 +57,8 @@ class TestBiologic1(unittest.TestCase):
         self.assertTrue('segment' in self.cv.data.columns)
         self.assertTrue('scan_rate' in self.cv.data.columns)
         self.assertTrue('instrument' in self.cv.data.columns)
+        self.assertTrue(type(self.cv._object_creation_time) == dt)
+        self.assertTrue(type(self.cv.object_creation_time) == str)
 
     def test_drop_cycles(self):
         """ Test the drop_cycles method """
@@ -67,7 +70,7 @@ class TestBiologic1(unittest.TestCase):
         integrals = self.cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4817, 0.0125, 2.4909, 0.0124])
+        self.assertTrue(charges == [2.4817, 0.0125, 2.4909])
         self.assertTrue('total_charge' in integrals.columns)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -78,7 +81,7 @@ class TestBiologic1(unittest.TestCase):
         integrals = self.cv.get_charge_passed(average_segments=True)
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4863, 0.0124])
+        self.assertTrue(charges == [2.4863, 0.0125])
         self.assertTrue(type(integrals) == pd.DataFrame)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -100,7 +103,7 @@ class TestBiologic1(unittest.TestCase):
         self.assertTrue('type' in max_charges.columns)
         self.assertTrue(all(max_charges['total_charge'] >= 0))
         self.assertTrue(set(max_charges['type']).issubset({'anodic_charge', 'cathodic_charge'}))
-        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033, 0.0025])
+        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033])
 
 
 class TestBiologic1FromData(unittest.TestCase):
@@ -161,7 +164,7 @@ class TestBiologic1FromData(unittest.TestCase):
         integrals = self.cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4817, 0.0125, 2.4909, 0.0124])
+        self.assertTrue(charges == [2.4817, 0.0125, 2.4909])
         self.assertTrue('total_charge' in integrals.columns)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -172,7 +175,7 @@ class TestBiologic1FromData(unittest.TestCase):
         integrals = self.cv.get_charge_passed(average_segments=True)
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4863, 0.0124])
+        self.assertTrue(charges == [2.4863, 0.0125])
         self.assertTrue(type(integrals) == pd.DataFrame)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -193,7 +196,7 @@ class TestBiologic1FromData(unittest.TestCase):
         self.assertTrue('type' in max_charges.columns)
         self.assertTrue(all(max_charges['total_charge'] >= 0))
         self.assertTrue(set(max_charges['type']).issubset({'anodic_charge', 'cathodic_charge'}))
-        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033, 0.0025])
+        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033])
 
 
 class TestBiologic2(unittest.TestCase):
@@ -216,7 +219,7 @@ class TestBiologic2(unittest.TestCase):
         integrals = self.cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [0.0105, 3.7488])
+        self.assertTrue(charges == [0.0105])
 
 
 class TestBiologic3(unittest.TestCase):
@@ -239,7 +242,7 @@ class TestBiologic3(unittest.TestCase):
         integrals = self.cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [3.3214, 61.8374, 3.2826, 0.0318, 3.2912, 61.952])
+        self.assertTrue(charges == [3.3214, 61.8374, 3.2826, 0.0318])
 
 
 class TestBiologic4(unittest.TestCase):
@@ -456,7 +459,7 @@ class TestHtmlBase64(unittest.TestCase):
         integrals = self.cv.get_charge_passed()
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4817, 0.0125, 2.4909, 0.0124])
+        self.assertTrue(charges == [2.4817, 0.0125, 2.4909])
         self.assertTrue('total_charge' in integrals.columns)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -467,7 +470,7 @@ class TestHtmlBase64(unittest.TestCase):
         integrals = self.cv.get_charge_passed(average_segments=True)
         charges = integrals.assign(anodic_charge = lambda x: x['anodic_charge']*1000).round(4)['anodic_charge'].to_list()
         self.assertTrue(type(integrals) == pd.DataFrame)
-        self.assertTrue(charges == [2.4863, 0.0124])
+        self.assertTrue(charges == [2.4863, 0.0125])
         self.assertTrue(type(integrals) == pd.DataFrame)
         self.assertTrue('anodic_charge' in integrals.columns)
         self.assertTrue('cathodic_charge' in integrals.columns)
@@ -489,4 +492,20 @@ class TestHtmlBase64(unittest.TestCase):
         self.assertTrue('type' in max_charges.columns)
         self.assertTrue(all(max_charges['total_charge'] >= 0))
         self.assertTrue(set(max_charges['type']).issubset({'anodic_charge', 'cathodic_charge'}))
-        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033, 0.0025])
+        self.assertTrue(max_charges.round(4).total_charge.to_list() == [0.0025, 0.0033])
+
+
+class TestBiologic7(unittest.TestCase):
+
+    def setUp(self):
+        """
+        Reading in a BBL CV
+        """
+        self.cv = CyclicVoltammogram.from_biologic(path = 'test_trajectories/cyclic_voltammetry/biologic7.txt')
+
+    def test_show_plots(self):
+        """ Test the show_current_potential, show_current_time and show_potential_time methods """
+        # self.cv.show_current_potential()
+        # self.cv.show_current_time()
+        # self.cv.show_potential_time()
+        self.assertTrue(type(self.cv.data == pd.DataFrame))

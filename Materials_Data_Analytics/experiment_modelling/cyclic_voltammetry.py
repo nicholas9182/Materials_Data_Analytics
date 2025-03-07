@@ -39,19 +39,16 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         self._max_cycle = self._data['cycle'].max()
         self._max_segment = self._data['segment'].max()
-        self._steps_per_cycle = (self._data
-                                 .query('cycle != cycle.max() and cycle != cycle.min()')
-                                 .astype({'cycle': 'int'})
-                                 .groupby(['cycle']).count()['potential'].mean().round(0)
-                                 )
 
-    def _wrangle_data(self, data, first_index = 50) -> pd.DataFrame:
+    def _wrangle_data(self, data, first_index = 50, remove_last_n = 50) -> pd.DataFrame:
         """
         Function to wrangle the data
         :param data: pd.DataFrame with columns potential, current, cycle, time
         """
+        last_index = data['current'].last_valid_index() - remove_last_n
         data = (data
                 .query('index > @first_index')
+                .query('index < @last_index')
                 .dropna()
                 .reset_index(drop=True)
                 .sort_values(by=['time'])
@@ -64,10 +61,8 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         data = (data
                 .pipe(self._find_current_roots)
-                .pipe(self._determine_direction)
-                .pipe(self._make_segments)
+                .pipe(self._find_voltage_peaks)
                 .pipe(self._add_endpoints)
-                .pipe(self._make_cycles)
                 .pipe(self._check_types)
                 .sort_values(by=['time', 'segment'])
                 .reset_index(drop=True)
@@ -102,19 +97,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         return data.sort_values(by=['time']).reset_index(drop=True)
     
-    def _determine_direction(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Function to determine the direction of the cycle (either oxidation or reduction)
-        :param data: pd.DataFrame with potential and time
-        """
-        data['direction'] = data['potential'].diff().apply(lambda x: 'oxidation' if x > 0 else ('reduction' if x < 0 else 'no_change'))
-        data['direction'] = data['direction'].replace('no_change', pd.NA).ffill()
-        data.loc[0, 'direction'] = data.loc[1, 'direction']
-        previous = data['direction'].shift(1)
-        next = data['direction'].shift(-1)
-        data['direction'] = data['direction'].where((data['direction'] == previous) | (data['direction'] == next), previous)
-        return data
-    
     def _add_endpoints(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Function to double up data points at the end of the cycles so that each cycle is complete when filtered by direction
@@ -135,22 +117,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
 
         return data
     
-    def _make_cycles(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Function to find the cycles of the cyclic voltammogram
-        """
-        cycle = 0
-        new_data = []
-        for group_name, group_df in data.groupby('segment'):
-            if group_name % 2 == 1:
-                cycle += 1
-            group_df['cycle'] = cycle
-            new_data.append(group_df)
-
-        data = pd.concat(new_data, ignore_index=True)
-
-        return data
-    
     def _check_types(self, data) -> pd.DataFrame:
         """
         Function to check the data types in the data columns
@@ -164,16 +130,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .assign(segment = lambda x: x['segment'].astype(int))
                 .assign(direction = lambda x: x['direction'].astype(str))
                 )
-    
-    @staticmethod
-    def _make_segments(data) -> pd.DataFrame:
-        """
-        Function to find the segments of the cyclic voltammogram
-        """
-        direction_change = data['direction'] != data['direction'].shift(1)
-        segments = direction_change.cumsum() - 1
-        data = data.assign(segment=segments)
-        return data
 
     @property
     def data(self) -> pd.DataFrame:
@@ -185,6 +141,10 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
             data[k] = self.metadata[k]
 
         return data
+    
+    @property
+    def steps_per_cycle(self) -> int:
+        return self._data.query('segment == 0')['time'].count()
 
     @classmethod
     def from_html_base64(cls, file_contents, source, scan_rate = None, **kwargs):
@@ -355,10 +315,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
     @property
     def max_cycle(self) -> int:
         return self._max_cycle
-    
-    @property
-    def steps_per_cycle(self) -> int:
-        return self._steps_per_cycle
     
     #TODO: I dont like this function, it should be more general
     def _integrate_curves(self, data: pd.DataFrame, direction: str, valence: str) -> float:
@@ -618,7 +574,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                  .query('segment != 0 and segment != @self._max_segment')
                  .assign(current=lambda x: np.where(x['direction'] == 'reduction', x['current'] * -1, x['current']))
                  .groupby(['segment', 'direction', 'cycle'], group_keys=False)
-                 .apply(lambda df: self.find_local_peak(df, y_col='current', x_col='potential', initial_guess=df.loc[df['current'].idxmax(), 'potential'], window=window, polynomial_order=polynomial_order))
+                 .apply(lambda df: self.find_local_peak_with_polynomial(df, y_col='current', x_col='potential', initial_guess=df.loc[df['current'].idxmax(), 'potential'], window=window, polynomial_order=polynomial_order))
                  .assign(
                      current=lambda x: np.where(x['direction'] == 'reduction', x['current'] * -1, x['current']),
                      fit_current=lambda x: np.where(x['direction'] == 'reduction', x['fit_current'] * -1, x['fit_current']),
@@ -707,3 +663,6 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         potential_figure = px.line(peaks, x='cycle', y='potential_peak', color='tag', markers=True, labels={'potential_peak': 'Peak Potential [V]', 'cycle': 'Cycle'}, **kwargs)
         
         return current_figure, potential_figure
+    
+    def __str__(self):
+        return f"A cyclic voltammogram initiated on {self.object_creation_time}"
