@@ -1,4 +1,3 @@
-import pyFAI.integrator
 from Materials_Data_Analytics.experiment_modelling.core import ScatteringMeasurement
 import os
 import pandas as pd
@@ -46,7 +45,7 @@ class Calibrator():
         :param detector: detector object or string
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -118,7 +117,7 @@ class Calibrator():
         :return: an instance of the Calibrator class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI > 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -147,7 +146,7 @@ class Calibrator():
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
