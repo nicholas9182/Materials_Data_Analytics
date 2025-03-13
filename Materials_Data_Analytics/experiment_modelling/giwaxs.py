@@ -31,7 +31,9 @@ class Calibrator():
                  energy: float = None,
                  wavelength: float = None,
                  detector = None):
-        """Create a calibration object
+        """
+        Create a calibration object
+
         :param distance: sample-detector distance in meters
         :param poni1: coordinate of the point of normal incidence on the detector in the detector plane
         :param poni2: coordinate of the point of normal incidence on the detector in the detector plane
@@ -43,7 +45,7 @@ class Calibrator():
         :param detector: detector object or string
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -58,6 +60,7 @@ class Calibrator():
         self._rot1 = rot1
         self._rot2 = rot2
         self._rot3 = rot3
+        self._object_creation_time = datetime.now()
 
         if energy is not None:
             self._energy = energy
@@ -114,7 +117,7 @@ class Calibrator():
         :return: an instance of the Calibrator class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI > 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -143,13 +146,19 @@ class Calibrator():
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
-        return pyFAI.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
-                                         rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
-                                         wavelength=self._wavelength)
+        return pyFAI.integrator.azimuthal.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
+                                                              rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
+                                                              wavelength=self._wavelength)
+    
+    def __str__(self):
+        return f'GIWAXS Calibrator, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
     
 
 class GIWAXSPixelImage(ScatteringMeasurement):
@@ -239,6 +248,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                          metadata: dict = {}) -> 'GIWAXSPixelImage':
         
         """Load a GIWAXS measurement from SLAC BL11-3 beamline
+
         :param tif_filepaths: list of filepaths to the tif files
         :param txt_filepaths: list of filepaths to the txt files
         :param verbose: whether to print the output
@@ -539,7 +549,9 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         return merged_image
 
     def apply_mask(self, mask_path: str) -> 'GIWAXSPixelImage':
-        """ Apply a mask to the image.
+        """ 
+        Apply a mask to the image.
+
         :param mask_path: path to the mask file
         :return: the masked image
         """   
@@ -562,8 +574,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                            pixel_chi: int = 360,
                            correct_solid_angle: bool = True,
                            polarization_factor: bool = None,
-                           unit: str = 'A') -> 'GIWAXSPattern':
+                           unit: str = 'A',
+                           precision: str = 'float64',
+                           mode = 'both') -> 'GIWAXSPattern':
         """Transform the data from pixels to q space.
+
         :param calibrator: the calibrator object
         :param qxy_range: range of qxy values
         :param qz_range: range of qz values
@@ -574,13 +589,155 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         :param correct_solid_angle: whether to correct for solid angle
         :param polarization_factor: polarization factor
         :param unit: unit of the q values
-        :param verbose: whether to print the output
+        :param precision: precision of the output arrays. Must be either float16, float32, or float64
+        :param mode: 'both' or 'reciprocal' or 'polar'
         :return: an instance of the GIWAXSPattern class
         """
         if importlib.util.find_spec('pygix') is None:
             raise ImportError('pygix is required to run this function. Please install pygix using pip install pygix')
         else:
             import pygix
+
+        if precision not in ['float16', 'float32', 'float64']:
+            raise ValueError('precision must be either float16, float32, or float64')
+
+        source = self.metadata['source']
+
+        if mode == 'both' or mode == 'reciprocal':
+            [qxy, qz, intensity_reciprocal] = self._get_giwaxs_pattern_reciprocal(calibrator,
+                                                                                    qxy_range = qxy_range,
+                                                                                    qz_range = qz_range,
+                                                                                    pixel_q = pixel_q,
+                                                                                    correct_solid_angle = correct_solid_angle,
+                                                                                    polarization_factor = polarization_factor,
+                                                                                    unit = unit,
+                                                                                    precision = precision,
+                                                                                    source = source)
+        if mode == 'both' or mode == 'polar':
+            [chi, q, intensity_polar] = self._get_giwaxs_pattern_polar(calibrator,
+                                                                        q_range = q_range,
+                                                                        chi_range = chi_range,
+                                                                        pixel_q = pixel_q,
+                                                                        pixel_chi = pixel_chi,
+                                                                        correct_solid_angle = correct_solid_angle,
+                                                                        polarization_factor = polarization_factor,
+                                                                        unit = unit,
+                                                                        precision = precision,
+                                                                        source = source)
+        
+        
+        if mode == 'both':
+            return GIWAXSPattern.from_polar_and_reciprocal_numpy_arrays(qxy = qxy,
+                                                                        qz = qz,
+                                                                        intensity_reciprocal = intensity_reciprocal,
+                                                                        q = q,
+                                                                        chi = chi,
+                                                                        intensity_polar = intensity_polar,
+                                                                        metadata = self.metadata)
+        
+        elif mode == 'reciprocal':
+            return GIWAXSPattern.from_reciprocal_numpy_arrays(qxy = qxy,
+                                                              qz = qz,
+                                                              intensity_reciprocal = intensity_reciprocal,
+                                                              metadata = self.metadata)
+        
+        elif mode == 'polar':
+            return GIWAXSPattern.from_polar_numpy_arrays(chi = chi,
+                                                         q = q,
+                                                         intensity_polar = intensity_polar,
+                                                         metadata = self.metadata)
+        
+        else:
+            raise ValueError('mode must be either both, reciprocal or polar')
+    
+    def _get_giwaxs_pattern_polar (self,
+                                   calibrator: Calibrator,
+                                   q_range = (0, 3),
+                                   chi_range = (-95, 95),
+                                   pixel_q: int = 500,
+                                   pixel_chi: int = 360,
+                                   correct_solid_angle: bool = True,
+                                   polarization_factor: bool = None,
+                                   unit: str = 'A',
+                                   precision: str = 'float64',
+                                   source = ''):
+        """Transform the data from pixels to q space.
+        :param calibrator: the calibrator object
+        :param q_range: range of q values
+        :param chi_range: range of chi values
+        :param pixel_q: number of pixels in q
+        :param pixel_chi: number of pixels in chi
+        :param correct_solid_angle: whether to correct for solid angle
+        :param polarization_factor: polarization factor
+        :param unit: unit of the q values
+        :param precision: precision of the output arrays. Must be either float16, float32, or float64
+        :return: chi, q, intensity_polar numpy arrays
+        """
+
+        if importlib.util.find_spec('pygix') is None:
+            raise ImportError('pygix is required to run this function. Please install pygix using pip install pygix')
+        else:
+            import pygix
+
+        if precision not in ['float16', 'float32', 'float64']:
+            raise ValueError('precision must be either float16, float32, or float64')
+        
+        azimuthal_integrator = calibrator._azimuthal_integrator
+        transformer = pygix.transform.Transform().load(azimuthal_integrator)
+        transformer.incident_angle = np.deg2rad(self.incidence_angle)
+
+        pixel_chi_corr = int(pixel_chi*360/(chi_range[1] - chi_range[0]))
+
+        [intensity_polar, q, chi] = transformer.transform_polar(self._image,
+                                                                npt = (pixel_q, pixel_chi_corr),
+                                                                q_range = q_range,
+                                                                chi_range = (-180, 180),
+                                                                correctSolidAngle = correct_solid_angle,
+                                                                polarization_factor = polarization_factor,
+                                                                unit = unit,
+                                                                method = 'splitbbox')
+        
+        chi = np.where(chi > 0, -chi + 180, -chi - 180)
+        if source == 'NSLS_II_CMS':
+            chi = -chi
+        
+        chi = chi.astype(precision)
+        q = q.astype(precision)
+        intensity_polar = intensity_polar.astype(precision)
+
+        return chi, q, intensity_polar
+
+    def _get_giwaxs_pattern_reciprocal (self,
+                                       calibrator: Calibrator,
+                                        qxy_range = (-3, 3),
+                                        qz_range = (0, 3),
+                                        pixel_q: int = 500,
+                                        correct_solid_angle: bool = True,
+                                        polarization_factor: bool = None,
+                                        unit: str = 'A',
+                                        precision: str = 'float64',
+                                        source = ''):
+        """Transform the data from pixels to q space.
+        :param calibrator: the calibrator object
+        :param qxy_range: range of qxy values
+        :param qz_range: range of qz values
+        :param pixel_q: number of pixels in q
+        :param correct_solid_angle: whether to correct for solid angle
+        :param polarization_factor: polarization factor
+        :param unit: unit of the q values
+        :param precision: precision of the output arrays. Must be either float16, float32, or float64
+        :return: qxy, qz, intensity_reciprocal numpy arrays
+        """
+
+        if importlib.util.find_spec('pygix') is None:
+            raise ImportError('pygix is required to run this function. Please install pygix using pip install pygix')
+        else:
+            import pygix
+
+        if precision not in ['float16', 'float32', 'float64']:
+            raise ValueError('precision must be either float16, float32, or float64')
+
+        source = self.metadata['source']
 
         azimuthal_integrator = calibrator._azimuthal_integrator
         transformer = pygix.transform.Transform().load(azimuthal_integrator)
@@ -596,27 +753,16 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                                                                            polarization_factor = polarization_factor)
 
         qz = -qz
-
-        pixel_chi_corr = int(pixel_chi*360/(chi_range[1] - chi_range[0]))
-
-        [intensity_polar, q, chi] = transformer.transform_polar(self._image,
-                                                                npt = (pixel_q, pixel_chi_corr),
-                                                                q_range = q_range,
-                                                                chi_range = (-180, 180),
-                                                                correctSolidAngle = correct_solid_angle,
-                                                                polarization_factor = polarization_factor,
-                                                                unit = unit,
-                                                                method = 'splitbbox')
         
-        chi = np.where(chi > 0, -chi + 180, -chi - 180)
+        if source == 'NSLS_II_CMS':
+            qxy = -qxy
 
-        return GIWAXSPattern.from_numpy_arrays(qxy = qxy, 
-                                               qz = qz, 
-                                               intensity_reciprocal = intensity_reciprocal, 
-                                               chi = chi, 
-                                               q = q, 
-                                               intensity_polar = intensity_polar, 
-                                               metadata = self.metadata)
+        qxy = qxy.astype(precision)
+        qz = qz.astype(precision)
+        intensity_reciprocal = intensity_reciprocal.astype(precision)
+
+        return qxy, qz, intensity_reciprocal
+
 
     def save_to_pickle(self, pickle_file: str) -> 'GIWAXSPixelImage':
         """Save the GIWAXS measurement to a pickle file
@@ -666,6 +812,12 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         img = hv.Image(self._image, kdims=['x', 'y']).opts(**kwargs)
         return img
     
+    def __str__(self):
+        return f'GIWAXS Pixel Image, {self._timestamp}'
+    
+    def __repr__(self):
+        return self.__str__()
+    
         
 class GIWAXSPattern(ScatteringMeasurement):
     ''' 
@@ -679,23 +831,61 @@ class GIWAXSPattern(ScatteringMeasurement):
     '''
 
     def __init__(self,
-                 data_reciprocal: pd.DataFrame = None,
+                  data_reciprocal: pd.DataFrame = None,
                  data_polar: pd.DataFrame = None,
-                 metadata: dict = None):
+                 metadata: dict = {}):
         
         super().__init__(metadata=metadata)
-        self._data_reciprocal = data_reciprocal
-        self._data_polar = data_polar
+
+        if data_polar is not None:        
+            #check data_polar contains q, chi, intensity
+            if not all(col in data_polar.columns for col in ['q', 'chi', 'intensity']):
+                raise ValueError('data_polar must contain columns q, chi, and intensity')
+        
+            #drop rows with NaN values in intensity
+            data_polar_reduced = data_polar.dropna(subset=['intensity'])
+            data_polar_reduced = data_polar_reduced[data_polar_reduced['intensity'] != 0]
+            
+            self._data_polar = data_polar_reduced
+
+        if data_reciprocal is not None:
+            #check data_reciprocal contains qxy, qz, intensity
+            if not all(col in data_reciprocal.columns for col in ['qxy', 'qz', 'intensity']):
+                raise ValueError('data_reciprocal must contain columns qxy, qz, and intensity')
+            
+            #drop rows with NaN values in intensity
+            data_reciprocal_reduced = data_reciprocal.dropna(subset=['intensity'])
+            data_reciprocal_reduced = data_reciprocal_reduced[data_reciprocal_reduced['intensity'] != 0]
+            
+            self._data_reciprocal = data_reciprocal_reduced
+
+        if data_polar is None and data_reciprocal is None:
+            raise ValueError('Either data_polar or data_reciprocal must be provided') 
         
     @classmethod
-    def from_numpy_arrays(cls,
-                          qxy: np.ndarray = None,
-                          qz: np.ndarray = None,
-                          intensity_reciprocal: np.ndarray = None,
+    def from_polar_numpy_arrays(cls,
                           chi: np.ndarray = None,
                           q: np.ndarray = None,
                           intensity_polar: np.ndarray = None,
                           metadata: dict = None):
+        """
+        Create a GIWAXSPattern object from numpy arrays
+        """
+        data_polar = (pd
+                     .DataFrame(intensity_polar, columns=q, index=chi)
+                     .reset_index()
+                     .melt(id_vars='index')
+                     .rename(columns={'index': 'chi', 'variable': 'q', 'value': 'intensity'})
+                     )
+
+        return cls(data_polar = data_polar, metadata = metadata)
+    
+    @classmethod
+    def from_reciprocal_numpy_arrays(cls,
+                                     qxy: np.ndarray = None,
+                                     qz: np.ndarray = None,
+                                     intensity_reciprocal: np.ndarray = None,
+                                     metadata: dict = None):
         """
         Create a GIWAXSPattern object from numpy arrays
         """
@@ -705,48 +895,77 @@ class GIWAXSPattern(ScatteringMeasurement):
                            .melt(id_vars='index')
                            .rename(columns={'index': 'qz', 'variable': 'qxy', 'value': 'intensity'})
                            )
-
+        
+        return cls(data_reciprocal = data_reciprocal, metadata = metadata)
+    
+    @classmethod
+    def from_polar_and_reciprocal_numpy_arrays(cls,
+                                               chi: np.ndarray = None,
+                                               q: np.ndarray = None,
+                                               intensity_polar: np.ndarray = None,
+                                               qxy: np.ndarray = None,
+                                               qz: np.ndarray = None,
+                                               intensity_reciprocal: np.ndarray = None,
+                                               metadata: dict = None):
+        """
+        Create a GIWAXSPattern object from numpy arrays
+        """
+        data_reciprocal = (pd
+                           .DataFrame(intensity_reciprocal, columns=qxy, index=qz)
+                           .reset_index()
+                           .melt(id_vars='index')
+                           .rename(columns={'index': 'qz', 'variable': 'qxy', 'value': 'intensity'})
+                           )
+        
         data_polar = (pd
-                     .DataFrame(intensity_polar, columns=q, index=chi)
-                     .reset_index()
-                     .melt(id_vars='index')
-                     .rename(columns={'index': 'chi', 'variable': 'q', 'value': 'intensity'})
-                     )
-
+                      .DataFrame(intensity_polar, columns=q, index=chi)
+                      .reset_index()
+                      .melt(id_vars='index')
+                      .rename(columns={'index': 'chi', 'variable': 'q', 'value': 'intensity'})
+                      )
+        
         return cls(data_reciprocal = data_reciprocal, data_polar = data_polar, metadata = metadata)
 
         
     @property
     def data_reciprocal(self):
-        return self._data_reciprocal
+        if hasattr(self, '_data_reciprocal'):
+            return self._data_reciprocal.copy()
+        else:
+            return self._calculate_from_polar_to_reciprocal()
     
     @property
     def qxy(self):
-        qxy = self._data_reciprocal.sort_values(by='qxy')['qxy'].unique()
+        qxy = self.data_reciprocal.sort_values(by='qxy')['qxy'].unique()
         return qxy
     
     @property
     def qz(self):
-        qz = self._data_reciprocal.sort_values(by='qz')['qz'].unique()
+        qz = self.data_reciprocal.sort_values(by='qz')['qz'].unique()
         return qz
         
     @property
     def data_polar(self):
-        return self._data_polar
+        if hasattr(self, '_data_polar'):
+            return self._data_polar.copy()
+        else:
+            return self._calculate_from_reciprocal_to_polar()
     
     @property
     def chi(self):
-        chi = self._data_polar.sort_values(by='chi')['chi'].unique()
+        chi = self.data_polar.sort_values(by='chi')['chi'].unique()
         return chi
     
     @property
     def q(self):
-        q = self._data_polar.sort_values(by='q')['q'].unique()
+        q = self.data_polar.sort_values(by='q')['q'].unique()
         return q
     
     @property
     def metadata(self):
         return self._metadata
+    
+    
     
     def export_reciprocal_data(self, export_filepath: str, format: str = 'wide') -> 'GIWAXSPattern':
         """Export the reciprocal space data to a CSV file.
@@ -797,6 +1016,174 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         with open(pickle_file, 'wb') as file:
             pickle.dump(self, file)
+        return self
+    
+    def _calculate_from_polar_to_reciprocal(self,
+                            qxy_range = (-3, 3),
+                           qz_range = (0, 3),
+                           pixel_q: int = 500) -> pd.DataFrame:
+        """
+        Transform the data from polar to reciprocal space
+        :param qxy_range: range of qxy values
+        :param qz_range: range of qz values
+        :param pixel_q: number of pixels in q
+        :return: a pandas DataFrame with the data in reciprocal space
+        """
+
+        if importlib.util.find_spec('scipy') is None:
+            raise ImportError('scipy is required to run this function. Please install scipy using pip install scipy')
+        else:
+            from scipy.spatial import Delaunay
+            from scipy.interpolate import LinearNDInterpolator
+
+        polar_data_df = self.data_polar
+
+        polar_data_df = polar_data_df.pivot(index='chi', columns='q', values='intensity').melt(ignore_index=False, var_name="q", value_name="intensity").reset_index().sort_values(by=['q', 'chi']).reset_index(drop=True)
+
+        q = polar_data_df['q'].values
+        chi = np.radians(polar_data_df['chi'].values)  # Convert degrees to radians
+
+        q_xy = q * np.sin(chi)
+        q_z = q * np.cos(chi)
+
+        # Filter the values within the specified ranges
+        mask = (q_xy >= qxy_range[0]) * (q_xy <= qxy_range[1]) * (q_z >= qz_range[0]) * (q_z <= qz_range[1])
+        q_xy = q_xy[mask]
+        q_z = q_z[mask]
+        intensity_masked= polar_data_df[mask]['intensity'].values
+
+        q_xy_span = qxy_range[1] - qxy_range[0]
+        q_z_span = qz_range[1] - qz_range[0]
+
+        dq = np.diff(polar_data_df['q'].unique()).min()
+        if q_xy_span > q_z_span:
+            pixel_qz = min(pixel_q, int(2*q_z_span/dq))
+            pixel_qxy = int(pixel_qz * q_z_span/q_xy_span)
+        else:
+            pixel_qxy = min(pixel_q, int(2*q_xy_span/dq))
+            pixel_qz = int(pixel_qxy * q_xy_span/q_z_span)
+
+        # Define a Cartesian grid
+        q_xy_grid = np.linspace(qxy_range[0], qxy_range[1], pixel_qxy)
+        q_z_grid = np.linspace(qz_range[0], qz_range[1], pixel_qz)
+
+        # Interpolate to Cartesian grid
+        initial_mesh = np.column_stack([q_xy, q_z])
+        intensity_initial_mesh = intensity_masked
+        final_mesh = np.meshgrid(q_xy_grid, q_z_grid, indexing='ij')
+
+        tri = Delaunay(initial_mesh)  # Compute the triangulation
+        interpolator = LinearNDInterpolator(tri, intensity_initial_mesh)
+        intensity_final_mesh = interpolator(final_mesh)
+        df_cartesian_coordinates = pd.DataFrame({
+            'qxy': np.repeat(q_xy_grid, len(q_z_grid)),
+            'qz': np.tile(q_z_grid, len(q_xy_grid)),
+            'intensity': intensity_final_mesh.flatten()
+            })
+        
+        df_cartesian_coordinates = df_cartesian_coordinates.dropna(subset=['intensity'])
+        df_cartesian_coordinates = df_cartesian_coordinates[df_cartesian_coordinates['intensity'] != 0]
+
+        return df_cartesian_coordinates 
+    
+    def _calculate_from_reciprocal_to_polar(self,
+                            q_range = (0, 3),
+                            chi_range = (-95, 95),
+                            pixel_q: int = 500,
+                            pixel_chi: int = 360) -> pd.DataFrame:
+        """
+        Transform the data from reciprocal to polar space
+        :param q_range: range of q values
+        :param chi_range: range of chi values
+        :param pixel_q: number of pixels in q
+        :param pixel_chi: number of pixels in chi
+        :return: a pandas DataFrame with the data in polar space
+        """
+        if importlib.util.find_spec('scipy') is None:
+            raise ImportError('scipy is required to run this function. Please install scipy using pip install scipy')
+        else:
+            from scipy.spatial import Delaunay
+            from scipy.interpolate import LinearNDInterpolator
+
+        reciprocal_data_df = self.data_reciprocal
+        
+        reciprocal_data_df = reciprocal_data_df.pivot(index='qz', columns='qxy', values='intensity').melt(ignore_index=False, var_name="qxy", value_name="intensity").reset_index().sort_values(by=['qxy', 'qz']).reset_index(drop=True)
+
+        q_xy = reciprocal_data_df['qxy'].values
+        q_z = reciprocal_data_df['qz'].values
+
+        q = np.sqrt(q_xy**2 + q_z**2)
+        chi = np.degrees(np.arctan2(q_xy, q_z))
+
+        # Filter the values within the specified ranges
+        mask = (q >= q_range[0]) & (q <= q_range[1]) & (chi >= chi_range[0]) & (chi <= chi_range[1])
+        q = q[mask]
+        chi = chi[mask]
+        intensity_masked = reciprocal_data_df[mask]['intensity'].values
+
+        q_span = q_range[1] - q_range[0]
+        chi_span = chi_range[1] - chi_range[0]
+
+        pixel_chi = min(pixel_chi, int(chi_span/0.5))
+        pixel_q = min(pixel_q, int(q_range/min(np.diff(reciprocal_data_df['qxy'].unique()))))
+
+        chi_grid = np.linspace(chi_range[0], chi_range[1], pixel_chi)
+        q_grid = np.linspace(q_range[0], q_range[1], pixel_q)
+
+        # Interpolate to Polar grid
+        initial_mesh = np.column_stack([q, chi])
+        intensity_initial_mesh = intensity_masked
+        final_mesh = np.meshgrid(q_grid, chi_grid, indexing='ij')
+
+        tri = Delaunay(initial_mesh)  # Compute the triangulation
+        interpolator = LinearNDInterpolator(tri, intensity_initial_mesh)
+        intensity_final_mesh = interpolator(final_mesh)
+        df_polar_coordinates = pd.DataFrame({
+            'q': np.repeat(q_grid, len(chi_grid)),
+            'chi': np.tile(chi_grid, len(q_grid)),
+            'intensity': intensity_final_mesh.flatten()
+            })
+        
+        df_polar_coordinates = df_polar_coordinates.dropna(subset=['intensity'])
+        df_polar_coordinates = df_polar_coordinates[df_polar_coordinates['intensity'] != 0]
+
+        return df_polar_coordinates
+
+    def append_data_reciprocal(self,
+                               qxy_range = (-3, 3),
+                               qz_range = (0, 3),
+                               pixel_q: int = 500) -> 'GIWAXSPattern':
+        """Append the reciprocal space data to the current instance.
+        :param qxy_range: range of qxy values
+        :param qz_range: range of qz values
+        :param pixel_q: number of pixels in q
+        :return: the current instance
+        """
+        if hasattr(self, '_data_reciprocal'):
+            import warnings
+            warnings.warn('Data reciprocal already exists in the current instance. It will be overwritten.')
+
+        self._data_reciprocal = self._calculate_from_polar_to_reciprocal(self._data_polar, qxy_range=qxy_range, qz_range=qz_range, pixel_q=pixel_q)
+        return self
+    
+    def append_data_polar(self,
+                            q_range = (0, 3),
+                            chi_range = (-95, 95),
+                            pixel_q: int = 500,
+                            pixel_chi: int = 360) -> 'GIWAXSPattern':
+        """Append the polar space data to the current instance.
+        :param q_range: range of q values
+        :param chi_range: range of chi values
+        :param pixel_q: number of pixels in q
+        :param pixel_chi: number of pixels in chi
+        :return: the current instance
+        """
+
+        if hasattr(self, '_data_polar'):
+            import warnings
+            warnings.warn('Data polar already exists in the current instance. It will be overwritten.')
+
+        self._data_polar = self._calculate_from_reciprocal_to_polar(self._data_reciprocal, q_range=q_range, chi_range=chi_range, pixel_q=pixel_q, pixel_chi=pixel_chi)
         return self
     
     def plot_reciprocal_map_contour(self, 
@@ -879,7 +1266,9 @@ class GIWAXSPattern(ScatteringMeasurement):
                                template: str = 'simple_white',
                                intensity_lower_cuttoff: float = 0.001,
                                **kwargs) -> go.Figure:
-        """Plot the polar space map.
+        """
+        Plot the polar space map.
+
         :param colorscale: The colorscale to use. See plotly colorscales for options
         :param ncontours: The number of contours to use.
         :param log_scale: Whether to use a log scale.
@@ -894,7 +1283,9 @@ class GIWAXSPattern(ScatteringMeasurement):
         return fig
     
     def plot_polar_map(self, engine:str = 'px', **kwargs):
-        """Plot the polar space map.
+        """
+        Plot the polar space map.
+
         :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
         """
@@ -938,7 +1329,9 @@ class GIWAXSPattern(ScatteringMeasurement):
     def get_linecut(self,
                     chi : tuple | list | pd.Series | float = None,
                     q_range : tuple | list | pd.Series = None) -> 'Linecut':
-        """Extract a profile from the polar space data.
+        """
+        Extract a profile from the polar space data.
+
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
         :return: Lincut object.
@@ -1013,6 +1406,12 @@ class GIWAXSPattern(ScatteringMeasurement):
         metadata['q'] = q
         
         return Polar_linecut(data, metadata = metadata)
+    
+    def __str__(self):
+        return f'GIWAXS Pattern, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
          
     
 
@@ -1026,10 +1425,13 @@ class Linecut():
 
     def __init__(self,
                  data: pd.DataFrame,
-                 metadata: dict = None):
-        
+                 metadata: dict = {}):
+        #check data contains q, intensity
+        if not all(col in data.columns for col in ['q', 'intensity']):
+            raise ValueError('data must contain columns q and intensity')
         self._data = data
         self._metadata = metadata
+        self._object_creation_time = datetime.now()
 
     @property
     def data(self):
@@ -1070,7 +1472,7 @@ class Linecut():
     @property
     def fit_report(self):
         try:
-            return self.fit_results.fit_report
+            return self.fit_results.fit_report()
         except:
             raise AttributeError('No fit has been ran.')
     
@@ -1098,8 +1500,8 @@ class Linecut():
         :return: The linecut with the background subtracted.
         """
         if isinstance(background, Linecut):
-            background_metadata.update(background.metadata)
             background_df = background.data
+            background_metadata.update(background.metadata)
         elif isinstance(background, pd.DataFrame):
             background_df = background.copy()
         else:
@@ -1121,8 +1523,9 @@ class Linecut():
         data['intensity_raw'] = data['intensity']
         data['intensity'] = data['intensity'] - data['background_intensity']
         self._data = data
+        
         self._metadata['background_metadata'] = background_metadata
-
+     
         return self
 
     def plot(self,
@@ -1243,7 +1646,9 @@ class Linecut():
                     background_model: str,
                     q_range: tuple,
                     initial_parameters: dict = {}) -> 'Linecut':          
-        """Fit the linecut to a model
+        """
+        Fit the linecut to a model
+
         :param peak_model: The peak model to use. Options are 'GaussianModel', 'LorentzianModel', 'VoigtModel', 'PseudoVoigtModel', 'SkewedVoigtModel'
         :param background_model: The background model to use. Options are 'ExponentialModel', 'LinearModel', 'ConstantModel', PowerLawModel
         :param q_range: The range of q values to fit
@@ -1280,6 +1685,31 @@ class Linecut():
             'peak_skew_vary': True,
             'peak_skew_min': -1000,
             'peak_skew_max': 1000,
+
+            'peak2_center_value': 1.0,
+            'peak2_center_vary': True,
+            'peak2_center_min': 0.1,
+            'peak2_center_max': 2.5,
+
+            'peak2_sigma_value': 0.1,
+            'peak2_sigma_vary': True,
+            'peak2_sigma_min': 0.001,
+            'peak2_sigma_max': 0.3,
+
+            'peak2_amplitude_value': 1,
+            'peak2_amplitude_vary': True,
+            'peak2_amplitude_min': 0.00001,
+            'peak2_amplitude_max': 5000,
+
+            'peak2_gamma_value': 0.1,
+            'peak2_gamma_vary': True,
+            'peak2_gamma_min': 0.001,
+            'peak2_gamma_max': 0.3,
+
+            'peak2_fraction_value': 0.5,
+            'peak2_fraction_vary': True,
+            'peak2_fraction_min': 0.000,
+            'peak2_fraction_max': 1.0,
             
             'bkg_slope_value': 0,
             'bkg_slope_vary': True,
@@ -1338,11 +1768,14 @@ class Linecut():
             'LorentzianModel': LorentzianModel(prefix='peak_'),
             'VoigtModel': VoigtModel(prefix='peak_'),
             'PseudoVoigtModel': PseudoVoigtModel(prefix='peak_'),
-            'SkewedVoigtModel': SkewedVoigtModel(prefix='peak_')
+            'SkewedVoigtModel': SkewedVoigtModel(prefix='peak_'),
+            'GaussianModel2': GaussianModel (prefix = 'peak_') + GaussianModel(prefix='peak2_'),
+            'LorentzianModel2': LorentzianModel(prefix='peak_') + LorentzianModel(prefix='peak2_'),
+            'VoigtModel2': VoigtModel(prefix='peak_') + VoigtModel(prefix='peak2_')
         }
 
         if peak_model not in peak_model_dict:
-            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel')
+            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel, GaussianModel2, LorentzianModel2, VoigtModel2')
 
         selected_peak_model = peak_model_dict[peak_model]
         
@@ -1382,7 +1815,7 @@ class Linecut():
                                    max=default_fit_parameters['peak_fraction_max'],
                                    vary=default_fit_parameters['peak_fraction_vary'])
                                    
-        elif (peak_model == 'VoigtModel') or (peak_model == 'SkewedVoigtModel'):
+        elif (peak_model == 'VoigtModel') or (peak_model == 'SkewedVoigtModel') or (peak_model == 'VoigtModel2'):
             pars['peak_gamma'].set(value=default_fit_parameters['peak_gamma_value'],
                                    min=default_fit_parameters['peak_gamma_min'],
                                    max=default_fit_parameters['peak_gamma_max'],
@@ -1393,10 +1826,35 @@ class Linecut():
                                    min=default_fit_parameters['peak_skew_min'],
                                    max=default_fit_parameters['peak_skew_max'],
                                    vary=default_fit_parameters['peak_skew_vary'])
+        elif (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2'):
+            pars['peak2_center'].set(value=default_fit_parameters['peak2_center_value'],
+                                min=default_fit_parameters['peak2_center_min'],
+                                max=default_fit_parameters['peak2_center_max'],
+                                vary=default_fit_parameters['peak2_center_vary'])
+                                       
+            pars['peak2_sigma'].set(value=default_fit_parameters['peak2_sigma_value'],
+                                   min=default_fit_parameters['peak2_sigma_min'],
+                                   max=default_fit_parameters['peak2_sigma_max'],
+                                   vary=default_fit_parameters['peak2_sigma_vary'])
+        
+            pars['peak2_amplitude'].set(value=default_fit_parameters['peak2_amplitude_value'],
+                                   min=default_fit_parameters['peak2_amplitude_min'],
+                                   max=default_fit_parameters['peak2_amplitude_max'],
+                                   vary=default_fit_parameters['peak2_amplitude_vary'])
+            
+            if peak_model == 'VoigtModel2':
+                pars['peak2_gamma'].set(value=default_fit_parameters['peak2_gamma_value'],
+                                   min=default_fit_parameters['peak2_gamma_min'],
+                                   max=default_fit_parameters['peak2_gamma_max'],
+                                   vary=default_fit_parameters['peak2_gamma_vary'])
 
         pars.add('peak_d_spacing', expr='2*pi/peak_center')
         if peak_model != 'SkewedVoigtModel':
             pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
+        
+        if (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2'):
+            pars.add('peak2_d_spacing', expr='2*pi/peak2_center')
+            pars.add('peak2_coherence_length', expr='2*pi*0.9/peak2_fwhm')
                  
         if background_model == 'ExponentialModel':
             pars['bkg_amplitude'].set(value=default_fit_parameters['bkg_amplitude_value'],
@@ -1462,13 +1920,14 @@ class Linecut():
         self._y = y
         self._fit_results = result
 
-        
         return self
 
     def plot_fitted(self,
                     engine: str = 'px',
                     **kwargs):
-        """Plot the fitted linecut
+        """
+        Plot the fitted linecut
+
         :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
         """
@@ -1510,6 +1969,16 @@ class Linecut():
             line_width=2,
             **kwargs)
         
+        if 'peak2_' in self.fit_results.eval_components():
+            curve_peak2 = hv.Curve((self.x, self.fit_results.eval_components()['peak2_']), kdims='q', vdims='intensity', label = 'Peak2').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                line_dash='dashed',
+                color='purple',
+                line_width=2,
+                **kwargs)
+            curve_peak = curve_peak*curve_peak2
+        
         curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
@@ -1521,16 +1990,28 @@ class Linecut():
         return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
     
     def _plot_fitted_px(self, **kwargs) -> px.line:
-        """Plot the fitted linecut using plotly express
+        """
+        Plot the fitted linecut using plotly express
+
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
-        data = self.data
-        data['fitted'] = self.fit_results.best_fit
-        data['peak'] = self.fit_results.eval_components()['peak_']
-        data['bkg'] = self.fit_results.eval_components()['bkg_']
-        figure = px.line(data, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
+        toplot = pd.DataFrame()
+        toplot['q'] = self.x
+        toplot['intensity'] = self.y
+        toplot['fitted'] = self.fit_results.best_fit
+        toplot['peak'] = self.fit_results.eval_components()['peak_']
+        if 'peak2_' in self.fit_results.eval_components():
+            toplot['peak2'] = self.fit_results.eval_components()['peak2_']
+        toplot['bkg'] = self.fit_results.eval_components()['bkg_']
+        figure = px.line(toplot, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
         return figure
+    
+    def __str__(self):
+        return f'Linecut, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
     
 
 class Polar_linecut():
@@ -1545,6 +2026,10 @@ class Polar_linecut():
     def __init__(self,
                  data: pd.DataFrame,
                  metadata: dict = None):
+        
+        # check data contains chi, intensity
+        if not all(col in data.columns for col in ['chi', 'intensity']):
+            raise ValueError('data must contain columns chi and intensity')
         
         self._data = data
         self._metadata = metadata
@@ -1614,5 +2099,11 @@ class Polar_linecut():
         :return: The plot.
         """
         profile = self.data
-        figure = px.line(profile, x='q', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
+        figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
         return figure
+    
+    def __str__(self):
+        return f'Polar Linecut, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()

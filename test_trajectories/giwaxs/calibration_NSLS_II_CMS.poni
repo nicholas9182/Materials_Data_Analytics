@@ -1,0 +1,14 @@
+# Nota: C-Order, 1 refers to the Y axis, 2 to the X axis
+# Calibration done on Tue Jan 28 15:03:20 2025
+poni_version: 2.1
+Detector: Detector
+Detector_config: {"pixel1": 0.00017199999999999998, "pixel2": 0.00017199999999999998, "max_shape": [1043, 981], "orientation": 4}
+Distance: 0.2497174122244583
+Poni1: 0.10765127457256435
+Poni2: 0.08076880963335943
+Rot1: -0.02580778827751945
+Rot2: 0.012864105443178984
+Rot3: 0.0
+Wavelength: 9.537246033323096e-11
+# Calibrant: AgBh
+# Image: fabio:///G:/Drive condivisi/Operando GIWAXS/2024_10_operando NSLS/GIWAXS data/AgBH_13.5keV_5m/waxs/raw/AgBH_13.5keV_5m_1_7.1s_RH1.344_x0.124_th-0.500_10.00s_1711369_waxs.tiff

@@ -5,3 +5,4 @@ scripts/
 *.DS_Store
 dist/
 .vscode/
+local_trajectories/
