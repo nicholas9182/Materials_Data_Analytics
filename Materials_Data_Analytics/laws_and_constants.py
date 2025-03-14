@@ -29,7 +29,7 @@ def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: 
     :param discrete_bins: set to true if x is a non-continuous function
     :return: dataframe with a new column
     """
-    data[y_col_out] = np.exp((-data[y_col])/(KB /1000 /NA  * temperature))
+    data[y_col_out] = np.exp((-data[y_col])/(KB*NA/1000 * temperature))
     if not discrete_bins:
         area = np.trapz(x=data[x_col], y=data[y_col_out])
     else:
@@ -48,7 +48,7 @@ def boltzmann_population_to_energy(data: pd.DataFrame, temperature: float = 298,
     :param y_col_out: the name of the new column with the population distribution
     :return: dataframe with a new column
     """
-    data[y_col_out] = -np.log(data[y_col]) * KB /1000 /NA * temperature
+    data[y_col_out] = -np.log(data[y_col]) * KB * NA / 1000 * temperature
     return data
 
 
