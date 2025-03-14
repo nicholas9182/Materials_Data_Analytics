@@ -3,8 +3,8 @@ from setuptools import find_packages
 
 setup(
     name='Materials_Data_Analytics',
-    version="6.2.9", 
-    description='Data analysis package for materials characterisation at Stanford University',
+    version="6.2.10", 
+    description='Data analysis package for materials characterization at Stanford University',
     author='Material Science Stanford',
     author_email='nsiemons@stanford.edu',
     url="https://github.com/nicholas9182/Materials_Data_Analytics/",
@@ -16,7 +16,7 @@ setup(
         "matplotlib",
         "typer",
         "click",
-        "numpy",
+        "numpy>=1.22.3,<2.0",
         "networkx",
         "MDAnalysis",
         "dash",

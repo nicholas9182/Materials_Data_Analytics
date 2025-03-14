@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 
 # fundamentals
-KB = 0.008314463  # in kJ/mol
-R = 8.314         # (J)/(K mol)
-F = 96485.332     # (J)/(V mol)
-
-E = 1.60217662e-19 # (C)
+KB = 1.380649e-23         # Boltzmann constant in J/K
+R = 8.31446261815324      # Universal gas constant in J/(mol K)
+F = 96485.3321233100184   # Faraday constant in C/mol
+E = 1.602176634e-19       # Elementary charge in C
+NA = 6.02214076e23        # Avogadro's number in mol^-1
 
 #standard reduction potentials vs SHE
 POTENTIAL_STANDARD_O2_H2O2 = 0.695
@@ -29,7 +29,7 @@ def boltzmann_energy_to_population(data: pd.DataFrame, x_col: str, temperature: 
     :param discrete_bins: set to true if x is a non-continuous function
     :return: dataframe with a new column
     """
-    data[y_col_out] = np.exp((-data[y_col])/(KB * temperature))
+    data[y_col_out] = np.exp((-data[y_col])/(KB*NA/1000 * temperature))
     if not discrete_bins:
         area = np.trapz(x=data[x_col], y=data[y_col_out])
     else:
@@ -48,7 +48,7 @@ def boltzmann_population_to_energy(data: pd.DataFrame, temperature: float = 298,
     :param y_col_out: the name of the new column with the population distribution
     :return: dataframe with a new column
     """
-    data[y_col_out] = -np.log(data[y_col]) * KB * temperature
+    data[y_col_out] = -np.log(data[y_col]) * KB * NA / 1000 * temperature
     return data
 
 

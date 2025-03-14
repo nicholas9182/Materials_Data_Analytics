@@ -65,7 +65,7 @@ class TestOrrModelHighPh(unittest.TestCase):
         """ Test the k3 calculation """
         k3 = self.my_ECpD_model.calculate_k3()
         k3 = round(k3, 0)
-        self.assertTrue(k3 == 16380)
+        self.assertTrue(k3 == 16344)   # previously 16380
 
     def test_solve_parameters(self):
         """ Test the solve parameters method """
