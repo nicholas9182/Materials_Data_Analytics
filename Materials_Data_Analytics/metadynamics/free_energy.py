@@ -5,10 +5,10 @@ import os
 import plotly.graph_objects as go
 import plotly.express as px
 from pandas import DataFrame
-from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, KB, boltzmann_population_to_energy
+from Materials_Data_Analytics.laws_and_constants import boltzmann_energy_to_population, KB, NA, boltzmann_population_to_energy
 pd.set_option('mode.chained_assignment', None)
 
-
+KB = KB*NA/1000 # Boltzmann constant in kJ/mol/K
 class MetaTrajectory:
     """
     Class to handle colvar files, which here are thought of as a metadynamics trajectory in CV space.
