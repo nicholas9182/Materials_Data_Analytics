@@ -249,7 +249,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return cv
     
     @classmethod
-    def Nyquist(cls, path: str = None, format: str = None, data: pd.DataFrame = None, **kwargs):
+    def nyquist(cls, path: str = None, format: str = None, data: pd.DataFrame = None, **kwargs):
         """
         Function to process Nyquist data and calculate electrolyte resistance.
         """
