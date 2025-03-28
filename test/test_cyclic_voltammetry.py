@@ -60,6 +60,10 @@ class TestBiologic1(unittest.TestCase):
         self.assertTrue(type(self.cv._object_creation_time) == dt)
         self.assertTrue(type(self.cv.object_creation_time) == str)
 
+        valid_references = {'rhe', 'she', 'agagcl'}
+        self.assertTrue(self.cv.potential_reference.lower() in valid_references, 
+                        f"Invalid potential reference: {self.cv.potential_reference}")
+        
     def test_drop_cycles(self):
         """ Test the drop_cycles method """
         data = copy(self.cv).drop_cycles(drop=[1]).data

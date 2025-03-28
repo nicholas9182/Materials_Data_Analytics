@@ -340,13 +340,30 @@ class ElectrochemicalMeasurement(Measurement):
     Nicholas Siemons
     Contributors:
     """
-    def __init__(self, electrolyte: Electrolyte = None, metadata: dict = None) -> None:
+    def __init__(self, electrolyte: Electrolyte = None,
+                 metadata: dict = None,
+                 potential_reference: str = None) -> None:
         super().__init__(metadata=metadata)
         self._electrolyte = electrolyte
+        self.potential_reference = potential_reference  
 
     @property
     def electrolyte(self) -> Electrolyte:
         return self._electrolyte
+
+    @property
+    def potential_reference(self) -> str:
+        return self._potential_reference
+
+    @potential_reference.setter
+    def potential_reference(self, value: str) -> None:
+        valid_references = {'rhe', 'she', 'agagcl'}
+        normalized_value = value.lower()  #not sure?
+        if normalized_value in valid_references:
+            self._potential_reference = normalized_value  
+        else:
+            raise ValueError(f"Invalid potential reference: {value}. Must be one of {', '.join(valid_references)}.")
+
     
     @staticmethod
     def _find_voltage_peaks(data):

@@ -24,10 +24,11 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                  current: Union[list, pd.Series, np.array] = None,
                  time: Union[list, pd.Series, np.array] = None,
                  electrolyte: Electrolyte = None,
-                 metadata: dict = None
+                 metadata: dict = None,
+                 potential_reference: str = "AgAgCl"  
                  ) -> None:
         
-        super().__init__(electrolyte, metadata=metadata)
+        super().__init__(electrolyte, metadata=metadata, potential_reference=potential_reference)
 
         self._data = pd.DataFrame()
 
@@ -167,7 +168,10 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         return cv
 
     @classmethod
-    def from_biologic(cls, path: str = None, data: pd.DataFrame = None, **kwargs):
+    def from_biologic(cls, path: str = None, 
+                    data: pd.DataFrame = None, 
+                    potential_reference: str = "AgAgCl",  
+                    **kwargs):
         """
         Function to make a CyclicVoltammogram object from a biologic file
         """
@@ -182,12 +186,16 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
                 .filter(['potential', 'current', 'time'])
                 )
 
-        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
-        
+        cv = cls(potential=data['potential'], 
+                current=data['current'], 
+                time=data['time'], 
+                potential_reference=potential_reference,
+                **kwargs)
+
         return cv
-    
+
     @classmethod
-    def from_aftermath(cls, path: str = None, scan_rate: float = None, data: pd.DataFrame = None, **kwargs):
+    def from_aftermath(cls, path: str = None, scan_rate: float = None, data: pd.DataFrame = None, potential_reference: str = "AgAgCl",  **kwargs):
         """
         Function to make a CyclicVoltammogram object from an AfterMath file
         :param path: str, path to the AfterMath file
@@ -215,7 +223,7 @@ class CyclicVoltammogram(ElectrochemicalMeasurement):
         
         data.loc[0, 'time'] = 0
 
-        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], **kwargs)
+        cv = cls(potential=data['potential'], current=data['current'], time=data['time'], potential_reference=potential_reference, **kwargs)
 
         return cv
     
