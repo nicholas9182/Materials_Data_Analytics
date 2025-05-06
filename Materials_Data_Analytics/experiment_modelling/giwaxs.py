@@ -31,7 +31,9 @@ class Calibrator():
                  energy: float = None,
                  wavelength: float = None,
                  detector = None):
-        """Create a calibration object
+        """
+        Create a calibration object
+
         :param distance: sample-detector distance in meters
         :param poni1: coordinate of the point of normal incidence on the detector in the detector plane
         :param poni2: coordinate of the point of normal incidence on the detector in the detector plane
@@ -43,7 +45,7 @@ class Calibrator():
         :param detector: detector object or string
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -58,6 +60,7 @@ class Calibrator():
         self._rot1 = rot1
         self._rot2 = rot2
         self._rot3 = rot3
+        self._object_creation_time = datetime.now()
 
         if energy is not None:
             self._energy = energy
@@ -114,7 +117,7 @@ class Calibrator():
         :return: an instance of the Calibrator class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI > 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
@@ -143,13 +146,19 @@ class Calibrator():
         Function to return an Azimuthal Integrator class from the pyFAI class
         """
         if importlib.util.find_spec('pyFAI') is None:
-            raise ImportError('pyFAI is required to run this function. Please install pyFAI using pip install pyFAI')
+            raise ImportError('pyFAI >= 2025.1.0 is required to run this function. Please install pyFAI using pip install pyFAI')
         else:
             import pyFAI
 
-        return pyFAI.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
-                                         rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
-                                         wavelength=self._wavelength)
+        return pyFAI.integrator.azimuthal.AzimuthalIntegrator(dist=self._distance, poni1=self._poni1, poni2=self._poni2,
+                                                              rot1=self._rot1, rot2=self._rot2, rot3=self._rot3, detector=self._detector, 
+                                                              wavelength=self._wavelength)
+    
+    def __str__(self):
+        return f'GIWAXS Calibrator, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
     
 
 class GIWAXSPixelImage(ScatteringMeasurement):
@@ -239,6 +248,7 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                          metadata: dict = {}) -> 'GIWAXSPixelImage':
         
         """Load a GIWAXS measurement from SLAC BL11-3 beamline
+
         :param tif_filepaths: list of filepaths to the tif files
         :param txt_filepaths: list of filepaths to the txt files
         :param verbose: whether to print the output
@@ -539,7 +549,9 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         return merged_image
 
     def apply_mask(self, mask_path: str) -> 'GIWAXSPixelImage':
-        """ Apply a mask to the image.
+        """ 
+        Apply a mask to the image.
+
         :param mask_path: path to the mask file
         :return: the masked image
         """   
@@ -820,6 +832,12 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         
         img = hv.Image(self._image, kdims=['x', 'y']).opts(**kwargs)
         return img
+    
+    def __str__(self):
+        return f'GIWAXS Pixel Image, {self._timestamp}'
+    
+    def __repr__(self):
+        return self.__str__()
     
         
 class GIWAXSPattern(ScatteringMeasurement):
@@ -1486,7 +1504,10 @@ class GIWAXSPattern(ScatteringMeasurement):
                     chi : tuple | list | pd.Series | float = None,
                     q_range : tuple | list | pd.Series = None,
                     mirror : bool = False) -> 'Linecut':
-        """Extract a profile from the polar space data.
+        
+        """
+        Extract a profile from the polar space data.
+
         :param chi: Range of chi values or a single chi value.
         :param q_range: q_range.
         :param mirror: Whether to mirror the data.
@@ -1565,6 +1586,12 @@ class GIWAXSPattern(ScatteringMeasurement):
         metadata['q'] = q
         
         return Polar_linecut(data, metadata = metadata)
+    
+    def __str__(self):
+        return f'GIWAXS Pattern, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
          
     
 
@@ -1584,6 +1611,7 @@ class Linecut(ScatteringMeasurement):
             raise ValueError('data must contain columns q and intensity')
         self._data = data
         self._metadata = metadata
+        self._object_creation_time = datetime.now()
 
     @property
     def data(self):
@@ -1798,7 +1826,9 @@ class Linecut(ScatteringMeasurement):
                     background_model: str,
                     q_range: tuple,
                     initial_parameters: dict = {}) -> 'Linecut':          
-        """Fit the linecut to a model
+        """
+        Fit the linecut to a model
+
         :param peak_model: The peak model to use. Options are 'GaussianModel', 'LorentzianModel', 'VoigtModel', 'PseudoVoigtModel', 'SkewedVoigtModel'
         :param background_model: The background model to use. Options are 'ExponentialModel', 'LinearModel', 'ConstantModel', PowerLawModel
         :param q_range: The range of q values to fit
@@ -2070,13 +2100,14 @@ class Linecut(ScatteringMeasurement):
         self._y = y
         self._fit_results = result
 
-        
         return self
 
     def plot_fitted(self,
                     engine: str = 'px',
                     **kwargs):
-        """Plot the fitted linecut
+        """
+        Plot the fitted linecut
+
         :param engine: The engine to use for plotting. Either plotly or hvplot.
         :return: The plot.
         """
@@ -2139,7 +2170,9 @@ class Linecut(ScatteringMeasurement):
         return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
     
     def _plot_fitted_px(self, **kwargs) -> px.line:
-        """Plot the fitted linecut using plotly express
+        """
+        Plot the fitted linecut using plotly express
+
         :param kwargs: additional arguments to pass to the plot
         :return: The plot.
         """
@@ -2153,6 +2186,12 @@ class Linecut(ScatteringMeasurement):
         toplot['bkg'] = self.fit_results.eval_components()['bkg_']
         figure = px.line(toplot, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
         return figure
+    
+    def __str__(self):
+        return f'Linecut, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()
     
 
 class Polar_linecut(ScatteringMeasurement):
@@ -2242,3 +2281,9 @@ class Polar_linecut(ScatteringMeasurement):
         profile = self.data
         figure = px.line(profile, x='chi', y='intensity', labels={'chi': '\u03C7 [\u00B0]', 'intensity': 'Intensity'}, **kwargs)
         return figure
+    
+    def __str__(self):
+        return f'Polar Linecut, {self._object_creation_time}'
+    
+    def __repr__(self):
+        return self.__str__()

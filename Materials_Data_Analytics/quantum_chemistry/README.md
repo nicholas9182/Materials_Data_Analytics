@@ -10,13 +10,15 @@ The quantum_chemistry module contains classes for parsing and analysing quantum 
 
 ### Getting Started
 
-A GaussianParser object can be created either from a gaussian log output file, or from a list of output files (if, for example calculation restarts are rquired). At the moment it is assumed that the flag #p was included in the keywords line of the gaussian input file, indicating the log file to be more verbose in its output. 
+A GaussianParser object can be created either from a gaussian log output file, or from a list of output files (if, for example calculation restarts are rquired). At the moment it is assumed that the flag #p was included in the keywords line of the gaussian input file, indicating the log file to be more verbose in its output.  
+
+All energies are returned in eV, and distances in Angstroms.
 
 ```python
 from Materials_Data_Analytics.quantum_chemistry.gaussian import GaussianParser
 
 my_gaussian = GaussianParser('path/to/logfile.log')
-my_gaussian = GaussianParser(['path/to/logfile1.log', 'path/to/logfile2.log'])
+my_gaussian = GaussianParser(['path/to/logfile1.log', 'path/to/logfile2.log']) 
 ```
 
 ### Attributes
@@ -47,6 +49,10 @@ The GausianParser class contains various attributes which can easily be accessed
  - ```homo``` - The HOMO energy level with reference to the vacuum level
  - ```lumo``` - The LUMO energy level with reference to the vacuum level
  - ```bandgap``` - The bandgap of the material
+
+ If a vibrational analysis has been done, the parser will contain the additional keywords:
+ - ```thermal_energy_corrections``` - A dictionary of energy corrections calculated during the thermochemical analysis
+ - ```free_energy``` - the free energy of the molecule as calculated via a thermochemical analysis
 
 
 ### Methods
@@ -91,6 +97,5 @@ raman_spectra = my_gaussian.get_raman_spectra() # get the raman spectra for the 
 or orbital analysis:
 
 ```python 
-orbital_data = my_gaussian.get_orbitals() # get the orbital energies as a pandas dataframe
 dos_plot = my_gaussian.get_dos_plot(height=800, width=800) # get the density of states plot
 ```

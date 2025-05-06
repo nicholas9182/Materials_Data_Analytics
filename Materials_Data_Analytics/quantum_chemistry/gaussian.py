@@ -7,6 +7,12 @@ import plotly.express as px
 
 pd.set_option('mode.chained_assignment', None)
 
+H_TO_J = 4.359744650e-18
+J_TO_EV = 6.242e18
+E_TO_C = 1.60217662e-19
+C_TO_E = 6.242e18
+H_TO_EV = 27.211386245988
+EV_TO_KJMOL = 96.485
 
 class GaussianParser:
     """
@@ -40,7 +46,7 @@ class GaussianParser:
 
         # get the charge and multiplicity from the log file
         if any('Charge =' in c for c in self._lines):
-            self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0])
+            self._charge = int([c for c in self._lines if 'Charge =' in c][0][9:].split()[0]) * E_TO_C
             self._multiplicity = int([m for m in self._lines if 'Charge =' in m][0][27:])
         else:
             self._charge = None
@@ -48,7 +54,7 @@ class GaussianParser:
 
         # get the energy from the log file
         if any('SCF Done' in e for e in self._lines):
-            self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * 2625.5
+            self._energy = float([e for e in self._lines if 'SCF Done' in e][-1].split()[4]) * H_TO_J
             self._unrestricted = True if [e for e in self._lines if 'SCF Done' in e][-1].split()[2][2] == "U" else False
             self._scf_iterations = len([e for e in self._lines if 'SCF Done' in e]) - len([e for e in self._lines if '>>>>>>>>>> Convergence criterion not met' in e])
         else:
@@ -80,26 +86,69 @@ class GaussianParser:
         else:
             self._stable = "untested"
 
+        # Get the orbitals from the log file
+        self._orbitals = self._get_orbitals()
+        self._homo = self._orbitals.query('occupied == True').query('energy == energy.max()')['energy'].iloc[0]
+        self._lumo = self._orbitals.query('occupied == False').query('energy == energy.min()')['energy'].iloc[0]
+        self._bandgap = self._lumo - self._homo
+
+        # get the thermochemistry properties
+        if self._freq is True:
+            self._thermal_energy_corrections = {
+                'zero_point_correction': float([line for line in self._lines if "Zero-point correction" in line][0].split()[2]) * H_TO_J,
+                'thermal_correction_to_energy': float([line for line in self._lines if "Thermal correction to Energy=" in line][0].split()[4]) * H_TO_J,
+                'thermal_correction_to_enthalpy': float([line for line in self._lines if "Thermal correction to Enthalpy=" in line][0].split()[4]) * H_TO_J,
+                'thermal_correction_to_free_energy': float([line for line in self._lines if "Thermal correction to Gibbs Free Energy=" in line][0].split()[6]) * H_TO_J,
+                'sum_of_electronic_and_zp_energies': float([line for line in self._lines if "Sum of electronic and zero-point Energies=" in line][0].split()[6]) * H_TO_J,
+                'sum_of_electronic_and_thermal_energies': float([line for line in self._lines if "Sum of electronic and thermal Energies=" in line][0].split()[6]) * H_TO_J,
+                'sum_of_electronic_and_thermal_enthalpies': float([line for line in self._lines if "Sum of electronic and thermal Enthalpies=" in line][0].split()[6]) * H_TO_J
+            }
+            self._free_energy = float([line for line in self._lines if "Sum of electronic and thermal Free Energies=" in line][0].split()[7]) * H_TO_J
+
+    @property
+    def thermal_energy_corrections(self) -> dict:
+        if hasattr(self, '_thermal_energy_corrections'):
+            return {k: round(v * J_TO_EV, 5) for k, v in self._thermal_energy_corrections.items()}
+        else:
+            raise AttributeError("Must do a vibrational frequency calculation to get the thermal energy corrections")
+
+    @property
+    def free_energy(self) -> float:
+        if hasattr(self, '_free_energy'):
+            return round(self._free_energy * J_TO_EV, 5)
+        else:
+            raise AttributeError("Must do a vibrational frequency calculation to get the electronic plus thermal free energies")
+
+    @property
+    def orbitals(self) -> pd.DataFrame:
+        """
+        Function to return the orbitals as a dataframe
+        """
+        return (self
+                ._orbitals
+                .assign(energy = lambda x: x['energy'] * J_TO_EV)
+                )
+
     @property
     def homo(self) -> float:
         """
         Function to get the HOMO energy with reference to the vacuum level
         """
-        return self.get_orbitals().query('occupied == True').query('energy == energy.max()')['energy'].iloc[0]
+        return round(self._homo * J_TO_EV, 5)
     
     @property
     def lumo(self) -> float:
         """
         Function to get the LUMO energy with reference to the vacuum level
         """
-        return self.get_orbitals().query('occupied == False').query('energy == energy.min()')['energy'].iloc[0]
+        return round(self._lumo * J_TO_EV, 5)
 
     @property
     def bandgap(self) -> float:
         """
         Function to get the band gap from the log file
         """
-        return self.lumo - self.homo
+        return round(self._bandgap * J_TO_EV, 5)
 
     @property
     def n_alpha(self) -> int:
@@ -170,11 +219,11 @@ class GaussianParser:
 
     @property
     def energy(self) -> float:
-        return self._energy
+        return round(self._energy * J_TO_EV, 5)
 
     @property
     def charge(self) -> int:
-        return self._charge
+        return round(self._charge * C_TO_E, 5)
 
     @property
     def raman(self) -> bool:
@@ -295,7 +344,7 @@ class GaussianParser:
         data = (pd
                 .DataFrame({
                     'iteration': [i for i in range(len(scf_lines))],
-                    'energy': [float(s.split()[4]) * 2625.5 for s in scf_lines],
+                    'energy': [float(s.split()[4]) * H_TO_EV for s in scf_lines],
                     'cycles': [int(s.split()[7]) for s in scf_lines]})
                 .assign(de = lambda x: x['energy'].diff())
                 .assign(energy = lambda x: x['energy'] - x['energy'].iloc[-1])
@@ -304,35 +353,6 @@ class GaussianParser:
         data['de'].iloc[0] = data['de'].iloc[1]
         
         return data
-
-    def get_thermo_chemistry(self) -> pd.DataFrame:
-        """
-        Function to extract the thermochemistry values from a log file
-        :return: thermochemistry values
-        """
-
-        if self._freq is False:
-            raise ValueError("Your log file needs to be from a vibrational analysis")
-
-        zero_point_correction = float([line for line in self._lines if "Zero-point correction" in line][0].split()[2]) * 2625.5
-        energy_thermal_cor = float([line for line in self._lines if "Thermal correction to Energy=" in line][0].split()[4]) * 2625.5
-        enthalpy_thermal_cor = float([line for line in self._lines if "Thermal correction to Enthalpy=" in line][0].split()[4]) * 2625.5
-        gibbs_thermal_cor = float([line for line in self._lines if "Thermal correction to Gibbs Free Energy=" in line][0].split()[6]) * 2625.5
-        electronic_and_zp = float([line for line in self._lines if "Sum of electronic and zero-point Energies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_e = float([line for line in self._lines if "Sum of electronic and thermal Energies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_s = float([line for line in self._lines if "Sum of electronic and thermal Enthalpies=" in line][0].split()[6]) * 2625.5
-        elec_and_thermal_g = float([line for line in self._lines if "Sum of electronic and thermal Free Energies=" in line][0].split()[7]) * 2625.5
-
-        return pd.DataFrame({
-            'zp_corr': [zero_point_correction],
-            'e_corr': [energy_thermal_cor],
-            's_corr': [enthalpy_thermal_cor],
-            'g_corr': [gibbs_thermal_cor],
-            'e_elec_zp': [electronic_and_zp],
-            'e_elec_therm': [elec_and_thermal_e],
-            's_elec_therm': [elec_and_thermal_s],
-            'g_elec_therm': [elec_and_thermal_g]
-        })
 
     def get_bonds_from_log(self):
         """
@@ -398,7 +418,7 @@ class GaussianParser:
                  .round(4)
                  )
 
-        cross[['atom_id_1', 'atom_id_2']] = (np.sort(cross[['atom_id_1', 'atom_id_2']].to_numpy(), axis=1))
+        cross[['atom_id_1', 'atom_id_2']] = np.sort(cross[['atom_id_1', 'atom_id_2']].to_numpy(), axis=1)
 
         data = (cross
                 .groupby(['atom_id_1', 'atom_id_2'])
@@ -459,6 +479,7 @@ class GaussianParser:
         """
         start_line = len(self._lines) - self._lines[::-1].index([k for k in self._lines if 'Mulliken charges' in k][0]) + 1
         end_line = start_line + self._atomcount
+        
         if heavy_atoms is False:
             data = pd.DataFrame({
                 "atom_id": [int(a.split()[0]) for a in self._lines[start_line:end_line]],
@@ -630,7 +651,7 @@ class GaussianParser:
         PdbParser.pandas_to_pdb_trajectory(coordinates, time_col='iteration', filename=filename, path=path, fit_t0=fit_t0)
         return None
     
-    def get_orbitals(self):
+    def _get_orbitals(self):
         """
         Function to get the orbital information from the log file
         """
@@ -652,8 +673,8 @@ class GaussianParser:
             alpha_virt = [s.split()[4:] for s in alpha_virt]
             alpha_occ = [item for sublist in alpha_occ for item in sublist]
             alpha_virt = [item for sublist in alpha_virt for item in sublist]
-            alpha_occ = [float(a)*2625.5 for a in alpha_occ]
-            alpha_virt = [float(a)*2625.5 for a in alpha_virt]
+            alpha_occ = [float(a) * H_TO_J for a in alpha_occ]
+            alpha_virt = [float(a) * H_TO_J for a in alpha_virt]
             alpha_occ_df = pd.DataFrame({'energy': alpha_occ, 'occupied': True})
             alpha_virt_df = pd.DataFrame({'energy': alpha_virt, 'occupied': False})
 
@@ -670,8 +691,8 @@ class GaussianParser:
             beta_virt = [s.split()[4:] for s in beta_virt]
             beta_occ = [item for sublist in beta_occ for item in sublist]
             beta_virt = [item for sublist in beta_virt for item in sublist]
-            beta_occ = [float(a)*2625.5 for a in beta_occ]
-            beta_virt = [float(a)*2625.5 for a in beta_virt]
+            beta_occ = [float(a) * H_TO_J for a in beta_occ]
+            beta_virt = [float(a) * H_TO_J for a in beta_virt]
             beta_occ_df = pd.DataFrame({'energy': beta_occ, 'occupied': True})
             beta_virt_df = pd.DataFrame({'energy': beta_virt, 'occupied': False})
 
@@ -691,7 +712,7 @@ class GaussianParser:
     
     def get_dos_plot(self, **kwargs):
         """ Function to return a density of states plot """
-        data = self.get_orbitals()
+        data = self.orbitals
         bins = len(data) // 2
         figure = px.histogram(data, x='energy', marginal='rug', color='occupied', nbins=bins, 
                               pattern_shape='electron', labels={'energy': 'E [kJ/mol]'}, **kwargs)

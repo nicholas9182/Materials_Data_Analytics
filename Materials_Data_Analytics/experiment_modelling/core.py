@@ -3,8 +3,9 @@ import pandas as pd
 import scipy as sp
 import numpy as np
 import plotly.graph_objects as go
+from scipy.signal import find_peaks
 import plotly.express as px
-
+from datetime import datetime as dt
 
 class Measurement():
     """
@@ -16,6 +17,11 @@ class Measurement():
     def __init__(self, metadata: dict = None) -> None:
         self._data = pd.DataFrame()
         self._metadata = metadata if metadata is not None else {}
+        self._object_creation_time = dt.now()
+
+    @property
+    def object_creation_time(self) -> str:
+        return self._object_creation_time.strftime('%Y-%m-%d %H:%M:%S')
 
     @property
     def metadata(self) -> dict:
@@ -71,7 +77,12 @@ class Measurement():
         return roots[0]
     
     @staticmethod
-    def find_local_peak(data, y_col: str, x_col: str, initial_guess: float, window = 0.01, polynomial_order = 4) -> pd.DataFrame:
+    def find_local_peak_with_polynomial(data, 
+                                        y_col: str, 
+                                        x_col: str, 
+                                        initial_guess: float, 
+                                        window = 0.01, 
+                                        polynomial_order = 4) -> pd.DataFrame:
         """
         Function to find a local peak in a data set. 
         1. Fit a polynomial to the data
@@ -472,6 +483,49 @@ class ElectrochemicalMeasurement(Measurement):
     @property
     def electrolyte(self) -> Electrolyte:
         return self._electrolyte
+    
+    @staticmethod
+    def _find_voltage_peaks(data):
+        """
+        Function to find the voltage peaks in a data set
+        """
+        data = data.sort_values('time').reset_index(drop=True)
+
+        # get the potential range and peak height
+        potential_max = data['potential'].max()
+        potential_min = data['potential'].min()
+        potential_range = potential_max - potential_min
+        peak_height = 0.1 * potential_range
+
+        # find the peaks
+        positive_peaks, _ = find_peaks(data['potential'], prominence=peak_height)
+        negative_peaks, _ = find_peaks(-data['potential'], prominence=peak_height)
+
+        # determine the direction of the first peak
+        if positive_peaks[0] < negative_peaks[0]:
+            direction = 'oxidation'
+        else:
+            direction = 'reduction'
+
+        # assign the direction to each point and determine its segment
+        direction_list = []
+        segment_list = []
+        segment = 0
+        for index, row in data.iterrows():
+            direction_list.append(direction)
+            segment_list.append(segment)
+            if index in positive_peaks:
+                direction = 'reduction'
+                segment += 1
+            if index in negative_peaks:
+                direction = 'oxidation'
+                segment += 1
+        
+        data['direction'] = direction_list
+        data['segment'] = segment_list
+        data['cycle'] = ((data['segment']-1) // 2) + 1 
+
+        return data
 
 
 class ScatteringMeasurement(Measurement):
