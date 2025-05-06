@@ -139,6 +139,141 @@ class Measurement():
 
         return data
     
+
+    @staticmethod
+    def binary_search(x0:float,
+                   y0:float,
+                   intensity_flatten_vector:np.array,
+                   x_range: tuple,
+                   y_range:tuple,
+                   nodes_x:int,
+                   nodes_y:int):
+        """
+        Function to find the intensity of a point in a 2D grid using bilinear interpolation
+        
+        :param x0: The x value of the point
+        :param y0: The y value of the point
+        :param intensity_flatten_vector: The intensity vector of the 2D grid
+        :param x_range: The x range of the grid
+        :param y_range: The y range of the grid
+        :param nodes_x: The number of nodes in the x direction
+        :param nodes_y: The number of nodes in the y direction
+        :return: The intensity of the point
+        """
+
+            
+        dq = (x_range[1] - x_range[0]) / (nodes_x-1)
+        dchi = (y_range[1] - y_range[0]) / (nodes_y-1)
+
+        q_index = int((x0 - x_range[0]) / dq)
+        chi_index = int((y0 - y_range[0]) / dchi)
+
+        corner = np.zeros(4).tolist()           
+        corner[0] = chi_index * nodes_x + q_index
+        corner[1] = chi_index * nodes_x + q_index + 1
+        corner[2] = (chi_index + 1) * nodes_x + q_index
+        corner[3] = (chi_index + 1) * nodes_x + q_index + 1
+
+        weight_q = ((x0 - x_range[0])-dq*q_index)/dq
+        weight_chi = ((y0 - y_range[0])-dchi*chi_index)/dchi
+
+        weight = np.zeros(4).tolist()
+        weight[0] = (1-weight_q) * (1-weight_chi)
+        weight[1] = (weight_q) * (1-weight_chi)
+        weight[2] = (1-weight_q) * (weight_chi)
+        weight[3] = (weight_q) * (weight_chi)
+
+        skipList = []
+
+        if weight_q == 1:
+            skipList.append(0)
+            skipList.append(2)
+        if weight_q == 0:
+            skipList.append(1)
+            skipList.append(3)
+        if weight_chi == 1:
+            skipList.append(0)
+            skipList.append(1)
+        if weight_chi == 0:
+            skipList.append(2)
+            skipList.append(3)
+
+        if q_index > nodes_x-1 or q_index < 0:
+            skipList.append(2)
+            skipList.append(0)
+            skipList.append(1)
+            skipList.append(3)
+        elif chi_index > nodes_y-1 or chi_index < 0:
+            skipList.append(0)
+            skipList.append(1)
+            skipList.append(2)
+            skipList.append(3)
+        if q_index == nodes_x-1:
+            skipList.append(1)
+            skipList.append(3)
+        if chi_index == nodes_y-1:
+            skipList.append(2)
+            skipList.append(3)
+            
+        intensity_List = np.zeros(4).tolist()
+        for i in range (0,4):
+            if i not in skipList:
+                intensity_List[i] = intensity_flatten_vector[corner[i]]
+                if bool(np.isnan(intensity_flatten_vector[corner[i]])):
+                    skipList.append(i)
+            else:
+                intensity_List[i] = np.nan
+                skipList.append(i)
+        
+        skipList = list(set(skipList))
+
+        
+        if len(skipList) == 4:
+            return None
+        
+        elif len(skipList) == 0: 
+            intensity_binsearch = (weight[0]*intensity_List[0]+weight[1]*intensity_List[1]+weight[2]*intensity_List[2]+weight[3]*intensity_List[3])
+            # print(f"q = {q}, q_corner1 = {dq*q_index + q_range[0]}, q_corner2 = {dq*q_index + q_range[0] + dq}")
+            # print(f"chi = {chi}, chi_corner1 = {dchi*chi_index + chi_range[0]}, chi_corner2 = {dchi*chi_index + chi_range[0] + dchi}")
+        
+        elif len(skipList) == 1:
+            if 0 in skipList:
+                intensity_binsearch = (weight[1]*intensity_List[1]+weight[2]*intensity_List[2]+weight[3]*intensity_List[3])/(weight[1]+weight[2]+weight[3])
+            elif 1 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[2]*intensity_List[2]+weight[3]*intensity_List[3])/(weight[0]+weight[2]+weight[3])
+            elif 2 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[1]*intensity_List[1]+weight[3]*intensity_List[3])/(weight[0]+weight[1]+weight[3])
+            elif 3 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[1]*intensity_List[1]+weight[2]*intensity_List[2])/(weight[0]+weight[1]+weight[2])
+        
+        elif len(skipList) == 2:
+            if 0 in skipList and 1 in skipList:
+                intensity_binsearch = (weight[2]*intensity_List[2]+weight[3]*intensity_List[3])/(weight[2]+weight[3])
+            elif 0 in skipList and 2 in skipList:
+                intensity_binsearch = (weight[1]*intensity_List[1]+weight[3]*intensity_List[3])/(weight[1]+weight[3])
+            elif 0 in skipList and 3 in skipList:
+                intensity_binsearch = (weight[1]*intensity_List[1]+weight[2]*intensity_List[2])/(weight[1]+weight[2])
+            elif 1 in skipList and 2 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[3]*intensity_List[3])/(weight[0]+weight[3])
+            elif 1 in skipList and 3 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[2]*intensity_List[2])/(weight[0]+weight[2])
+            elif 2 in skipList and 3 in skipList:
+                intensity_binsearch = (weight[0]*intensity_List[0]+weight[1]*intensity_List[1])/(weight[0]+weight[1])
+        
+        elif len(skipList) == 3:
+            if 0 not in skipList:
+                intensity_binsearch = intensity_List[0]
+            elif 1 not in skipList:
+                intensity_binsearch = intensity_List[1]
+            elif 2 not in skipList:
+                intensity_binsearch = intensity_List[2]
+            elif 3 not in skipList:
+                intensity_binsearch = intensity_List[3]
+        
+        if bool(np.isnan(intensity_binsearch)):
+            print(f"q = {x0}, q_index = {q_index}, chi = {y0}, chi_index = {chi_index}")
+        return intensity_binsearch
+    
     def plot_pixel_map_px(self,
                        data: pd.DataFrame,
                        x: str,
@@ -320,6 +455,7 @@ class Measurement():
             figure.update_traces(colorbar={'title': z_label})
 
         return figure
+    
         
 
 class ElectrochemicalMeasurement(Measurement):
