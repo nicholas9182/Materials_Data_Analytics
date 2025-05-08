@@ -4,13 +4,15 @@ authors:
   - family-names: Siemons
     given-names: Nicholas
     orcid: https://orcid.org/0000-0002-0755-3981
-  - family-names: Sagireddy
-    given-names: Srikant
   - family-names: Magni
     given-names: Arianna
     orcid: https://orcid.org/0000-0002-9376-4522
+  - family-names: Sagireddy
+    given-names: Srikant
+  - family-names: Shad
+    given-names: Alison
 title: "Materials_Data_Analytics"
-version: 6.2.4
+version: 6.2.10
 doi: 10.5281/zenodo.13761221 
 date-released: 2024-09-13
 
