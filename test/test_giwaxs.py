@@ -120,7 +120,7 @@ class TestGIWAXSPattern(unittest.TestCase):
                                                     q_range = (0, 3),
                                                     chi_range = (-95, 95),
                                                     pixel_q = 100,
-                                                    pixel_chi = 80,
+                                                    pixel_chi = 100,
                                                     correct_solid_angle = True,
                                                     polarization_factor = None,
                                                     unit = 'A'
@@ -129,12 +129,12 @@ class TestGIWAXSPattern(unittest.TestCase):
     
     def test_attributes(self):
         ''' Test the attributes of the GIWAXSPattern class '''
-        self.assertTrue(self.data_SLAC_BL113.qxy.shape == (80,))
+        self.assertTrue(self.data_SLAC_BL113.qxy.shape == (100,))
         self.assertTrue(self.data_SLAC_BL113.qz.shape == (100,))
         self.assertTrue(self.data_SLAC_BL113.q.shape == (100,))
-        self.assertTrue(self.data_SLAC_BL113.chi.shape == (151,))
-        self.assertTrue(len(self.data_SLAC_BL113.data_polar) == 8179)
-        self.assertTrue(len(self.data_SLAC_BL113.data_reciprocal) == 7206)
+        self.assertTrue(self.data_SLAC_BL113.chi.shape == (100,))
+        self.assertTrue(len(self.data_SLAC_BL113.data_polar) == 10000)
+        self.assertTrue(len(self.data_SLAC_BL113.data_reciprocal) == 10000)
 
     def test_plotting(self):
         
@@ -166,7 +166,7 @@ class TestGIWAXSPattern(unittest.TestCase):
 
         polar_linecut = self.data_SLAC_BL113.get_polar_linecut(q = (1), chi_range = (0,90))
         self.assertTrue(type(polar_linecut) == Polar_linecut)
-        self.assertTrue(len(polar_linecut.data) == 37)
+        self.assertTrue(len(polar_linecut.data) == 47)
         self.assertTrue('chi' in polar_linecut.data.columns)
         self.assertTrue('intensity' in polar_linecut.data.columns)
 
