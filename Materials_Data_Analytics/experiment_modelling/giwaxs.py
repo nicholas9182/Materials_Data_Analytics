@@ -285,6 +285,78 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                    timestamp,
                    metadata = metadata,
                    number_of_averaged_images = N)
+    
+    @classmethod
+    def from_SLAC_BL10_2(cls, 
+                         tif_filepaths: list[str] | str  = None, 
+                         csv_filepath: list[str] | str = None,
+                         incidence_angle: float = None,
+                         verbose: bool = False,
+                         metadata: dict = {}) -> 'GIWAXSPixelImage':
+        
+        """Load a GIWAXS measurement from SLAC BL10-2 beamline
+
+        :param tif_filepaths: list of filepaths to the tif files
+        :param csv_filepath: path to the csv file with the parameters
+        :param incidence_angle: incidence angle in degrees
+        :param verbose: whether to print the output
+        :param metadata: metadata to be stored with the measurement
+        :return: an instance of the GIWAXSMeasurement class
+        """     
+        if csv_filepath is None:
+            raise ValueError('csv_filepath is required')
+        else:
+            if verbose:
+                print(f'Metadata will be extracted from {csv_filepath}')
+
+        if tif_filepaths is None:
+            raise ValueError('tif_filepaths is required')
+        else:
+            if isinstance(tif_filepaths, str):
+                tif_filepaths = [tif_filepaths]
+
+        if incidence_angle is None:
+            raise ValueError('incidence_angle is required')
+                
+        param_csv = pd.read_csv(csv_filepath, sep=',', header=0)
+        param_csv.columns = param_csv.columns.str.strip()
+
+        data = (pd.
+                DataFrame({'img_filepath': tif_filepaths}).
+                assign(ScanN = lambda x: [int(os.path.basename(f).split('.')[0].split('_')[-1]) for f in x['img_filepath']]).
+                rename(columns={'ScanN': '#'}).
+                sort_values(by='#').
+                reset_index(drop=True)
+        )
+
+        param_csv_red = param_csv.iloc[data['#'].to_list(), :].copy()
+
+        data['exposure_time_s'] = param_csv_red['Seconds'].to_list()
+        # data['enlapsed_time_s'] = param_csv_red['Time'].to_list()
+        data['monitor'] = param_csv_red['Monitor'].to_list()
+        data['detector'] = param_csv_red['Detector'].to_list()
+        data['i0'] = param_csv_red['i0'].to_list()
+        data['i1'] = param_csv_red['i1'].to_list()
+        data['i2'] = param_csv_red['i2'].to_list()
+
+        image, incidence_angle, exposure_time, N = cls._average_multiple_tif_files(tif_filepaths,
+                                                                                   data['i0'].to_list(),
+                                                                                   data['exposure_time_s'].to_list(),
+                                                                                   [incidence_angle]*len(tif_filepaths),
+                                                                                   verbose=verbose)
+        
+        timestamp = None    
+        metadata['instrument_parameters'] = data
+        metadata['source'] = 'SLAC_BL10_2'
+        N = len(tif_filepaths)
+
+        return cls(image,
+                   incidence_angle,
+                   exposure_time,
+                   timestamp,
+                   metadata = metadata,
+                   number_of_averaged_images = N)
+
 
     @staticmethod
     def _load_tif_file(filepath: str) -> np.ndarray:
@@ -333,9 +405,11 @@ class GIWAXSPixelImage(ScatteringMeasurement):
 
         images_list = []
 
+        mean_i = np.mean(intensity_norm_list)
+
         for image_file, intensity_norm in zip(image_file_list, intensity_norm_list):
             image_data = GIWAXSPixelImage._load_tif_file(image_file)
-            image_data_norm = (image_data/intensity_norm) * exposure_time
+            image_data_norm = (image_data/intensity_norm)*mean_i
             images_list.append(image_data_norm)
 
         # Convert the list of images to a NumPy array
@@ -701,6 +775,21 @@ class GIWAXSPixelImage(ScatteringMeasurement):
         q = q.astype(precision)
         intensity_polar = intensity_polar_sorted.astype(precision)
 
+        intensity_polar[intensity_polar == 0] = np.nan
+
+        while np.all(np.isnan(intensity_polar[0, :])):
+            intensity_polar =intensity_polar[1:, :]
+            chi = chi[1:]
+        while np.all(np.isnan(intensity_polar[-1, :])):
+            intensity_polar = intensity_polar[:-1, :]
+            chi = chi[:-1]
+        while np.all(np.isnan(intensity_polar[:, 0])):
+            intensity_polar = intensity_polar[:, 1:]
+            q = q[1:]
+        while np.all(np.isnan(intensity_polar[:, -1])):
+            intensity_polar = intensity_polar[:, :-1]
+            q = q[:-1]
+
         return chi, q, intensity_polar
 
     def _get_giwaxs_pattern_reciprocal (self,
@@ -749,24 +838,46 @@ class GIWAXSPixelImage(ScatteringMeasurement):
                                                                            correctSolidAngle = correct_solid_angle,
                                                                            polarization_factor = polarization_factor)
 
-        qz = -qz
         
+        qz = -qz
+
         if source == 'NSLS_II_CMS':
             qxy = -qxy
 
         sort_indices = np.argsort(qz)
         qz_sorted = qz[sort_indices]
-        intensity_polar_sorted = intensity_reciprocal[sort_indices]
 
         sort_indices_y = np.argsort(qxy)
         qxy_sorted = qxy[:][sort_indices_y]
-        intensity_polar_sorted = intensity_polar_sorted[sort_indices_y]
+        intensity_reciprocal_sorted = intensity_reciprocal[sort_indices][:, sort_indices_y]
+
 
         qxy = qxy_sorted.astype(precision)
         qz = qz_sorted.astype(precision)
-        intensity_reciprocal = intensity_polar_sorted.astype(precision)
+        intensity_reciprocal = intensity_reciprocal_sorted.astype(precision)
+
+        intensity_reciprocal[intensity_reciprocal == 0] = np.nan
+
+        #if a whole line or column at the edge of the matrix in intensity_reciprocal is 0 or nan remove it. only remove it if it is the first or last row or column
+        while np.all(np.isnan(intensity_reciprocal[0, :])) or np.all(intensity_reciprocal[0, :] == 0):
+            intensity_reciprocal = intensity_reciprocal[1:, :]
+            qz = qz[1:]
+
+        while np.all(np.isnan(intensity_reciprocal[-1, :])) or np.all(intensity_reciprocal[-1, :] == 0):
+            intensity_reciprocal = intensity_reciprocal[:-1, :]
+            qz = qz[:-1]
+        
+        while np.all(np.isnan(intensity_reciprocal[:, 0])) or np.all(intensity_reciprocal[:, 0] == 0):
+            intensity_reciprocal = intensity_reciprocal[:, 1:]
+            qxy = qxy[1:]
+        
+        while np.all(np.isnan(intensity_reciprocal[:, -1])) or np.all(intensity_reciprocal[:, -1] == 0):
+            intensity_reciprocal = intensity_reciprocal[:, :-1]
+            qxy = qxy[:-1]
 
         return qxy, qz, intensity_reciprocal
+
+        
 
 
     def save_to_pickle(self, pickle_file: str) -> 'GIWAXSPixelImage':
@@ -884,6 +995,9 @@ class GIWAXSPattern(ScatteringMeasurement):
         """
         Create a GIWAXSPattern object from numpy arrays
         """
+        # replace 0 in intensity with NaN
+        intensity_polar[intensity_polar == 0] = np.nan
+
         #check chi, q are equally spaced
         chi_diff = np.diff(chi)
         q_diff = np.diff(q)
@@ -913,12 +1027,20 @@ class GIWAXSPattern(ScatteringMeasurement):
                                      metadata: dict = None):
         """
         Create a GIWAXSPattern object from numpy arrays
-        """        
+        """
+
+        # replace 0 in intensity with NaN
+        intensity_reciprocal[intensity_reciprocal == 0] = np.nan
+
+        #if a
         #check qxy, qz are equally spaced
         qxy_diff = np.diff(q_xy)
         qz_diff = np.diff(q_z)
         if not np.allclose(qxy_diff, qxy_diff[0]) or not np.allclose(qz_diff, qz_diff[0]):
             raise ValueError('qxy and qz must be equally spaced')
+        
+        # check qz is monothonic growing
+
         
         [q_xy_range, q_z_range, intensity_flat, nodes_q_xy, nodes_q_z] = cls._from_np_array_to_flatten(q_xy, q_z, intensity_reciprocal)
         
@@ -981,7 +1103,6 @@ class GIWAXSPattern(ScatteringMeasurement):
         x: np.ndarray,
         y: np.ndarray,
         intensity : np.ndarray):
-
 
         x_nodes = len(x)
         y_nodes = len(y)
@@ -1860,6 +1981,26 @@ class Linecut(ScatteringMeasurement):
             'peak2_fraction_vary': True,
             'peak2_fraction_min': 0.000,
             'peak2_fraction_max': 1.0,
+
+            'peak3_center_value': 1.0,
+            'peak3_center_vary': True,
+            'peak3_center_min': 0.1,
+            'peak3_center_max': 2.5,
+
+            'peak3_sigma_value': 0.1,
+            'peak3_sigma_vary': True,
+            'peak3_sigma_min': 0.001,
+            'peak3_sigma_max': 0.3,
+
+            'peak3_amplitude_value': 1,
+            'peak3_amplitude_vary': True,
+            'peak3_amplitude_min': 0.00001,
+            'peak3_amplitude_max': 5000,
+
+            'peak3_gamma_value': 0.1,
+            'peak3_gamma_vary': True,
+            'peak3_gamma_min': 0.001,
+            'peak3_gamma_max': 0.3,
             
             'bkg_slope_value': 0,
             'bkg_slope_vary': True,
@@ -1876,20 +2017,25 @@ class Linecut(ScatteringMeasurement):
             'bkg_c_min': 0,
             'bkg_c_max': 1000,
 
-            'bkg_amplitude_value': 0,
-            'bkg_amplitude_vary': True,
-            'bkg_amplitude_min': -1000,
-            'bkg_amplitude_max': 1000,
+            'bkg_exp_amplitude_value': 0,
+            'bkg_exp_amplitude_vary': True,
+            'bkg_exp_amplitude_min': -1000,
+            'bkg_exp_amplitude_max': 1000,
 
-            'bkg_decay_value': 1,
-            'bkg_decay_vary': True,
-            'bkg_decay_min': -1000,
-            'bkg_decay_max': 1000,
+            'bkg_exp_decay_value': 1,
+            'bkg_exp_decay_vary': True,
+            'bkg_exp_decay_min': -1000,
+            'bkg_exp_decay_max': 1000,
 
-            'bkg_exponent_value': 1,
-            'bkg_exponent_vary': True,
-            'bkg_exponent_min': -1000,
-            'bkg_exponent_max': 1000
+            'bkg_pow_exponent_value': 1,
+            'bkg_pow_exponent_vary': True,
+            'bkg_pow_exponent_min': -1000,
+            'bkg_pow_exponent_max': 1000,
+
+            'bkg_pow_amplitude_value': 0,
+            'bkg_pow_amplitude_vary': True,
+            'bkg_pow_amplitude_min': -1000,
+            'bkg_pow_amplitude_max': 1000
         }
 
         for key in initial_parameters.keys():
@@ -1921,19 +2067,22 @@ class Linecut(ScatteringMeasurement):
             'SkewedVoigtModel': SkewedVoigtModel(prefix='peak_'),
             'GaussianModel2': GaussianModel (prefix = 'peak_') + GaussianModel(prefix='peak2_'),
             'LorentzianModel2': LorentzianModel(prefix='peak_') + LorentzianModel(prefix='peak2_'),
-            'VoigtModel2': VoigtModel(prefix='peak_') + VoigtModel(prefix='peak2_')
+            'VoigtModel2': VoigtModel(prefix='peak_') + VoigtModel(prefix='peak2_'),
+            'GaussianModel3': GaussianModel(prefix='peak_') + GaussianModel(prefix='peak2_') + GaussianModel(prefix='peak3_'),
+            'LorentzianModel3': LorentzianModel(prefix='peak_') + LorentzianModel(prefix='peak2_') + LorentzianModel(prefix='peak3_'),
+            'VoigtModel3': VoigtModel(prefix='peak_') + VoigtModel(prefix='peak2_') + VoigtModel(prefix='peak3_')
         }
 
         if peak_model not in peak_model_dict:
-            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel, GaussianModel2, LorentzianModel2, VoigtModel2')
+            raise ValueError('peak_model must be one of GaussianModel, LorentzianModel, VoigtModel, PseudoVoigtModel, SkewedVoigtModel, GaussianModel2, LorentzianModel2, VoigtModel2', 'GaussianModel3, LorentzianModel3, VoigtModel3')
 
         selected_peak_model = peak_model_dict[peak_model]
         
         background_model_dict = {
-            'ExponentialModel': ExponentialModel(prefix='bkg_') + ConstantModel(prefix='bkg_'),
+            'ExponentialModel': ExponentialModel(prefix='bkg_exp_') + ConstantModel(prefix='bkg_'),
             'LinearModel': LinearModel(prefix='bkg_'),
             'ConstantModel': ConstantModel(prefix='bkg_'),
-            'PowerLawModel': PowerLawModel(prefix='bkg_') + ConstantModel(prefix='bkg_')
+            'PowerLawModel': PowerLawModel(prefix='bkg_pow_') + ConstantModel(prefix='bkg_')
         }
 
         if background_model not in background_model_dict:
@@ -1976,7 +2125,7 @@ class Linecut(ScatteringMeasurement):
                                    min=default_fit_parameters['peak_skew_min'],
                                    max=default_fit_parameters['peak_skew_max'],
                                    vary=default_fit_parameters['peak_skew_vary'])
-        elif (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2'):
+        elif (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2') or (peak_model == 'GaussianModel3') or (peak_model == 'LorentzianModel3') or (peak_model == 'VoigtModel3'):
             pars['peak2_center'].set(value=default_fit_parameters['peak2_center_value'],
                                 min=default_fit_parameters['peak2_center_min'],
                                 max=default_fit_parameters['peak2_center_max'],
@@ -1992,48 +2141,73 @@ class Linecut(ScatteringMeasurement):
                                    max=default_fit_parameters['peak2_amplitude_max'],
                                    vary=default_fit_parameters['peak2_amplitude_vary'])
             
-            if peak_model == 'VoigtModel2':
+            if (peak_model == 'VoigtModel2') or (peak_model == 'VoigtModel3'):
                 pars['peak2_gamma'].set(value=default_fit_parameters['peak2_gamma_value'],
                                    min=default_fit_parameters['peak2_gamma_min'],
                                    max=default_fit_parameters['peak2_gamma_max'],
                                    vary=default_fit_parameters['peak2_gamma_vary'])
+                
+            if (peak_model == 'GaussianModel3') or (peak_model == 'LorentzianModel3') or (peak_model == 'VoigtModel3'):
+                pars['peak3_center'].set(value=default_fit_parameters['peak3_center_value'],
+                                min=default_fit_parameters['peak3_center_min'],
+                                max=default_fit_parameters['peak3_center_max'],
+                                vary=default_fit_parameters['peak3_center_vary'])
+                                       
+                pars['peak3_sigma'].set(value=default_fit_parameters['peak3_sigma_value'],
+                                   min=default_fit_parameters['peak3_sigma_min'],
+                                   max=default_fit_parameters['peak3_sigma_max'],
+                                   vary=default_fit_parameters['peak3_sigma_vary'])
+        
+                pars['peak3_amplitude'].set(value=default_fit_parameters['peak3_amplitude_value'],
+                                   min=default_fit_parameters['peak3_amplitude_min'],
+                                   max=default_fit_parameters['peak3_amplitude_max'],
+                                   vary=default_fit_parameters['peak3_amplitude_vary'])
+                
+                if (peak_model == 'VoigtModel3'):
+                    pars['peak3_gamma'].set(value=default_fit_parameters['peak3_gamma_value'],
+                                   min=default_fit_parameters['peak3_gamma_min'],
+                                   max=default_fit_parameters['peak3_gamma_max'],
+                                   vary=default_fit_parameters['peak3_gamma_vary'])
 
         pars.add('peak_d_spacing', expr='2*pi/peak_center')
         if peak_model != 'SkewedVoigtModel':
             pars.add('peak_coherence_length', expr='2*pi*0.9/peak_fwhm')
         
-        if (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2'):
+        if (peak_model == 'GaussianModel2') or (peak_model == 'LorentzianModel2') or (peak_model == 'VoigtModel2') or (peak_model == 'GaussianModel3') or (peak_model == 'LorentzianModel3') or (peak_model == 'VoigtModel3'):
             pars.add('peak2_d_spacing', expr='2*pi/peak2_center')
             pars.add('peak2_coherence_length', expr='2*pi*0.9/peak2_fwhm')
+            if (peak_model == 'GaussianModel3') or (peak_model == 'LorentzianModel3') or (peak_model == 'VoigtModel3'):
+                pars.add('peak3_d_spacing', expr='2*pi/peak3_center')
+                pars.add('peak3_coherence_length', expr='2*pi*0.9/peak3_fwhm')
                  
         if background_model == 'ExponentialModel':
-            pars['bkg_amplitude'].set(value=default_fit_parameters['bkg_amplitude_value'],
-                                      min=default_fit_parameters['bkg_amplitude_min'],
-                                      max=default_fit_parameters['bkg_amplitude_max'],
-                                      vary=default_fit_parameters['bkg_amplitude_vary'])    
+            pars['bkg_exp_amplitude'].set(value=default_fit_parameters['bkg_exp_amplitude_value'],
+                                      min=default_fit_parameters['bkg_exp_amplitude_min'],
+                                      max=default_fit_parameters['bkg_exp_amplitude_max'],
+                                      vary=default_fit_parameters['bkg_exp_amplitude_vary'])    
 
-            pars['bkg_decay'].set(value=default_fit_parameters['bkg_decay_value'],
-                                    min=default_fit_parameters['bkg_decay_min'],
-                                    max=default_fit_parameters['bkg_decay_max'],
-                                    vary=default_fit_parameters['bkg_decay_vary'])
+            pars['bkg_exp_decay'].set(value=default_fit_parameters['bkg_exp_decay_value'],
+                                    min=default_fit_parameters['bkg_exp_decay_min'],
+                                    max=default_fit_parameters['bkg_exp_decay_max'],
+                                    vary=default_fit_parameters['bkg_exp_decay_vary'])
 
-            pars['bkg_'].set(value=default_fit_parameters['bkg_c_value'],
+            pars['bkg_c'].set(value=default_fit_parameters['bkg_c_value'],
                              min=default_fit_parameters['bkg_c_min'],
                              max=default_fit_parameters['bkg_c_max'],
                              vary=default_fit_parameters['bkg_c_vary'])
         
         elif background_model == 'PowerLawModel':
-            pars['bkg_amplitude'].set(value=default_fit_parameters['bkg_amplitude_value'],
-                                      min=default_fit_parameters['bkg_amplitude_min'],
-                                      max=default_fit_parameters['bkg_amplitude_max'],
-                                      vary=default_fit_parameters['bkg_amplitude_vary'])
+            pars['bkg_pow_amplitude'].set(value=default_fit_parameters['bkg_pow_amplitude_value'],
+                                      min=default_fit_parameters['bkg_pow_amplitude_min'],
+                                      max=default_fit_parameters['bkg_pow_amplitude_max'],
+                                      vary=default_fit_parameters['bkg_pow_amplitude_vary'])
 
-            pars['bkg_exponent'].set(value=default_fit_parameters['bkg_exponent_value'],
-                                    min=default_fit_parameters['bkg_exponent_min'],
-                                    max=default_fit_parameters['bkg_exponent_max'],
-                                    vary=default_fit_parameters['bkg_exponent_vary'])
+            pars['bkg_pow_exponent'].set(value=default_fit_parameters['bkg_pow_exponent_value'],
+                                    min=default_fit_parameters['bkg_pow_exponent_min'],
+                                    max=default_fit_parameters['bkg_pow_exponent_max'],
+                                    vary=default_fit_parameters['bkg_pow_exponent_vary'])
 
-            pars['bkg_'].set(value=default_fit_parameters['bkg_c_value'],
+            pars['bkg_c'].set(value=default_fit_parameters['bkg_c_value'],
                              min=default_fit_parameters['bkg_c_min'],
                              max=default_fit_parameters['bkg_c_max'],
                              vary=default_fit_parameters['bkg_c_vary'])
@@ -2050,7 +2224,7 @@ class Linecut(ScatteringMeasurement):
                                       vary=default_fit_parameters['bkg_intercept_vary'])
         
         elif background_model == 'ConstantModel':
-            pars['bkg_'].set(value=default_fit_parameters['bkg_c_value'],
+            pars['bkg_c'].set(value=default_fit_parameters['bkg_c_value'],
                              min=default_fit_parameters['bkg_c_min'],
                              max=default_fit_parameters['bkg_c_max'],
                              vary=default_fit_parameters['bkg_c_vary'])
@@ -2128,14 +2302,43 @@ class Linecut(ScatteringMeasurement):
                 **kwargs)
             curve_peak = curve_peak*curve_peak2
         
-        curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
+        if 'peak3_' in self.fit_results.eval_components():
+            curve_peak3 = hv.Curve((self.x, self.fit_results.eval_components()['peak3_']), kdims='q', vdims='intensity', label = 'Peak3').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                line_dash='dashed',
+                color='orange',
+                line_width=2,
+                **kwargs)
+            curve_peak = curve_peak*curve_peak3
+        
+        
+        
+        if 'bkg_exp_' in self.fit_results.eval_components():
+            curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_exp_'] + self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background (Exp)').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                color='blue',
+                line_dash='dashed',
+                line_width=2,
+                **kwargs)
+        elif 'bkg_pow_' in self.fit_results.eval_components():
+            curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_pow_']+ self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background (Pow)').opts(
+                xlabel='q [\u212B\u207B\u00B9]',
+                ylabel='Intensity [arb. units]',
+                color='blue',
+                line_dash='dashed',
+                line_width=2,
+                **kwargs)
+        else:
+            curve_bkg = hv.Curve((self.x, self.fit_results.eval_components()['bkg_']), kdims='q', vdims='intensity', label = 'Background').opts(
             xlabel='q [\u212B\u207B\u00B9]',
             ylabel='Intensity [arb. units]',
             color='blue',
             line_dash='dashed',
             line_width=2,
             **kwargs)
-        
+
         return hv.Overlay([curve_data, curve_fit, curve_peak, curve_bkg])
     
     def _plot_fitted_px(self, **kwargs) -> px.line:
@@ -2150,6 +2353,8 @@ class Linecut(ScatteringMeasurement):
         toplot['peak'] = self.fit_results.eval_components()['peak_']
         if 'peak2_' in self.fit_results.eval_components():
             toplot['peak2'] = self.fit_results.eval_components()['peak2_']
+        if 'peak3_' in self.fit_results.eval_components():
+            toplot['peak3'] = self.fit_results.eval_components()['peak3_']
         toplot['bkg'] = self.fit_results.eval_components()['bkg_']
         figure = px.line(toplot, x='q', y=['intensity', 'fitted', 'peak', 'bkg'], labels={'value': 'Intensity [a.u.]', 'variable': 'Fit components'})
         return figure
