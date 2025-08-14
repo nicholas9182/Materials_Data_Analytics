@@ -1069,8 +1069,10 @@ class GIWAXSPattern(ScatteringMeasurement):
         #check qxy, qz are equally spaced
         qxy_diff = np.diff(q_xy)
         qz_diff = np.diff(q_z)
-        if not np.allclose(qxy_diff, qxy_diff[0]) or not np.allclose(qz_diff, qz_diff[0]):
-            raise ValueError('qxy and qz must be equally spaced')
+        if not np.allclose(qxy_diff, qxy_diff[0], rtol = 0.05):
+            raise ValueError('qxy must be equally spaced')
+        if not np.allclose(qz_diff, qz_diff[0], rtol = 0.05):
+            raise ValueError('qz must be equally spaced')
         
         [q_xy_range, q_z_range, intensity_flat_reciprocal, nodes_q_xy, nodes_q_z] = cls._from_np_array_to_flatten(q_xy, q_z, intensity_reciprocal)
 
