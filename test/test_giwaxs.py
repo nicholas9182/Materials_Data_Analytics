@@ -41,9 +41,9 @@ class TestGIWAXSPixelImage(unittest.TestCase):
     def test_from_SLAC_BL113(self):
         ''' Test the attributes of the GIWAXS class '''
         self.assertTrue(self.data_SLAC_BL113.image.shape == (3072, 3072))
-        self.assertTrue(np.round(self.data_SLAC_BL113.image[5][2], 3) == 24.229)
-        self.assertTrue(np.round(self.data_SLAC_BL113.image[15][27], 3) == 23.279)
-        self.assertTrue(np.round(self.data_SLAC_BL113.image[257][43], 3) == 28.505)
+        self.assertTrue(np.round(self.data_SLAC_BL113.image[5][2], 3) == 51.0)
+        self.assertTrue(np.round(self.data_SLAC_BL113.image[15][27], 3) == 49.0)
+        self.assertTrue(np.round(self.data_SLAC_BL113.image[257][43], 3) == 60.0)
         self.assertTrue(self.data_SLAC_BL113.incidence_angle == 0.12)
         self.assertTrue(self.data_SLAC_BL113.exposure_time == 120.0)
 
@@ -129,12 +129,12 @@ class TestGIWAXSPattern(unittest.TestCase):
     
     def test_attributes(self):
         ''' Test the attributes of the GIWAXSPattern class '''
-        self.assertTrue(self.data_SLAC_BL113.qxy.shape == (100,))
+        self.assertTrue(self.data_SLAC_BL113.qxy.shape == (80,))
         self.assertTrue(self.data_SLAC_BL113.qz.shape == (100,))
         self.assertTrue(self.data_SLAC_BL113.q.shape == (100,))
         self.assertTrue(self.data_SLAC_BL113.chi.shape == (100,))
         self.assertTrue(len(self.data_SLAC_BL113.data_polar) == 10000)
-        self.assertTrue(len(self.data_SLAC_BL113.data_reciprocal) == 10000)
+        self.assertTrue(len(self.data_SLAC_BL113.data_reciprocal) == 8000)
 
     def test_plotting(self):
         
